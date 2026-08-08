@@ -95,7 +95,17 @@ $woap_post_url = esc_url( wc_get_account_endpoint_url( MyAccount::ENDPOINT_INVIT
 									<input type="hidden" name="<?php echo esc_attr( AccountHandlers::ACTION_FIELD ); ?>" value="revoke_invitation">
 									<input type="hidden" name="woap_invitation_id" value="<?php echo esc_attr( (string) $woap_invitation->get_id() ); ?>">
 									<?php wp_nonce_field( 'woap_revoke_invitation' ); ?>
-									<button type="submit" class="woap-link-button"><?php esc_html_e( 'Withdraw', 'woo-organization-accounts-pro' ); ?></button>
+									<button type="submit" class="woap-link-button woap-link-button--danger" data-woap-confirm="
+										<?php
+										echo esc_attr(
+											sprintf(
+												/* translators: %s: the invited email address. */
+												__( 'Withdraw the invitation to %s? Their link stops working immediately.', 'woo-organization-accounts-pro' ),
+												$woap_invitation->get_email()
+											)
+										);
+										?>
+									"><?php esc_html_e( 'Withdraw', 'woo-organization-accounts-pro' ); ?></button>
 								</form>
 							<?php else : ?>
 								<span aria-hidden="true">—</span>

@@ -139,7 +139,17 @@ $woap_labels   = Roles::labels();
 					<input type="hidden" name="<?php echo esc_attr( AccountHandlers::ACTION_FIELD ); ?>" value="remove_member">
 					<input type="hidden" name="woap_member_id" value="<?php echo esc_attr( (string) $woap_member->get_id() ); ?>">
 					<?php wp_nonce_field( 'woap_remove_member' ); ?>
-					<button type="submit" class="woocommerce-Button button woap-button--danger">
+					<button type="submit" class="woocommerce-Button button woap-button--danger" data-woap-confirm="
+						<?php
+						echo esc_attr(
+							sprintf(
+								/* translators: %s: the name of the member being removed. */
+								__( 'Remove %s? They keep their sign-in but can no longer order on this account.', 'woo-organization-accounts-pro' ),
+								$woap_user instanceof WP_User ? $woap_user->display_name : __( 'this member', 'woo-organization-accounts-pro' )
+							)
+						);
+						?>
+					">
 						<?php esc_html_e( 'Remove from this account', 'woo-organization-accounts-pro' ); ?>
 					</button>
 				</form>

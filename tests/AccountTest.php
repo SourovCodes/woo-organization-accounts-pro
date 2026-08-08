@@ -11,6 +11,7 @@ use WooOrgAccounts\Admin\Settings;
 use WooOrgAccounts\Checkout\OrderMeta;
 use WooOrgAccounts\Data\Member;
 use WooOrgAccounts\Data\MemberRepository;
+use WooOrgAccounts\Frontend\AccountHandlers;
 use WooOrgAccounts\Frontend\MyAccount;
 use WooOrgAccounts\Frontend\Registration;
 use WooOrgAccounts\Roles;
@@ -200,6 +201,154 @@ class AccountTest extends TestCase {
 		$result = MyAccount::organization_orders( $organization->get_id() );
 
 		$this->assertSame( array(), $result['orders'] );
+	}
+
+	/**
+	 * The list shows every location and no form.
+	 */
+	public function testLocationsListShowsNoForm() {
+		$organization = $this->make_organization();
+		$this->act_as( $this->make_member( $organization, Member::ROLE_ADMIN ) );
+		$this->make_location( $organization );
+		$this->make_location( $organization, array( 'name' => 'Warehouse South' ) );
+
+		$markup = $this->render_locations();
+
+		$this->assertStringContainsString( 'Warehouse North', $markup );
+		$this->assertStringContainsString( 'Warehouse South', $markup );
+		$this->assertStringNotContainsString( 'shipping_address_1', $markup, 'The list should not carry an address form.' );
+		$this->assertStringContainsString( MyAccount::LOCATION_VAR . '=new', $markup, 'The list needs a way to add one.' );
+	}
+
+	/**
+	 * Editing one location shows that one, and not the others.
+	 *
+	 * The form used to sit underneath the whole list, so editing meant scrolling past
+	 * every other location with nothing to say which one was open.
+	 */
+	public function testEditingOneLocationHidesTheRest() {
+		$organization = $this->make_organization();
+		$this->act_as( $this->make_member( $organization, Member::ROLE_ADMIN ) );
+		$north = $this->make_location( $organization );
+		$this->make_location( $organization, array( 'name' => 'Warehouse South' ) );
+
+		$_GET[ MyAccount::LOCATION_VAR ] = (string) $north->get_id();
+
+		$markup = $this->render_locations();
+
+		$this->assertStringContainsString( 'Warehouse North', $markup );
+		$this->assertStringNotContainsString( 'Warehouse South', $markup, 'The other locations should not be on the edit screen.' );
+		$this->assertStringContainsString( 'shipping_address_1', $markup );
+		$this->assertStringContainsString( 'value="' . $north->get_id() . '"', $markup );
+	}
+
+	/**
+	 * The add screen is the same form with nothing in it.
+	 */
+	public function testAddingALocationShowsAnEmptyForm() {
+		$organization = $this->make_organization();
+		$this->act_as( $this->make_member( $organization, Member::ROLE_ADMIN ) );
+		$this->make_location( $organization );
+
+		$_GET[ MyAccount::LOCATION_VAR ] = 'new';
+
+		$markup = $this->render_locations();
+
+		$this->assertStringContainsString( 'shipping_address_1', $markup );
+		$this->assertStringNotContainsString( 'Warehouse North', $markup );
+		$this->assertStringContainsString( 'name="woap_location_id" value="0"', $markup );
+	}
+
+	/**
+	 * Another organization's location cannot be opened by guessing its ID.
+	 */
+	public function testEditingAForeignLocationIsRefused() {
+		$ours   = $this->make_organization();
+		$theirs = $this->make_organization( array( 'name' => 'Rival Ltd' ) );
+
+		$this->act_as( $this->make_member( $ours, Member::ROLE_ADMIN ) );
+		$foreign = $this->make_location( $theirs, array( 'name' => 'Rival Depot' ) );
+
+		$_GET[ MyAccount::LOCATION_VAR ] = (string) $foreign->get_id();
+
+		$markup = $this->render_locations();
+
+		$this->assertStringNotContainsString( 'Rival Depot', $markup );
+		$this->assertStringNotContainsString( 'shipping_address_1', $markup, 'A foreign location must not open its form.' );
+	}
+
+	/**
+	 * The form posts back to itself, so a rejected edit stays an edit.
+	 *
+	 * Posting to the plain endpoint instead loses which location was being changed, and
+	 * saving again would add a second one rather than correcting the first.
+	 */
+	public function testTheFormPostsBackToItself() {
+		$organization = $this->make_organization();
+		$this->act_as( $this->make_member( $organization, Member::ROLE_ADMIN ) );
+		$north = $this->make_location( $organization );
+
+		$_GET[ MyAccount::LOCATION_VAR ] = (string) $north->get_id();
+
+		$markup = $this->render_locations();
+
+		$this->assertStringContainsString(
+			esc_url( MyAccount::location_form_url( $north->get_id() ) ),
+			$markup
+		);
+	}
+
+	/**
+	 * A rejected submission comes back on the form, filled in, with the bad field flagged.
+	 */
+	public function testRejectedSubmissionReturnsToTheFormWithTheFieldFlagged() {
+		$organization = $this->make_organization();
+		$this->act_as( $this->make_member( $organization, Member::ROLE_ADMIN ) );
+		$north = $this->make_location( $organization );
+
+		$_GET[ MyAccount::LOCATION_VAR ] = (string) $north->get_id();
+
+		$_POST = array(
+			AccountHandlers::ACTION_FIELD => 'save_location',
+			'_wpnonce'                    => wp_create_nonce( 'woap_save_location' ),
+			'woap_location_id'            => $north->get_id(),
+			'woap_name'                   => 'Renamed Depot',
+			'shipping_first_name'         => 'Grace',
+			'shipping_last_name'          => 'Hopper',
+			'shipping_country'            => 'DE',
+			'shipping_city'               => 'Hamburg',
+			'shipping_phone'              => '+49 40 1',
+		);
+
+		$_REQUEST = $_POST; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Building the request the handler verifies; the nonce is set above.
+
+		( new AccountHandlers() )->dispatch();
+
+		$markup = $this->render_locations();
+
+		// Still the edit screen, still that location, still the other one hidden.
+		$this->assertStringContainsString( 'name="woap_location_id" value="' . $north->get_id() . '"', $markup );
+
+		// What was typed survived.
+		$this->assertStringContainsString( 'value="Renamed Depot"', $markup );
+		$this->assertStringContainsString( 'value="Grace"', $markup );
+
+		// And the offending field is flagged where the eye is, not only at the top.
+		$this->assertStringContainsString( 'woocommerce-invalid', $markup );
+
+		wc_clear_notices();
+	}
+
+	/**
+	 * Render the locations endpoint and give back its markup.
+	 *
+	 * @return string Markup.
+	 */
+	private function render_locations() {
+		ob_start();
+		( new MyAccount() )->render_organization_locations();
+
+		return (string) ob_get_clean();
 	}
 
 	/**

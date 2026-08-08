@@ -54,6 +54,13 @@ class MyAccount {
 	const ENDPOINT_ORDERS = 'organization-orders';
 
 	/**
+	 * Query variable naming the location being added or edited.
+	 *
+	 * Holds a location ID, or `new`. Its absence is what means "show the list".
+	 */
+	const LOCATION_VAR = 'woap_location';
+
+	/**
 	 * Every endpoint, mapped to the capability that reveals it.
 	 *
 	 * @return array Map of endpoint to capability.
@@ -191,12 +198,32 @@ class MyAccount {
 			return;
 		}
 
-		foreach ( array( self::ENDPOINT_PROFILE, self::ENDPOINT_LOCATIONS ) as $endpoint ) {
-			if ( isset( $wp_query->query_vars[ $endpoint ] ) ) {
-				AddressFields::enqueue();
+		$ours = array_intersect( array_keys( self::endpoints() ), array_keys( (array) $wp_query->query_vars ) );
 
-				return;
-			}
+		if ( empty( $ours ) ) {
+			return;
+		}
+
+		wp_enqueue_script(
+			'woap-account',
+			WOAP_PLUGIN_URL . 'assets/js/account.js',
+			array(),
+			WOAP_VERSION,
+			true
+		);
+
+		wp_enqueue_style( 'woap-account', WOAP_PLUGIN_URL . 'assets/css/account.css', array(), WOAP_VERSION );
+
+		/*
+		 * Only where an address form is actually rendered. The locations *list* has no
+		 * form on it, so loading WooCommerce's country and state scripts there would be
+		 * two requests and a JSON blob of every country's locale for a table.
+		 */
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Deciding which assets a read-only screen needs.
+		$editing_location = in_array( self::ENDPOINT_LOCATIONS, $ours, true ) && isset( $_GET[ self::LOCATION_VAR ] );
+
+		if ( $editing_location || in_array( self::ENDPOINT_PROFILE, $ours, true ) ) {
+			AddressFields::enqueue();
 		}
 	}
 
@@ -280,16 +307,79 @@ class MyAccount {
 			return;
 		}
 
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Choosing which read-only view to render; the edit itself is nonce-checked when submitted.
-		$editing = isset( $_GET['woap_location'] ) ? absint( wp_unslash( $_GET['woap_location'] ) ) : 0;
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Choosing which read-only view to render; the write itself is nonce-checked when submitted.
+		$requested = isset( $_GET[ self::LOCATION_VAR ] ) ? sanitize_text_field( wp_unslash( $_GET[ self::LOCATION_VAR ] ) ) : '';
+
+		/*
+		 * Two screens, not one. Editing used to happen in a form under the full list of
+		 * locations, which meant scrolling past everything else to reach it and gave no
+		 * sign of which one was open. It also lost the "which location am I editing?"
+		 * context the moment a submission was rejected, because that lived in a query
+		 * argument the form did not post back.
+		 */
+		if ( '' === $requested ) {
+			Templates::render(
+				'myaccount/locations.php',
+				array(
+					'organization' => $organization,
+					'locations'    => LocationRepository::for_organization( $organization->get_id() ),
+				)
+			);
+
+			return;
+		}
+
+		$editing = ( 'new' === $requested )
+			? null
+			: LocationRepository::find_for_organization( absint( $requested ), $organization->get_id() );
+
+		if ( 'new' !== $requested && null === $editing ) {
+			wc_print_notice( esc_html__( 'That entry no longer exists.', 'woo-organization-accounts-pro' ), 'error' );
+
+			Templates::render(
+				'myaccount/locations.php',
+				array(
+					'organization' => $organization,
+					'locations'    => LocationRepository::for_organization( $organization->get_id() ),
+				)
+			);
+
+			return;
+		}
 
 		Templates::render(
-			'myaccount/locations.php',
+			'myaccount/location-form.php',
 			array(
 				'organization' => $organization,
-				'locations'    => LocationRepository::for_organization( $organization->get_id() ),
-				'editing'      => $editing > 0 ? LocationRepository::find_for_organization( $editing, $organization->get_id() ) : null,
+				'editing'      => $editing,
 			)
+		);
+	}
+
+	/**
+	 * The URL of the location list.
+	 *
+	 * @return string URL.
+	 */
+	public static function locations_url() {
+		return wc_get_account_endpoint_url( self::ENDPOINT_LOCATIONS );
+	}
+
+	/**
+	 * The URL of the form that adds or edits one location.
+	 *
+	 * The location is named in the URL rather than only in a hidden field, so a
+	 * rejected submission comes back to the same screen still knowing what it was
+	 * editing — and so the screen can be linked to, bookmarked and reloaded.
+	 *
+	 * @param int $location_id Location to edit, or 0 to add one.
+	 * @return string URL.
+	 */
+	public static function location_form_url( $location_id = 0 ) {
+		return add_query_arg(
+			self::LOCATION_VAR,
+			$location_id > 0 ? absint( $location_id ) : 'new',
+			self::locations_url()
 		);
 	}
 

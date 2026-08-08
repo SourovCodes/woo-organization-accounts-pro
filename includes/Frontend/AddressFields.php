@@ -98,8 +98,9 @@ final class AddressFields {
 	 * @param array  $args {
 	 *     Optional.
 	 *
-	 *     @type bool     $readonly Render every field readonly.
-	 *     @type string[] $exclude  Unprefixed field names to leave out.
+	 *     @type bool           $readonly Render every field readonly.
+	 *     @type string[]       $exclude  Unprefixed field names to leave out.
+	 *     @type \WP_Error|null $errors   Errors from a rejected submission, keyed by prefixed field name.
 	 * }
 	 * @return void
 	 */
@@ -109,6 +110,7 @@ final class AddressFields {
 			array(
 				'readonly' => false,
 				'exclude'  => array(),
+				'errors'   => null,
 			)
 		);
 
@@ -132,10 +134,48 @@ final class AddressFields {
 				);
 			}
 
+			$field = self::mark_invalid( $key, $field, $args['errors'] );
+
 			woocommerce_form_field( $key, $field, isset( $values[ $name ] ) ? $values[ $name ] : '' );
 		}
 
 		echo '</div>';
+	}
+
+	/**
+	 * Flag a field the last submission was rejected over.
+	 *
+	 * A notice at the top of a fourteen-field form tells somebody that *something* is
+	 * wrong; it does not tell them where. WooCommerce marks the offending row with
+	 * `woocommerce-invalid`, which every WooCommerce theme already styles, and the
+	 * reason goes underneath the input that caused it.
+	 *
+	 * @param string         $key    Prefixed field name.
+	 * @param array          $field  Field definition.
+	 * @param \WP_Error|null $errors Errors from the rejected submission.
+	 * @return array The field definition, marked up if it was rejected.
+	 */
+	private static function mark_invalid( $key, array $field, $errors ) {
+		if ( ! $errors instanceof \WP_Error ) {
+			return $field;
+		}
+
+		$message = $errors->get_error_message( $key );
+
+		if ( '' === $message ) {
+			return $field;
+		}
+
+		$field['class'] = array_merge(
+			isset( $field['class'] ) ? (array) $field['class'] : array(),
+			array( 'woocommerce-invalid', 'woocommerce-invalid-required-field' )
+		);
+
+		$field['description'] = trim(
+			( isset( $field['description'] ) ? $field['description'] . ' ' : '' ) . $message
+		);
+
+		return $field;
 	}
 
 	/**

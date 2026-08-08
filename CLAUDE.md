@@ -223,7 +223,21 @@ checkout then rejected.
   is built, because a parcel with no company on the label is one nobody at a loading bay
   recognises.
 - **A rejected submission is handed back, not redirected away.** Losing a twelve-field address to
-  one mistyped postcode is not an acceptable way to report an error.
+  one mistyped postcode is not an acceptable way to report an error. Every field that was rejected
+  is marked `woocommerce-invalid` with the reason under it, because a notice at the top of a
+  fourteen-field form says *something* is wrong without saying where. The admin screen has to
+  redirect — `admin-post.php` prints nothing — so it parks the whole submission in a one-minute
+  transient and refills the form from it.
+
+### Editing one of many
+
+A screen that edits one row out of a list is its own screen, reached by a query argument
+(`?woap_location=<id>`, or `new`), never a form underneath the list. Three things go wrong with the
+form-under-the-list shape, and the locations screen had all of them: you scroll past everything else
+to reach it, nothing says which row is open, and — the real bug — the row being edited lives only in
+a query argument the form does not post back, so a rejected submission returns as a blank *add*
+form and saving again creates a duplicate instead of correcting the original. The form posts to its
+own URL, argument included.
 
 ### Capabilities
 

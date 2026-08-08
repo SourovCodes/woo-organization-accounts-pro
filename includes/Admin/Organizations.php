@@ -228,7 +228,7 @@ class Organizations {
 
 		echo '<div class="wrap woap-organization-detail">';
 
-		self::render_notices();
+		list( $rejected, $submitted ) = self::render_notices();
 
 		printf(
 			'<h1>%1$s <span class="woap-status woap-status--%2$s">%3$s</span></h1>',
@@ -249,7 +249,7 @@ class Organizations {
 			)
 		);
 
-		$this->render_detail_form( $organization );
+		$this->render_detail_form( $organization, $rejected, $submitted );
 		$this->render_members( $organization );
 		$this->render_locations( $organization );
 		$this->render_invitations( $organization );
@@ -261,11 +261,19 @@ class Organizations {
 	/**
 	 * The editable part of the detail screen.
 	 *
-	 * @param Organization $organization The organization.
+	 * @param Organization   $organization The organization.
+	 * @param \WP_Error|null $rejected     Errors from a rejected save, if any.
+	 * @param array          $submitted    What that save tried to store.
 	 * @return void
 	 */
-	private function render_detail_form( Organization $organization ) {
+	private function render_detail_form( Organization $organization, $rejected = null, array $submitted = array() ) {
 		$billing = $organization->get_billing_address();
+
+		foreach ( array_keys( $billing ) as $field ) {
+			if ( array_key_exists( AddressFields::BILLING . '_' . $field, $submitted ) ) {
+				$billing[ $field ] = $submitted[ AddressFields::BILLING . '_' . $field ];
+			}
+		}
 
 		printf( '<form method="post" action="%s">', esc_url( admin_url( 'admin-post.php' ) ) );
 		echo '<input type="hidden" name="action" value="woap_admin_save">';
@@ -303,7 +311,7 @@ class Organizations {
 		echo '</tbody></table></div>';
 
 		echo '<div><h2>' . esc_html__( 'Billing address', 'woo-organization-accounts-pro' ) . '</h2>';
-		AddressFields::render( AddressFields::BILLING, $billing );
+		AddressFields::render( AddressFields::BILLING, $billing, array( 'errors' => $rejected ) );
 		echo '</div>';
 		echo '</div>';
 
@@ -557,7 +565,25 @@ class Organizations {
 		AddressFields::validate( AddressFields::BILLING, $address, $errors );
 
 		if ( $errors->has_errors() ) {
-			set_transient( self::NOTICE_TRANSIENT . get_current_user_id(), $errors->get_error_messages(), MINUTE_IN_SECONDS );
+			/*
+			 * The whole submission is parked, not only the messages. admin-post.php has
+			 * to redirect, and redirecting with nothing but a notice is how somebody
+			 * loses a fourteen-field address to one mistyped postcode.
+			 */
+			$parked = array();
+
+			foreach ( $address as $field => $value ) {
+				$parked[ AddressFields::BILLING . '_' . $field ] = $value;
+			}
+
+			set_transient(
+				self::NOTICE_TRANSIENT . get_current_user_id(),
+				array(
+					'errors' => $errors->errors,
+					'values' => $parked,
+				),
+				MINUTE_IN_SECONDS
+			);
 
 			self::go_back( $organization_id );
 		}
@@ -675,27 +701,37 @@ class Organizations {
 	}
 
 	/**
-	 * Print anything the last save had to say, once.
+	 * Print anything the last save had to say, once, and hand back what it rejected.
 	 *
-	 * @return void
+	 * @return array {
+	 *     @type \WP_Error|null $0 The errors, or null when the last save was fine.
+	 *     @type array          $1 The rejected values, keyed by prefixed field name.
+	 * }
 	 */
 	private static function render_notices() {
-		$key      = self::NOTICE_TRANSIENT . get_current_user_id();
-		$messages = get_transient( $key );
+		$key    = self::NOTICE_TRANSIENT . get_current_user_id();
+		$parked = get_transient( $key );
 
-		if ( empty( $messages ) || ! is_array( $messages ) ) {
-			return;
+		if ( empty( $parked['errors'] ) || ! is_array( $parked['errors'] ) ) {
+			return array( null, array() );
 		}
 
 		delete_transient( $key );
 
+		$errors = new \WP_Error();
+
 		echo '<div class="notice notice-error"><ul>';
 
-		foreach ( $messages as $message ) {
-			printf( '<li>%s</li>', wp_kses_post( $message ) );
+		foreach ( $parked['errors'] as $code => $messages ) {
+			foreach ( (array) $messages as $message ) {
+				$errors->add( $code, $message );
+				printf( '<li>%s</li>', wp_kses_post( $message ) );
+			}
 		}
 
 		echo '</ul></div>';
+
+		return array( $errors, isset( $parked['values'] ) ? (array) $parked['values'] : array() );
 	}
 
 	/**

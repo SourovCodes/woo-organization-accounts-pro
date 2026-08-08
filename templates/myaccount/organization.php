@@ -139,7 +139,7 @@ if ( AccountHandlers::has_submission() ) {
 			 * state where the country has states, none where it does not, and the label
 			 * that country uses for its postcode.
 			 */
-			AddressFields::render( AddressFields::BILLING, $woap_billing );
+			AddressFields::render( AddressFields::BILLING, $woap_billing, array( 'errors' => AccountHandlers::errors() ) );
 			?>
 
 			<p>
