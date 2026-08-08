@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-08-08T15:40:00+00:00\n"
+"POT-Creation-Date: 2026-08-08T16:05:42+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "Language: de_DE\n"
@@ -80,7 +80,7 @@ msgstr "Details"
 #: includes/Admin/Organizations.php:340
 #: includes/Admin/Organizations.php:386
 #: templates/myaccount/location-form.php:92
-#: templates/myaccount/locations.php:69
+#: templates/myaccount/locations.php:70
 #: templates/myaccount/organization.php:71
 msgid "Name"
 msgstr "Name"
@@ -242,7 +242,7 @@ msgid "Reject"
 msgstr "Ablehnen"
 
 #: includes/Admin/OrganizationsListTable.php:174
-#: templates/myaccount/locations.php:101
+#: templates/myaccount/locations.php:117
 msgid "Edit"
 msgstr "Bearbeiten"
 
@@ -251,7 +251,7 @@ msgid "Delete this account and every member, location and invitation belonging t
 msgstr "Dieses Konto samt aller Mitglieder, Standorte und Einladungen löschen? Bestellungen bleiben erhalten."
 
 #: includes/Admin/OrganizationsListTable.php:189
-#: templates/myaccount/locations.php:118
+#: templates/myaccount/locations.php:134
 msgid "Delete"
 msgstr "Löschen"
 
@@ -404,20 +404,20 @@ msgid "Check for updates"
 msgstr "Nach Updates suchen"
 
 #. translators: %s: the organization noun for the site's mode, for example "Company".
-#: includes/Checkout/BillingLock.php:175
+#: includes/Checkout/BillingLock.php:186
 #, php-format
 msgid "Orders are billed to your %s. Ask an administrator to change the billing address."
 msgstr "Bestellungen werden deiner %s in Rechnung gestellt. Wende dich an eine Administratorin oder einen Administrator, um die Rechnungsadresse zu ändern."
 
 #. translators: %s: the singular location noun for the site's mode, for example "Branch".
 #: includes/Checkout/Blocks/CheckoutIntegration.php:129
-#: templates/checkout/location-selector.php:46
+#: templates/checkout/location-selector.php:48
 #, php-format
 msgid "Deliver to which %s?"
 msgstr "An welche %s soll geliefert werden?"
 
 #: includes/Checkout/Blocks/CheckoutIntegration.php:132
-#: templates/checkout/location-selector.php:61
+#: templates/checkout/location-selector.php:74
 msgid "A different address (enter it below)"
 msgstr "Eine andere Adresse (unten eingeben)"
 
@@ -466,22 +466,28 @@ msgid "The organization location this order is being delivered to."
 msgstr "Der Standort der Organisation, an den diese Bestellung geliefert wird."
 
 #. translators: 1: plural location noun, 2: the organization admin noun.
-#: includes/Checkout/ShippingSelector.php:333
+#: includes/Checkout/ShippingSelector.php:372
 #, php-format
 msgid "No %1$s have been set up to deliver to, and one-off addresses are not allowed. Ask your %2$s to add one."
 msgstr "Es sind keine %1$s als Lieferziel hinterlegt, und einmalige Adressen sind nicht erlaubt. Bitte deinen %2$s, eine anzulegen."
 
 #. translators: %s: the singular location noun, for example "Branch".
-#: includes/Checkout/ShippingSelector.php:341
+#: includes/Checkout/ShippingSelector.php:380
 #, php-format
 msgid "Please choose the %s this order is going to."
 msgstr "Bitte wähle die %s, an die diese Bestellung geht."
 
 #. translators: %s: the singular location noun, for example "Branch".
-#: includes/Checkout/ShippingSelector.php:349
+#: includes/Checkout/ShippingSelector.php:390
 #, php-format
 msgid "Please choose a %s you have access to."
 msgstr "Bitte wähle eine %s, auf die du Zugriff hast."
+
+#. translators: 1: the location's name, 2: comma-separated list of the missing fields, 3: the organization admin noun.
+#: includes/Checkout/ShippingSelector.php:407
+#, php-format
+msgid "“%1$s” is missing %2$s, so it cannot be delivered to. Ask your %3$s to complete it, or choose somewhere else."
+msgstr "Bei „%1$s“ fehlt %2$s, deshalb ist dorthin keine Lieferung möglich. Bitte deinen %3$s, die Angaben zu vervollständigen, oder wähle ein anderes Ziel."
 
 #: includes/Data/Invitation.php:133
 msgid "Expired"
@@ -661,59 +667,63 @@ msgstr "Du kannst dich nicht selbst entfernen."
 msgid "Member removed."
 msgstr "Mitglied entfernt."
 
+#: includes/Frontend/AddressFields.php:163
+msgid "Country / Region"
+msgstr "Land / Region"
+
 #. translators: %s: the two-letter country code that was submitted.
-#: includes/Frontend/AddressFields.php:242
+#: includes/Frontend/AddressFields.php:278
 #, php-format
 msgid "\"%s\" is not a country we recognise."
 msgstr "„%s“ ist kein Land, das wir kennen."
 
 #. translators: %s: name of the field, in bold.
-#: includes/Frontend/AddressFields.php:265
+#: includes/Frontend/AddressFields.php:301
 #, php-format
 msgid "%s is not a valid postcode or ZIP."
 msgstr "%s ist keine gültige Postleitzahl."
 
 #. translators: %s: name of the field, in bold.
-#: includes/Frontend/AddressFields.php:274
+#: includes/Frontend/AddressFields.php:310
 #, php-format
 msgid "%s is not a valid phone number."
 msgstr "%s ist keine gültige Telefonnummer."
 
 #. translators: %s: name of the field, in bold.
-#: includes/Frontend/AddressFields.php:280
+#: includes/Frontend/AddressFields.php:316
 #, php-format
 msgid "%s is not a valid email address."
 msgstr "%s ist keine gültige E-Mail-Adresse."
 
 #. translators: %s: name of the field, in bold.
-#: includes/Frontend/AddressFields.php:292
+#: includes/Frontend/AddressFields.php:328
 #, php-format
 msgid "%s is a required field."
 msgstr "%s ist ein Pflichtfeld."
 
 #. translators: 1: name of the field, in bold. 2: comma-separated list of the values it accepts.
-#: includes/Frontend/AddressFields.php:337
+#: includes/Frontend/AddressFields.php:373
 #, php-format
 msgid "%1$s is not valid. Please choose one of: %2$s"
 msgstr "%1$s ist ungültig. Bitte wähle eines davon: %2$s"
 
-#: includes/Frontend/AddressFields.php:424
+#: includes/Frontend/AddressFields.php:460
 msgid "Select an option…"
 msgstr "Bitte auswählen…"
 
-#: includes/Frontend/AddressFields.php:425
+#: includes/Frontend/AddressFields.php:461
 msgid "No matches found"
 msgstr "Keine Treffer gefunden"
 
-#: includes/Frontend/AddressFields.php:426
+#: includes/Frontend/AddressFields.php:462
 msgid "Searching…"
 msgstr "Suche…"
 
-#: includes/Frontend/AddressFields.php:439
+#: includes/Frontend/AddressFields.php:475
 msgid "required"
 msgstr "erforderlich"
 
-#: includes/Frontend/AddressFields.php:440
+#: includes/Frontend/AddressFields.php:476
 msgid "optional"
 msgstr "optional"
 
@@ -988,6 +998,12 @@ msgstr "Was sich in welcher Version geändert hat, steht beim jeweiligen Release
 msgid "release notes on GitHub"
 msgstr "Release Notes auf GitHub"
 
+#. translators: %s: the location's name.
+#: templates/checkout/location-selector.php:64
+#, php-format
+msgid "%s — address incomplete"
+msgstr "%s — Adresse unvollständig"
+
 #. translators: 1: organization name, 2: the organization noun for the site's mode.
 #: templates/emails/invitation.php:28
 #: templates/emails/plain/invitation.php:24
@@ -1108,7 +1124,7 @@ msgid "Expires"
 msgstr "Läuft ab"
 
 #: templates/myaccount/invitations.php:66
-#: templates/myaccount/locations.php:72
+#: templates/myaccount/locations.php:73
 #: templates/myaccount/organization-orders.php:51
 msgid "Actions"
 msgstr "Aktionen"
@@ -1145,7 +1161,7 @@ msgstr "„%s“ bearbeiten"
 
 #. translators: %s: the singular location noun for the site's mode, for example "Branch".
 #: templates/myaccount/location-form.php:78
-#: templates/myaccount/locations.php:42
+#: templates/myaccount/locations.php:43
 #, php-format
 msgid "Add a %s"
 msgstr "%s anlegen"
@@ -1175,31 +1191,41 @@ msgid "Cancel"
 msgstr "Abbrechen"
 
 #. translators: %s: the plural location noun for the site's mode, for example "Branches".
-#: templates/myaccount/locations.php:30
+#: templates/myaccount/locations.php:31
 #, php-format
 msgid "Orders are delivered to one of these %s. Members choose one at checkout."
 msgstr "Bestellungen werden an eine dieser %s geliefert. Mitglieder wählen sie an der Kasse aus."
 
 #. translators: %s: the plural location noun for the site's mode, for example "Branches".
-#: templates/myaccount/locations.php:57
+#: templates/myaccount/locations.php:58
 #, php-format
 msgid "No %s yet. Members cannot choose a delivery destination until there is at least one."
 msgstr "Noch keine %s. Mitglieder können erst dann ein Lieferziel auswählen, wenn es mindestens eine gibt."
 
-#: templates/myaccount/locations.php:70
+#: templates/myaccount/locations.php:71
 msgid "Delivery address"
 msgstr "Lieferadresse"
 
-#: templates/myaccount/locations.php:71
+#: templates/myaccount/locations.php:72
 msgid "Delivery contact"
 msgstr "Ansprechpartner vor Ort"
 
-#: templates/myaccount/locations.php:83
+#: templates/myaccount/locations.php:85
 msgid "Default"
 msgstr "Standard"
 
+#: templates/myaccount/locations.php:88
+msgid "Incomplete"
+msgstr "Unvollständig"
+
+#. translators: %s: comma-separated list of the address fields that are empty.
+#: templates/myaccount/locations.php:94
+#, php-format
+msgid "Cannot be delivered to until %s is filled in."
+msgstr "Lieferung erst möglich, wenn %s ausgefüllt ist."
+
 #. translators: %s: the name of the location being deleted.
-#: templates/myaccount/locations.php:112
+#: templates/myaccount/locations.php:128
 #, php-format
 msgid "Delete “%s”? Orders already sent there keep their address."
 msgstr "„%s“ löschen? Bereits dorthin versandte Bestellungen behalten ihre Adresse."

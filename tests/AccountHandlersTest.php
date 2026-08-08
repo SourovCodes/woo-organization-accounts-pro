@@ -105,7 +105,7 @@ class AccountHandlersTest extends TestCase {
 	public function testNoFieldNameCollidesWithAWordPressQueryVar() {
 		global $wp;
 
-		$templates = glob( dirname( __DIR__ ) . '/templates/myaccount/*.php' );
+		$templates = glob( dirname( __DIR__ ) . '/templates/*/*.php' );
 
 		$this->assertNotEmpty( $templates );
 

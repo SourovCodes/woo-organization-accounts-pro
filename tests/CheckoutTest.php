@@ -307,6 +307,102 @@ class CheckoutTest extends TestCase {
 	}
 
 	/**
+	 * The rules an address is judged by come from the destination, not the request.
+	 *
+	 * WooCommerce builds the checkout fieldset from the *posted* country. This plugin
+	 * then replaces the posted address with the location's — so without reshaping the
+	 * fieldset too, a German location submitted from a form carrying
+	 * `shipping_country=US` was validated under US rules and refused for having no
+	 * state. A real order failed exactly this way before the fix.
+	 */
+	public function testShippingFieldsFollowTheDestinationNotTheRequest() {
+		$organization = $this->make_organization();
+		$this->act_as( $this->make_member( $organization ) );
+		$location = $this->make_location( $organization );
+
+		$_POST[ ShippingSelector::FIELD ] = (string) $location->get_id();
+		$_POST['shipping_country']        = 'US';
+
+		$fields = ( new ShippingSelector() )->shape_shipping_fields(
+			array( 'shipping' => WC()->countries->get_address_fields( 'US', 'shipping_' ) )
+		);
+
+		$this->assertTrue(
+			empty( $fields['shipping']['shipping_state']['required'] ),
+			'A German destination must not be asked for a state because the request said US.'
+		);
+		$this->assertSame( 'Hamburg', $fields['shipping']['shipping_city']['default'] );
+	}
+
+	/**
+	 * Billing is judged by the organization's country, not the request's.
+	 */
+	public function testBillingFieldsFollowTheOrganization() {
+		$organization = $this->make_organization();
+		$this->act_as( $this->make_member( $organization ) );
+
+		$fields = ( new BillingLock() )->lock_fields(
+			array( 'billing' => WC()->countries->get_address_fields( 'US', 'billing_' ) )
+		);
+
+		$this->assertSame( 'Berlin', $fields['billing']['billing_city']['default'] );
+		$this->assertSame( 'DE', $fields['billing']['billing_country']['default'] );
+	}
+
+	/**
+	 * A location missing a required field cannot be delivered to.
+	 *
+	 * A location can be stored incomplete — saved before the plugin validated
+	 * addresses, or moved to a country with stricter rules. Left alone, WooCommerce
+	 * refuses the order with "Shipping Last name is a required field", which asks the
+	 * customer to fix a field they cannot see and do not own.
+	 */
+	public function testIncompleteLocationIsRefusedByName() {
+		$organization = $this->make_organization();
+		$this->act_as( $this->make_member( $organization ) );
+		$location = $this->make_location( $organization, array( 'last_name' => '' ) );
+
+		$message = ShippingSelector::destination_error( (string) $location->get_id() );
+
+		$this->assertNotSame( '', $message );
+		$this->assertStringContainsString( 'Warehouse North', $message, 'The message must name the location.' );
+		$this->assertStringContainsString( 'Last name', $message, 'The message must name what is missing.' );
+	}
+
+	/**
+	 * A complete location is not refused.
+	 */
+	public function testCompleteLocationIsAccepted() {
+		$organization = $this->make_organization();
+		$this->act_as( $this->make_member( $organization ) );
+		$location = $this->make_location( $organization );
+
+		$this->assertSame( '', ShippingSelector::destination_error( (string) $location->get_id() ) );
+	}
+
+	/**
+	 * A blocked customer is told on the cart, not after pressing "Proceed to checkout".
+	 */
+	public function testTheCartSaysWhyItCannotBeCheckedOut() {
+		wp_set_current_user( 0 );
+		wc_clear_notices();
+
+		( new Gate() )->block_cart();
+
+		$notices = wc_get_notices( 'error' );
+
+		$this->assertCount( 1, $notices );
+		$this->assertStringContainsString( 'logged in', $notices[0]['notice'] );
+
+		// The same message twice reads as a malfunction, and both hooks can fire.
+		( new Gate() )->block_cart();
+
+		$this->assertCount( 1, wc_get_notices( 'error' ) );
+
+		wc_clear_notices();
+	}
+
+	/**
 	 * The order records the organization, the location and the member.
 	 */
 	public function testOrderCarriesTheOrganization() {

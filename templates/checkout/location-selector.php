@@ -14,6 +14,8 @@
  * @var string                             $location_noun Singular location noun for the site's mode.
  */
 
+use WooOrgAccounts\Frontend\AddressFields;
+
 defined( 'ABSPATH' ) || exit;
 
 if ( empty( $locations ) && ! $allow_custom ) {
@@ -51,8 +53,19 @@ if ( '' === $woap_default && ! empty( $locations ) ) {
 		</label>
 		<select id="woap-location" name="<?php echo esc_attr( $field ); ?>" class="woap-location-select">
 			<?php foreach ( $locations as $woap_location ) : ?>
-				<option value="<?php echo esc_attr( (string) $woap_location->get_id() ); ?>" <?php selected( $woap_default, (string) $woap_location->get_id() ); ?>>
-					<?php echo esc_html( $woap_location->get_name() ); ?>
+				<?php $woap_missing = AddressFields::missing( AddressFields::SHIPPING, $woap_location->get_shipping_address() ); ?>
+				<option value="<?php echo esc_attr( (string) $woap_location->get_id() ); ?>" <?php selected( $woap_default, (string) $woap_location->get_id() ); ?><?php disabled( ! empty( $woap_missing ) ); ?>>
+					<?php
+					echo esc_html(
+						empty( $woap_missing )
+							? $woap_location->get_name()
+							: sprintf(
+								/* translators: %s: the location's name. */
+								__( '%s — address incomplete', 'woo-organization-accounts-pro' ),
+								$woap_location->get_name()
+							)
+					);
+					?>
 				</option>
 			<?php endforeach; ?>
 

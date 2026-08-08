@@ -143,6 +143,42 @@ final class AddressFields {
 	}
 
 	/**
+	 * The required fields an address has left empty, by their labels.
+	 *
+	 * An address can be stored complete for one country and incomplete for another —
+	 * a US address needs a state and a German one does not — so this is asked of the
+	 * country the address is actually in. It is how a location saved before this
+	 * plugin validated anything, or edited to a stricter country, is caught on a
+	 * screen somebody can fix rather than at a customer's checkout.
+	 *
+	 * @param string $type   self::BILLING or self::SHIPPING.
+	 * @param array  $values Values keyed without the prefix.
+	 * @return string[] Labels of the required fields that are empty.
+	 */
+	public static function missing( $type, array $values ) {
+		$country = isset( $values['country'] ) ? (string) $values['country'] : '';
+		$missing = array();
+
+		if ( '' === $country ) {
+			return array( __( 'Country / Region', 'woo-organization-accounts-pro' ) );
+		}
+
+		foreach ( self::fields( $type, $country ) as $key => $field ) {
+			$name = substr( $key, strlen( $type ) + 1 );
+
+			if ( empty( $field['required'] ) ) {
+				continue;
+			}
+
+			if ( '' === trim( (string) ( isset( $values[ $name ] ) ? $values[ $name ] : '' ) ) ) {
+				$missing[] = isset( $field['label'] ) ? $field['label'] : $name;
+			}
+		}
+
+		return $missing;
+	}
+
+	/**
 	 * Flag a field the last submission was rejected over.
 	 *
 	 * A notice at the top of a fourteen-field form tells somebody that *something* is

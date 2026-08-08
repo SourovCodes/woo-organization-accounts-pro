@@ -8,6 +8,7 @@
 namespace WooOrgAccounts\Checkout;
 
 use WooOrgAccounts\Data\Organization;
+use WooOrgAccounts\Frontend\AddressFields;
 use WooOrgAccounts\Labels;
 use WooOrgAccounts\Membership\Context;
 
@@ -59,6 +60,16 @@ class BillingLock {
 		}
 
 		$address = $organization->get_billing_address();
+
+		/*
+		 * The fieldset is rebuilt for the organization's country, not left as
+		 * WooCommerce built it. WooCommerce derives the checkout fields from the
+		 * *posted* country, or failing that the customer's own — neither of which is
+		 * the organization's. Leaving it alone renders a German address under Swiss
+		 * field rules, and validates it under whatever country the request happened to
+		 * carry.
+		 */
+		$fields['billing'] = AddressFields::fields( AddressFields::BILLING, $address['country'] );
 
 		foreach ( $fields['billing'] as $key => $field ) {
 			$name = substr( $key, strlen( 'billing_' ) );

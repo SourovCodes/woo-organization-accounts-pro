@@ -10,6 +10,7 @@ namespace WooOrgAccounts\Checkout;
 use WooOrgAccounts\Data\Location;
 use WooOrgAccounts\Data\LocationRepository;
 use WooOrgAccounts\Data\Organization;
+use WooOrgAccounts\Frontend\AddressFields;
 use WooOrgAccounts\Frontend\Templates;
 use WooOrgAccounts\Labels;
 use WooOrgAccounts\Membership\Context;
@@ -51,6 +52,7 @@ class ShippingSelector {
 		add_filter( 'woocommerce_ship_to_different_address_checked', array( $this, 'always_ship_separately' ) );
 		add_action( 'woocommerce_before_checkout_shipping_form', array( $this, 'render_selector' ) );
 		add_action( 'woocommerce_before_checkout_billing_form', array( $this, 'render_billing_notice' ) );
+		add_filter( 'woocommerce_checkout_fields', array( $this, 'shape_shipping_fields' ), 20 );
 		add_filter( 'woocommerce_checkout_posted_data', array( $this, 'replace_posted_data' ), 20 );
 		add_action( 'woocommerce_after_checkout_validation', array( $this, 'validate' ), 10, 2 );
 		add_action( 'woocommerce_checkout_create_order', array( $this, 'apply_to_order' ), 20, 2 );
@@ -182,6 +184,43 @@ class ShippingSelector {
 			'<p class="woap-checkout-note">%s</p>',
 			esc_html( BillingLock::locked_notice() )
 		);
+	}
+
+	/**
+	 * Build the shipping fieldset for the country the order is actually going to.
+	 *
+	 * WooCommerce derives the checkout fields from the posted `shipping_country`. This
+	 * plugin then replaces the posted shipping address with the chosen location's — so
+	 * without this, a German location submitted from a form that happened to carry
+	 * `shipping_country=US` is validated under US rules and rejected for having no
+	 * state. The data and the rules it is judged by have to come from the same place.
+	 *
+	 * @param array $fields Checkout fields.
+	 * @return array Fields, with the shipping set rebuilt for the destination.
+	 */
+	public function shape_shipping_fields( $fields ) {
+		$location = self::resolve_location( self::posted_selection() );
+
+		if ( ! $location instanceof Location || ! isset( $fields['shipping'] ) ) {
+			return $fields;
+		}
+
+		$address = $location->get_shipping_address();
+
+		$fields['shipping'] = AddressFields::fields( AddressFields::SHIPPING, $address['country'] );
+
+		foreach ( $fields['shipping'] as $key => $field ) {
+			$name = substr( $key, strlen( 'shipping_' ) );
+
+			if ( ! array_key_exists( $name, $address ) ) {
+				continue;
+			}
+
+			$fields['shipping'][ $key ]['default'] = $address[ $name ];
+			$fields['shipping'][ $key ]['value']   = $address[ $name ];
+		}
+
+		return $fields;
 	}
 
 	/**
@@ -343,11 +382,32 @@ class ShippingSelector {
 			);
 		}
 
-		if ( null === self::resolve_location( $selection ) ) {
+		$location = self::resolve_location( $selection );
+
+		if ( null === $location ) {
 			return sprintf(
 				/* translators: %s: the singular location noun, for example "Branch". */
 				__( 'Please choose a %s you have access to.', 'woo-organization-accounts-pro' ),
 				Labels::location()
+			);
+		}
+
+		/*
+		 * A location can be stored incomplete — saved before this plugin validated
+		 * addresses, or moved to a country with stricter rules — and WooCommerce would
+		 * then refuse the order with "Shipping Last name is a required field", which
+		 * tells the customer to fix a field they cannot see and do not own. Naming the
+		 * destination and what it is missing at least points at the right person.
+		 */
+		$missing = AddressFields::missing( AddressFields::SHIPPING, $location->get_shipping_address() );
+
+		if ( ! empty( $missing ) ) {
+			return sprintf(
+				/* translators: 1: the location's name, 2: comma-separated list of the missing fields, 3: the organization admin noun. */
+				__( '“%1$s” is missing %2$s, so it cannot be delivered to. Ask your %3$s to complete it, or choose somewhere else.', 'woo-organization-accounts-pro' ),
+				$location->get_name(),
+				implode( ', ', $missing ),
+				Labels::organization_admin()
 			);
 		}
 

@@ -38,6 +38,18 @@ class Gate {
 		add_filter( 'pre_option_woocommerce_enable_checkout_login_reminder', array( $this, 'enable_login_reminder' ) );
 
 		add_action( 'woocommerce_check_cart_items', array( $this, 'block_cart' ) );
+
+		/*
+		 * `woocommerce_check_cart_items` only fires from the cart and checkout
+		 * *shortcodes*. A shop using the Cart block never reaches it, and a customer who
+		 * cannot buy would fill a basket, click through and only be turned away at the
+		 * checkout. This fires wherever the cart template renders — at priority 5, because
+		 * WooCommerce prints the notices on this same hook at 10, and a notice added after
+		 * they are printed is a notice nobody sees. The Store API errors below cover the
+		 * block's own data.
+		 */
+		add_action( 'woocommerce_before_cart', array( $this, 'block_cart' ), 5 );
+		add_action( 'template_redirect', array( $this, 'block_cart_page' ) );
 		add_action( 'woocommerce_after_checkout_validation', array( $this, 'block_classic_checkout' ), 10, 2 );
 		add_filter( 'woocommerce_store_api_cart_errors', array( $this, 'block_store_api_cart' ), 10, 2 );
 		add_action( 'woocommerce_store_api_checkout_update_order_from_request', array( $this, 'block_store_api_checkout' ), 5 );
@@ -80,7 +92,42 @@ class Gate {
 			return;
 		}
 
-		wc_add_notice( Context::purchase_blocked_reason(), 'error' );
+		$reason = Context::purchase_blocked_reason();
+
+		/*
+		 * Both hooks this is on can fire in the same request, and the cart template
+		 * prints notices more than once. Saying the same thing three times reads as a
+		 * malfunction rather than as emphasis.
+		 */
+		if ( ! wc_has_notice( $reason, 'error' ) ) {
+			wc_add_notice( $reason, 'error' );
+		}
+	}
+
+	/**
+	 * Say so on the cart page itself, whichever way that page is built.
+	 *
+	 * The two hooks above are not enough between them: one only fires from the cart
+	 * shortcode, and the other from the classic cart template, and a shop using the
+	 * Cart block reaches neither on the server. Adding the notice before anything is
+	 * rendered means whatever does print notices — theme, block or template — has it
+	 * to print. Without this a customer who cannot buy fills a basket, presses
+	 * "Proceed to checkout" and only then finds out.
+	 *
+	 * @return void
+	 */
+	public function block_cart_page() {
+		$page_id = wc_get_page_id( 'cart' );
+
+		if ( $page_id <= 0 || ! is_page( $page_id ) ) {
+			return;
+		}
+
+		if ( ! WC()->cart instanceof \WC_Cart || WC()->cart->is_empty() ) {
+			return;
+		}
+
+		$this->block_cart();
 	}
 
 	/**

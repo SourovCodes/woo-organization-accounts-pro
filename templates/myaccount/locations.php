@@ -11,6 +11,7 @@
  */
 
 use WooOrgAccounts\Frontend\AccountHandlers;
+use WooOrgAccounts\Frontend\AddressFields;
 use WooOrgAccounts\Frontend\MyAccount;
 use WooOrgAccounts\Labels;
 
@@ -75,12 +76,27 @@ $woap_post_url = esc_url( MyAccount::locations_url() );
 			<tbody>
 				<?php foreach ( $locations as $woap_location ) : ?>
 					<tr>
+						<?php $woap_missing = AddressFields::missing( AddressFields::SHIPPING, $woap_location->get_shipping_address() ); ?>
 						<td>
 							<a href="<?php echo esc_url( MyAccount::location_form_url( $woap_location->get_id() ) ); ?>">
 								<?php echo esc_html( $woap_location->get_name() ); ?>
 							</a>
 							<?php if ( $woap_location->is_default() ) : ?>
 								<span class="woap-status woap-status--active"><?php esc_html_e( 'Default', 'woo-organization-accounts-pro' ); ?></span>
+							<?php endif; ?>
+							<?php if ( ! empty( $woap_missing ) ) : ?>
+								<span class="woap-status woap-status--suspended"><?php esc_html_e( 'Incomplete', 'woo-organization-accounts-pro' ); ?></span>
+								<span class="woap-account__note woap-incomplete">
+									<?php
+									echo esc_html(
+										sprintf(
+											/* translators: %s: comma-separated list of the address fields that are empty. */
+											__( 'Cannot be delivered to until %s is filled in.', 'woo-organization-accounts-pro' ),
+											implode( ', ', $woap_missing )
+										)
+									);
+									?>
+								</span>
 							<?php endif; ?>
 						</td>
 						<td><?php echo wp_kses_post( $woap_location->get_formatted_address() ); ?></td>
