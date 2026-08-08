@@ -1,0 +1,53 @@
+/**
+ * Checkout: the organization notice, the location selector and the locked fields.
+ */
+
+.woap-checkout-note {
+	margin: 0 0 1em;
+	padding: 0.75em 1em;
+	border-left: 4px solid #007cba;
+	background: #f0f6fc;
+	font-size: 0.9em;
+}
+
+.woap-location-selector {
+	margin-bottom: 1em;
+}
+
+.woap-location-select {
+	width: 100%;
+}
+
+/* A field the customer cannot change should not look like one they can. */
+.woap-locked-field input[type="text"],
+.woap-locked-field input[type="email"],
+.woap-locked-field input[type="tel"],
+.woocommerce-shipping-fields__field-wrapper.woap-fields-locked input,
+.woocommerce-shipping-fields__field-wrapper.woap-fields-locked select {
+	background: #f1f1f1;
+	color: #50575e;
+	cursor: not-allowed;
+}
+
+.woap-blocks-panel {
+	margin: 0 0 1.5em;
+}
+
+.woap-blocks-panel__notice {
+	margin: 0 0 0.75em;
+	padding: 0.75em 1em;
+	border-left: 4px solid #007cba;
+	background: #f0f6fc;
+	font-size: 0.9em;
+}
+
+.woap-blocks-panel__field label {
+	display: block;
+	margin-bottom: 0.35em;
+	font-weight: 600;
+}
+
+.woap-blocks-panel__field select {
+	width: 100%;
+	padding: 0.5em;
+}
