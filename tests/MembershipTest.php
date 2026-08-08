@@ -7,6 +7,7 @@
 
 namespace WooOrgAccounts\Tests;
 
+use WooOrgAccounts\Data\Location;
 use WooOrgAccounts\Data\LocationRepository;
 use WooOrgAccounts\Data\Member;
 use WooOrgAccounts\Data\MemberRepository;
@@ -198,11 +199,11 @@ class MembershipTest extends TestCase {
 	}
 
 	/**
-	 * A location shapes itself into a WooCommerce shipping address.
+	 * A location is a WooCommerce shipping address, copied rather than derived.
 	 */
 	public function testShippingAddressShape() {
 		$organization = $this->make_organization();
-		$location     = $this->make_location( $organization, array( 'contact_name' => 'Grace Hopper' ) );
+		$location     = $this->make_location( $organization );
 
 		$address = $location->get_shipping_address();
 
@@ -211,6 +212,46 @@ class MembershipTest extends TestCase {
 		$this->assertSame( 'Warehouse North', $address['company'] );
 		$this->assertSame( 'Hamburg', $address['city'] );
 		$this->assertSame( 'DE', $address['country'] );
+		$this->assertSame( '+49 40 123456', $address['phone'] );
+
+		// Every WooCommerce shipping field is present, so an order can take it whole.
+		$this->assertSame( Location::ADDRESS_FIELDS, array_keys( $address ) );
+	}
+
+	/**
+	 * The first and last name are separate fields, so neither can eat the other.
+	 *
+	 * The earlier schema stored one "contact name" and split it on whitespace at
+	 * checkout. A contact called "Grace" reached the courier with no surname, and one
+	 * called "Mary Jane Watson" reached them as "Mary" plus "Jane Watson".
+	 */
+	public function testContactNamesAreIndependentFields() {
+		$organization = $this->make_organization();
+
+		$one_word = $this->make_location(
+			$organization,
+			array(
+				'first_name' => 'Grace',
+				'last_name'  => '',
+			)
+		);
+
+		$this->assertSame( 'Grace', $one_word->get_shipping_address()['first_name'] );
+		$this->assertSame( '', $one_word->get_shipping_address()['last_name'] );
+		$this->assertSame( 'Grace', $one_word->get_contact_name() );
+
+		$three_words = $this->make_location(
+			$organization,
+			array(
+				'name'       => 'Warehouse South',
+				'first_name' => 'Mary Jane',
+				'last_name'  => 'Watson',
+			)
+		);
+
+		$this->assertSame( 'Mary Jane', $three_words->get_shipping_address()['first_name'] );
+		$this->assertSame( 'Watson', $three_words->get_shipping_address()['last_name'] );
+		$this->assertSame( 'Mary Jane Watson', $three_words->get_contact_name() );
 	}
 
 	/**

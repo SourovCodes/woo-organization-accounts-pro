@@ -8,11 +8,12 @@
  *
  * @var \WP_Error|null $errors    Errors from the last submission, if any.
  * @var array          $submitted Sanitised values from the last submission.
- * @var array          $countries Countries the shop sells to.
+ * @var array          $billing   Billing address values to prefill.
  * @var string         $action    Nonce action for the form.
  * @var string         $honeypot  Name of the honeypot field.
  */
 
+use WooOrgAccounts\Frontend\AddressFields;
 use WooOrgAccounts\Labels;
 
 defined( 'ABSPATH' ) || exit;
@@ -20,8 +21,6 @@ defined( 'ABSPATH' ) || exit;
 $woap_value = static function ( $key ) use ( $submitted ) {
 	return isset( $submitted[ $key ] ) ? (string) $submitted[ $key ] : '';
 };
-
-$woap_base = WC()->countries->get_base_country();
 
 ?>
 <div class="woocommerce woap-registration">
@@ -99,59 +98,14 @@ $woap_base = WC()->countries->get_base_country();
 			?>
 		</p>
 
-		<p class="woocommerce-form-row form-row-first">
-			<label for="woap-billing-first-name"><?php esc_html_e( 'First name', 'woo-organization-accounts-pro' ); ?> <span class="required">*</span></label>
-			<input type="text" class="woocommerce-Input input-text" id="woap-billing-first-name" name="billing_first_name" required value="<?php echo esc_attr( $woap_value( 'billing_first_name' ) ); ?>">
-		</p>
-
-		<p class="woocommerce-form-row form-row-last">
-			<label for="woap-billing-last-name"><?php esc_html_e( 'Last name', 'woo-organization-accounts-pro' ); ?> <span class="required">*</span></label>
-			<input type="text" class="woocommerce-Input input-text" id="woap-billing-last-name" name="billing_last_name" required value="<?php echo esc_attr( $woap_value( 'billing_last_name' ) ); ?>">
-		</p>
-
-		<p class="woocommerce-form-row form-row-wide">
-			<label for="woap-billing-country"><?php esc_html_e( 'Country or region', 'woo-organization-accounts-pro' ); ?> <span class="required">*</span></label>
-			<select class="woocommerce-Input" id="woap-billing-country" name="billing_country" required>
-				<?php
-				$woap_selected_country = $woap_value( 'billing_country' );
-
-				if ( '' === $woap_selected_country ) {
-					$woap_selected_country = $woap_base;
-				}
-
-				foreach ( $countries as $woap_code => $woap_country_name ) :
-					?>
-					<option value="<?php echo esc_attr( $woap_code ); ?>" <?php selected( $woap_selected_country, $woap_code ); ?>>
-						<?php echo esc_html( $woap_country_name ); ?>
-					</option>
-				<?php endforeach; ?>
-			</select>
-		</p>
-
-		<p class="woocommerce-form-row form-row-wide">
-			<label for="woap-billing-address-1"><?php esc_html_e( 'Street address', 'woo-organization-accounts-pro' ); ?> <span class="required">*</span></label>
-			<input type="text" class="woocommerce-Input input-text" id="woap-billing-address-1" name="billing_address_1" required value="<?php echo esc_attr( $woap_value( 'billing_address_1' ) ); ?>">
-		</p>
-
-		<p class="woocommerce-form-row form-row-wide">
-			<label for="woap-billing-address-2"><?php esc_html_e( 'Apartment, suite, unit (optional)', 'woo-organization-accounts-pro' ); ?></label>
-			<input type="text" class="woocommerce-Input input-text" id="woap-billing-address-2" name="billing_address_2" value="<?php echo esc_attr( $woap_value( 'billing_address_2' ) ); ?>">
-		</p>
-
-		<p class="woocommerce-form-row form-row-first">
-			<label for="woap-billing-city"><?php esc_html_e( 'Town or city', 'woo-organization-accounts-pro' ); ?> <span class="required">*</span></label>
-			<input type="text" class="woocommerce-Input input-text" id="woap-billing-city" name="billing_city" required value="<?php echo esc_attr( $woap_value( 'billing_city' ) ); ?>">
-		</p>
-
-		<p class="woocommerce-form-row form-row-last">
-			<label for="woap-billing-postcode"><?php esc_html_e( 'Postcode or ZIP', 'woo-organization-accounts-pro' ); ?></label>
-			<input type="text" class="woocommerce-Input input-text" id="woap-billing-postcode" name="billing_postcode" value="<?php echo esc_attr( $woap_value( 'billing_postcode' ) ); ?>">
-		</p>
-
-		<p class="woocommerce-form-row form-row-wide">
-			<label for="woap-billing-state"><?php esc_html_e( 'State, county or province', 'woo-organization-accounts-pro' ); ?></label>
-			<input type="text" class="woocommerce-Input input-text" id="woap-billing-state" name="billing_state" value="<?php echo esc_attr( $woap_value( 'billing_state' ) ); ?>">
-		</p>
+		<?php
+		/*
+		 * WooCommerce's own billing fields for the chosen country. The registration form
+		 * has to collect exactly what the checkout will later require, or an organization
+		 * registers happily and then cannot buy anything.
+		 */
+		AddressFields::render( AddressFields::BILLING, $billing );
+		?>
 
 		<h2>
 			<?php

@@ -14,6 +14,7 @@ use WooOrgAccounts\Data\Member;
 use WooOrgAccounts\Data\MemberRepository;
 use WooOrgAccounts\Data\Organization;
 use WooOrgAccounts\Data\OrganizationRepository;
+use WooOrgAccounts\Frontend\AddressFields;
 use WooOrgAccounts\Frontend\MyAccount;
 use WooOrgAccounts\Labels;
 
@@ -37,6 +38,15 @@ class Organizations {
 	 * Capability required to use it.
 	 */
 	const CAPABILITY = 'manage_woocommerce';
+
+	/**
+	 * Transient prefix messages are parked under between a save and its redirect.
+	 *
+	 * Per user, and short-lived: this is a handover between two requests, not storage.
+	 * `admin-post.php` produces no output, so a rejected save has nowhere to say so
+	 * until the screen renders again.
+	 */
+	const NOTICE_TRANSIENT = 'woap_admin_notices_';
 
 	/**
 	 * Register the hooks.
@@ -80,6 +90,14 @@ class Organizations {
 		}
 
 		wp_enqueue_style( 'woap-admin', WOAP_PLUGIN_URL . 'assets/css/admin.css', array(), WOAP_VERSION );
+
+		/*
+		 * The same country and state behaviour the customer gets. WooCommerce registers
+		 * these on the frontend only, so AddressFields registers them here against
+		 * WooCommerce's own files; both scripts bail out quietly if their parameters ever
+		 * change shape, leaving the server-rendered control in place.
+		 */
+		AddressFields::enqueue();
 	}
 
 	/**
@@ -210,6 +228,8 @@ class Organizations {
 
 		echo '<div class="wrap woap-organization-detail">';
 
+		self::render_notices();
+
 		printf(
 			'<h1>%1$s <span class="woap-status woap-status--%2$s">%3$s</span></h1>',
 			esc_html( $organization->get_name() ),
@@ -260,7 +280,7 @@ class Organizations {
 		self::text_row( 'phone', __( 'Phone', 'woo-organization-accounts-pro' ), (string) $organization->get( 'phone' ) );
 		self::text_row( 'tax_id', __( 'VAT / tax ID', 'woo-organization-accounts-pro' ), (string) $organization->get( 'tax_id' ) );
 
-		echo '<tr><th scope="row"><label for="woap-status">' . esc_html__( 'Status', 'woo-organization-accounts-pro' ) . '</label></th><td><select id="woap-status" name="status">';
+		echo '<tr><th scope="row"><label for="woap-status">' . esc_html__( 'Status', 'woo-organization-accounts-pro' ) . '</label></th><td><select id="woap-status" name="woap_status">';
 
 		foreach ( Organization::statuses() as $status => $label ) {
 			printf(
@@ -274,7 +294,7 @@ class Organizations {
 		echo '</select></td></tr>';
 
 		printf(
-			'<tr><th scope="row">%1$s</th><td><label><input type="checkbox" name="allow_custom_shipping" value="1"%2$s> %3$s</label></td></tr>',
+			'<tr><th scope="row">%1$s</th><td><label><input type="checkbox" name="woap_allow_custom_shipping" value="1"%2$s> %3$s</label></td></tr>',
 			esc_html__( 'Shipping', 'woo-organization-accounts-pro' ),
 			checked( $organization->allows_custom_shipping(), true, false ),
 			esc_html__( 'Allow one-off shipping addresses at checkout', 'woo-organization-accounts-pro' )
@@ -282,13 +302,9 @@ class Organizations {
 
 		echo '</tbody></table></div>';
 
-		echo '<div><h2>' . esc_html__( 'Billing address', 'woo-organization-accounts-pro' ) . '</h2><table class="form-table"><tbody>';
-
-		foreach ( Organization::BILLING_FIELDS as $field ) {
-			self::text_row( 'billing_' . $field, self::billing_label( $field ), $billing[ $field ] );
-		}
-
-		echo '</tbody></table></div>';
+		echo '<div><h2>' . esc_html__( 'Billing address', 'woo-organization-accounts-pro' ) . '</h2>';
+		AddressFields::render( AddressFields::BILLING, $billing );
+		echo '</div>';
 		echo '</div>';
 
 		submit_button();
@@ -368,7 +384,7 @@ class Organizations {
 			echo '<tr>';
 			printf( '<td>%s</td>', esc_html( $location->get_name() ) );
 			printf( '<td>%s</td>', wp_kses_post( $location->get_formatted_address() ) );
-			printf( '<td>%s</td>', esc_html( (string) $location->get( 'contact_name' ) ) );
+			printf( '<td>%s</td>', esc_html( $location->get_contact_name() ) );
 			echo '</tr>';
 		}
 
@@ -521,24 +537,29 @@ class Organizations {
 			self::go_back( 0 );
 		}
 
-		$status   = self::posted( 'status' );
+		$status   = self::posted( 'woap_status' );
 		$previous = $organization->get_status();
 
 		$organization->set_props(
 			array(
-				'name'                  => self::posted( 'name' ),
-				'email'                 => self::posted( 'email' ),
-				'phone'                 => self::posted( 'phone' ),
-				'tax_id'                => self::posted( 'tax_id' ),
+				'name'                  => self::posted( 'woap_name' ),
+				'email'                 => self::posted( 'woap_email' ),
+				'phone'                 => self::posted( 'woap_phone' ),
+				'tax_id'                => self::posted( 'woap_tax_id' ),
 				// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Verified by check_admin_referer() above.
-				'allow_custom_shipping' => ! empty( $_POST['allow_custom_shipping'] ),
+				'allow_custom_shipping' => ! empty( $_POST['woap_allow_custom_shipping'] ),
 			)
 		);
 
-		$address = array();
+		$errors  = new \WP_Error();
+		$address = AddressFields::posted( AddressFields::BILLING );
 
-		foreach ( Organization::BILLING_FIELDS as $field ) {
-			$address[ $field ] = self::posted( 'billing_' . $field );
+		AddressFields::validate( AddressFields::BILLING, $address, $errors );
+
+		if ( $errors->has_errors() ) {
+			set_transient( self::NOTICE_TRANSIENT . get_current_user_id(), $errors->get_error_messages(), MINUTE_IN_SECONDS );
+
+			self::go_back( $organization_id );
 		}
 
 		$organization->set_billing_address( $address );
@@ -654,6 +675,30 @@ class Organizations {
 	}
 
 	/**
+	 * Print anything the last save had to say, once.
+	 *
+	 * @return void
+	 */
+	private static function render_notices() {
+		$key      = self::NOTICE_TRANSIENT . get_current_user_id();
+		$messages = get_transient( $key );
+
+		if ( empty( $messages ) || ! is_array( $messages ) ) {
+			return;
+		}
+
+		delete_transient( $key );
+
+		echo '<div class="notice notice-error"><ul>';
+
+		foreach ( $messages as $message ) {
+			printf( '<li>%s</li>', wp_kses_post( $message ) );
+		}
+
+		echo '</ul></div>';
+	}
+
+	/**
 	 * Print one text row of the detail form.
 	 *
 	 * @param string $name  Field name.
@@ -668,29 +713,5 @@ class Organizations {
 			esc_html( $label ),
 			esc_attr( $value )
 		);
-	}
-
-	/**
-	 * The label for one billing field.
-	 *
-	 * @param string $field Field name without its billing_ prefix.
-	 * @return string Translated label.
-	 */
-	private static function billing_label( $field ) {
-		$labels = array(
-			'first_name' => __( 'First name', 'woo-organization-accounts-pro' ),
-			'last_name'  => __( 'Last name', 'woo-organization-accounts-pro' ),
-			'company'    => __( 'Company', 'woo-organization-accounts-pro' ),
-			'address_1'  => __( 'Street address', 'woo-organization-accounts-pro' ),
-			'address_2'  => __( 'Address line 2', 'woo-organization-accounts-pro' ),
-			'city'       => __( 'Town or city', 'woo-organization-accounts-pro' ),
-			'state'      => __( 'State or county', 'woo-organization-accounts-pro' ),
-			'postcode'   => __( 'Postcode or ZIP', 'woo-organization-accounts-pro' ),
-			'country'    => __( 'Country code', 'woo-organization-accounts-pro' ),
-			'email'      => __( 'Billing email address', 'woo-organization-accounts-pro' ),
-			'phone'      => __( 'Billing phone', 'woo-organization-accounts-pro' ),
-		);
-
-		return isset( $labels[ $field ] ) ? $labels[ $field ] : $field;
 	}
 }

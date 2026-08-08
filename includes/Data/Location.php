@@ -19,17 +19,26 @@ defined( 'ABSPATH' ) || exit;
 class Location extends Entity {
 
 	/**
-	 * The address columns, in WooCommerce's shipping field naming.
+	 * The address columns, named exactly as WooCommerce names a shipping address.
+	 *
+	 * Kept identical on purpose: a location is handed to an order as-is, so there is
+	 * nothing to translate between the two shapes and nothing to guess. The previous
+	 * schema stored one "contact name" and split it at checkout, which gave every
+	 * one-word contact an empty surname.
 	 *
 	 * @var string[]
 	 */
 	const ADDRESS_FIELDS = array(
+		'first_name',
+		'last_name',
+		'company',
 		'address_1',
 		'address_2',
 		'city',
 		'state',
 		'postcode',
 		'country',
+		'phone',
 	);
 
 	/**
@@ -38,20 +47,16 @@ class Location extends Entity {
 	 * @return array Map of column name to default value.
 	 */
 	public static function defaults() {
-		return array(
-			'organization_id' => 0,
-			'name'            => '',
-			'address_1'       => '',
-			'address_2'       => '',
-			'city'            => '',
-			'state'           => '',
-			'postcode'        => '',
-			'country'         => '',
-			'contact_name'    => '',
-			'contact_phone'   => '',
-			'contact_email'   => '',
-			'is_default'      => false,
-			'date_created'    => null,
+		return array_merge(
+			array(
+				'organization_id' => 0,
+				'name'            => '',
+			),
+			array_fill_keys( self::ADDRESS_FIELDS, '' ),
+			array(
+				'is_default'   => false,
+				'date_created' => null,
+			)
 		);
 	}
 
@@ -97,28 +102,45 @@ class Location extends Entity {
 	/**
 	 * The address as a WooCommerce shipping address.
 	 *
-	 * The contact name is split across the first and last name fields because that is
-	 * what WooCommerce's shipping address expects, and the location's name is carried
-	 * in the company field so it shows on the packing slip.
+	 * A straight copy: the columns are WooCommerce's field names, so there is nothing
+	 * to derive, reshape or split. Whatever a person typed into the delivery contact's
+	 * surname is the surname the courier gets.
 	 *
 	 * @return array Map of WooCommerce shipping field to value.
 	 */
 	public function get_shipping_address() {
-		$contact = trim( (string) $this->get( 'contact_name' ) );
-		$parts   = '' === $contact ? array() : preg_split( '/\s+/', $contact, 2 );
-
-		$address = array(
-			'first_name' => isset( $parts[0] ) ? $parts[0] : '',
-			'last_name'  => isset( $parts[1] ) ? $parts[1] : '',
-			'company'    => $this->get_name(),
-			'phone'      => (string) $this->get( 'contact_phone' ),
-		);
+		$address = array();
 
 		foreach ( self::ADDRESS_FIELDS as $field ) {
 			$address[ $field ] = (string) $this->get( $field );
 		}
 
 		return $address;
+	}
+
+	/**
+	 * Replace the address.
+	 *
+	 * @param array $address Map of WooCommerce shipping field to value. Unknown keys are ignored.
+	 * @return $this
+	 */
+	public function set_shipping_address( array $address ) {
+		foreach ( self::ADDRESS_FIELDS as $field ) {
+			if ( array_key_exists( $field, $address ) ) {
+				$this->set( $field, $address[ $field ] );
+			}
+		}
+
+		return $this;
+	}
+
+	/**
+	 * The delivery contact's full name, for display.
+	 *
+	 * @return string Name, or an empty string when nobody is named.
+	 */
+	public function get_contact_name() {
+		return trim( $this->get( 'first_name' ) . ' ' . $this->get( 'last_name' ) );
 	}
 
 	/**

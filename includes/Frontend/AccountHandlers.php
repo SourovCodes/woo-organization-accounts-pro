@@ -45,6 +45,100 @@ class AccountHandlers {
 	const ACTION_FIELD = 'woap_account_action';
 
 	/**
+	 * Errors found in the submission being handled, if any.
+	 *
+	 * @var \WP_Error|null
+	 */
+	private static $errors = null;
+
+	/**
+	 * What was submitted, so a form that failed can be handed back filled in.
+	 *
+	 * @var array
+	 */
+	private static $values = array();
+
+	/**
+	 * The errors found in this request's submission.
+	 *
+	 * @return \WP_Error|null Errors, or null when nothing was rejected.
+	 */
+	public static function errors() {
+		return self::$errors;
+	}
+
+	/**
+	 * A value from the submission being re-rendered.
+	 *
+	 * @param string $key      Field name, prefixed for address fields.
+	 * @param mixed  $fallback Returned when the field was not submitted.
+	 * @return mixed The submitted value, or the fallback.
+	 */
+	public static function value( $key, $fallback = '' ) {
+		return array_key_exists( $key, self::$values ) ? self::$values[ $key ] : $fallback;
+	}
+
+	/**
+	 * Whether this request is re-rendering a rejected submission.
+	 *
+	 * @return bool True when there is something to re-render.
+	 */
+	public static function has_submission() {
+		return ! empty( self::$values );
+	}
+
+	/**
+	 * Keep a rejected submission and let the screen render again.
+	 *
+	 * Deliberately not a redirect. Redirecting with an error notice is how a customer
+	 * loses a twelve-field address to one mistyped postcode; the whole submission is
+	 * kept here instead and handed back to the form, which is what WooCommerce's own
+	 * checkout does with a failed validation pass.
+	 *
+	 * @param \WP_Error $errors Everything wrong with the submission.
+	 * @param array     $values What was submitted.
+	 * @return void
+	 */
+	private static function hold( \WP_Error $errors, array $values ) {
+		self::$errors = $errors;
+		self::$values = $values;
+
+		foreach ( $errors->get_error_messages() as $message ) {
+			wc_add_notice( $message, 'error' );
+		}
+	}
+
+	/**
+	 * Re-key an address by its prefixed field names, as the form posts them.
+	 *
+	 * @param string $type   AddressFields::BILLING or AddressFields::SHIPPING.
+	 * @param array  $values Values keyed without the prefix.
+	 * @return array Values keyed with it.
+	 */
+	private static function prefixed( $type, array $values ) {
+		$prefixed = array();
+
+		foreach ( $values as $key => $value ) {
+			$prefixed[ $type . '_' . $key ] = $value;
+		}
+
+		return $prefixed;
+	}
+
+	/**
+	 * Forget any held submission.
+	 *
+	 * Only the test suite needs this; within a request the state belongs to the one
+	 * submission being handled.
+	 *
+	 * @return void
+	 */
+	public static function flush() {
+		self::$errors = null;
+		self::$values = array();
+	}
+
+	/**
 	 * The handlers, keyed by the value that selects them.
 	 *
 	 * @return array Map of action name to method name.
@@ -103,11 +197,11 @@ class AccountHandlers {
 
 		$organization->set_props(
 			array(
-				'name'                  => self::posted( 'name' ),
-				'email'                 => self::posted_email( 'email' ),
-				'phone'                 => self::posted( 'phone' ),
-				'tax_id'                => self::posted( 'tax_id' ),
-				'allow_custom_shipping' => self::posted_checkbox( 'allow_custom_shipping' ),
+				'name'                  => self::posted( 'woap_name' ),
+				'email'                 => self::posted_email( 'woap_email' ),
+				'phone'                 => self::posted( 'woap_phone' ),
+				'tax_id'                => self::posted( 'woap_tax_id' ),
+				'allow_custom_shipping' => self::posted_checkbox( 'woap_allow_custom_shipping' ),
 			)
 		);
 
@@ -131,12 +225,15 @@ class AccountHandlers {
 	public function save_billing() {
 		$organization = Guard::check_request( 'woap_save_billing', Roles::MANAGE_BILLING );
 
-		$address = array();
+		$errors  = new \WP_Error();
+		$address = AddressFields::posted( AddressFields::BILLING );
 
-		foreach ( \WooOrgAccounts\Data\Organization::BILLING_FIELDS as $field ) {
-			$address[ $field ] = ( 'email' === $field )
-				? self::posted_email( 'billing_' . $field )
-				: self::posted( 'billing_' . $field );
+		AddressFields::validate( AddressFields::BILLING, $address, $errors );
+
+		if ( $errors->has_errors() ) {
+			self::hold( $errors, self::prefixed( AddressFields::BILLING, $address ) );
+
+			return;
 		}
 
 		$organization->set_billing_address( $address );
@@ -153,7 +250,7 @@ class AccountHandlers {
 	public function save_location() {
 		$organization = Guard::check_request( 'woap_save_location', Roles::MANAGE_LOCATIONS );
 
-		$location_id = self::posted_int( 'location_id' );
+		$location_id = self::posted_int( 'woap_location_id' );
 		$location    = $location_id > 0
 			? LocationRepository::find_for_organization( $location_id, $organization->get_id() )
 			: new Location();
@@ -162,36 +259,58 @@ class AccountHandlers {
 			self::finish( MyAccount::ENDPOINT_LOCATIONS, __( 'That entry no longer exists.', 'woo-organization-accounts-pro' ), 'error' );
 		}
 
-		$name = self::posted( 'name' );
+		$errors  = new \WP_Error();
+		$name    = self::posted( 'woap_name' );
+		$address = AddressFields::posted( AddressFields::SHIPPING );
 
 		if ( '' === $name ) {
-			self::finish(
-				MyAccount::ENDPOINT_LOCATIONS,
+			$errors->add(
+				'name',
 				sprintf(
 					/* translators: %s: the singular location noun for the site's mode, for example "Branch". */
 					__( 'Please give the %s a name.', 'woo-organization-accounts-pro' ),
 					Labels::location()
-				),
-				'error'
+				)
 			);
+		}
+
+		AddressFields::validate( AddressFields::SHIPPING, $address, $errors );
+
+		if ( $errors->has_errors() ) {
+			self::hold(
+				$errors,
+				array_merge(
+					self::prefixed( AddressFields::SHIPPING, $address ),
+					array(
+						'woap_name'        => $name,
+						'woap_location_id' => $location_id,
+						'woap_is_default'  => self::posted_checkbox( 'woap_is_default' ),
+					)
+				)
+			);
+
+			return;
+		}
+
+		/*
+		 * A shipping label with no company on it is a parcel nobody at the receiving
+		 * end recognises, so a blank company falls back to the organization's name
+		 * rather than being left empty. It is stored rather than resolved at checkout,
+		 * so what the screen shows is what the courier will get.
+		 */
+		if ( '' === trim( (string) $address['company'] ) ) {
+			$address['company'] = $organization->get_name();
 		}
 
 		$location->set_props(
 			array(
 				'organization_id' => $organization->get_id(),
 				'name'            => $name,
-				'address_1'       => self::posted( 'address_1' ),
-				'address_2'       => self::posted( 'address_2' ),
-				'city'            => self::posted( 'city' ),
-				'state'           => self::posted( 'state' ),
-				'postcode'        => self::posted( 'postcode' ),
-				'country'         => strtoupper( self::posted( 'country' ) ),
-				'contact_name'    => self::posted( 'contact_name' ),
-				'contact_phone'   => self::posted( 'contact_phone' ),
-				'contact_email'   => self::posted_email( 'contact_email' ),
-				'is_default'      => self::posted_checkbox( 'is_default' ),
+				'is_default'      => self::posted_checkbox( 'woap_is_default' ),
 			)
 		);
+
+		$location->set_shipping_address( $address );
 
 		LocationRepository::save( $location );
 
@@ -212,7 +331,7 @@ class AccountHandlers {
 	 */
 	public function delete_location() {
 		$organization = Guard::check_request( 'woap_delete_location', Roles::MANAGE_LOCATIONS );
-		$location     = LocationRepository::find_for_organization( self::posted_int( 'location_id' ), $organization->get_id() );
+		$location     = LocationRepository::find_for_organization( self::posted_int( 'woap_location_id' ), $organization->get_id() );
 
 		if ( null === $location ) {
 			self::finish( MyAccount::ENDPOINT_LOCATIONS, __( 'That entry no longer exists.', 'woo-organization-accounts-pro' ), 'error' );
@@ -240,8 +359,8 @@ class AccountHandlers {
 
 		$result = Invitations::create(
 			$organization->get_id(),
-			self::posted_email( 'email' ),
-			self::posted( 'role' ),
+			self::posted_email( 'woap_email' ),
+			self::posted( 'woap_role' ),
 			get_current_user_id()
 		);
 
@@ -259,7 +378,7 @@ class AccountHandlers {
 	 */
 	public function revoke_invitation() {
 		$organization = Guard::check_request( 'woap_revoke_invitation', Roles::INVITE_MEMBERS );
-		$invitation   = InvitationRepository::find_for_organization( self::posted_int( 'invitation_id' ), $organization->get_id() );
+		$invitation   = InvitationRepository::find_for_organization( self::posted_int( 'woap_invitation_id' ), $organization->get_id() );
 
 		if ( null === $invitation || ! Invitations::revoke( $invitation ) ) {
 			self::finish( MyAccount::ENDPOINT_INVITATIONS, __( 'That invitation could not be withdrawn.', 'woo-organization-accounts-pro' ), 'error' );
@@ -278,7 +397,7 @@ class AccountHandlers {
 	 */
 	public function resend_invitation() {
 		$organization = Guard::check_request( 'woap_resend_invitation', Roles::INVITE_MEMBERS );
-		$invitation   = InvitationRepository::find_for_organization( self::posted_int( 'invitation_id' ), $organization->get_id() );
+		$invitation   = InvitationRepository::find_for_organization( self::posted_int( 'woap_invitation_id' ), $organization->get_id() );
 
 		if ( null === $invitation || Invitation::STATUS_PENDING !== (string) $invitation->get( 'status' ) ) {
 			self::finish( MyAccount::ENDPOINT_INVITATIONS, __( 'That invitation could not be sent again.', 'woo-organization-accounts-pro' ), 'error' );
@@ -305,14 +424,14 @@ class AccountHandlers {
 	 */
 	public function update_member() {
 		$organization = Guard::check_request( 'woap_update_member', Roles::MANAGE_MEMBERS );
-		$member       = MemberRepository::find_for_organization( self::posted_int( 'member_id' ), $organization->get_id() );
+		$member       = MemberRepository::find_for_organization( self::posted_int( 'woap_member_id' ), $organization->get_id() );
 
 		if ( null === $member ) {
 			self::finish( MyAccount::ENDPOINT_MEMBERS, __( 'That member no longer exists.', 'woo-organization-accounts-pro' ), 'error' );
 		}
 
-		$role   = ( Member::ROLE_ADMIN === self::posted( 'role' ) ) ? Member::ROLE_ADMIN : Member::ROLE_MEMBER;
-		$status = ( Member::STATUS_INACTIVE === self::posted( 'status' ) ) ? Member::STATUS_INACTIVE : Member::STATUS_ACTIVE;
+		$role   = ( Member::ROLE_ADMIN === self::posted( 'woap_role' ) ) ? Member::ROLE_ADMIN : Member::ROLE_MEMBER;
+		$status = ( Member::STATUS_INACTIVE === self::posted( 'woap_status' ) ) ? Member::STATUS_INACTIVE : Member::STATUS_ACTIVE;
 
 		$losing_admin = $member->is_admin() && ( Member::ROLE_ADMIN !== $role || Member::STATUS_ACTIVE !== $status );
 
@@ -357,7 +476,7 @@ class AccountHandlers {
 	 */
 	public function remove_member() {
 		$organization = Guard::check_request( 'woap_remove_member', Roles::MANAGE_MEMBERS );
-		$member       = MemberRepository::find_for_organization( self::posted_int( 'member_id' ), $organization->get_id() );
+		$member       = MemberRepository::find_for_organization( self::posted_int( 'woap_member_id' ), $organization->get_id() );
 
 		if ( null === $member ) {
 			self::finish( MyAccount::ENDPOINT_MEMBERS, __( 'That member no longer exists.', 'woo-organization-accounts-pro' ), 'error' );
@@ -402,7 +521,7 @@ class AccountHandlers {
 	 */
 	private static function posted_capabilities( $role ) {
 		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Guard::check_request() verified the nonce before this runs.
-		$granted = isset( $_POST['capabilities'] ) ? array_map( 'sanitize_key', (array) wp_unslash( $_POST['capabilities'] ) ) : array();
+		$granted = isset( $_POST['woap_capabilities'] ) ? array_map( 'sanitize_key', (array) wp_unslash( $_POST['woap_capabilities'] ) ) : array();
 
 		$defaults  = Roles::role_capabilities( $role );
 		$overrides = array();
@@ -429,7 +548,7 @@ class AccountHandlers {
 	 */
 	private static function posted_location_ids( $organization_id ) {
 		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Guard::check_request() verified the nonce before this runs.
-		$posted = isset( $_POST['location_access'] ) ? array_map( 'absint', (array) wp_unslash( $_POST['location_access'] ) ) : array();
+		$posted = isset( $_POST['woap_location_access'] ) ? array_map( 'absint', (array) wp_unslash( $_POST['woap_location_access'] ) ) : array();
 
 		if ( empty( $posted ) ) {
 			return array();

@@ -69,12 +69,12 @@ $woap_labels   = Roles::labels();
 
 			<form class="woocommerce-form woap-member__form" method="post" action="<?php echo $woap_post_url; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Escaped above with esc_url(). ?>">
 				<input type="hidden" name="<?php echo esc_attr( AccountHandlers::ACTION_FIELD ); ?>" value="update_member">
-				<input type="hidden" name="member_id" value="<?php echo esc_attr( (string) $woap_member->get_id() ); ?>">
+				<input type="hidden" name="woap_member_id" value="<?php echo esc_attr( (string) $woap_member->get_id() ); ?>">
 				<?php wp_nonce_field( 'woap_update_member' ); ?>
 
 				<p class="woocommerce-form-row form-row-first">
 					<label for="<?php echo esc_attr( $woap_field_base . '-role' ); ?>"><?php esc_html_e( 'Role', 'woo-organization-accounts-pro' ); ?></label>
-					<select id="<?php echo esc_attr( $woap_field_base . '-role' ); ?>" name="role">
+					<select id="<?php echo esc_attr( $woap_field_base . '-role' ); ?>" name="woap_role">
 						<option value="<?php echo esc_attr( Member::ROLE_MEMBER ); ?>" <?php selected( $woap_member->get_role(), Member::ROLE_MEMBER ); ?>>
 							<?php echo esc_html( Labels::member() ); ?>
 						</option>
@@ -86,7 +86,7 @@ $woap_labels   = Roles::labels();
 
 				<p class="woocommerce-form-row form-row-last">
 					<label for="<?php echo esc_attr( $woap_field_base . '-status' ); ?>"><?php esc_html_e( 'Status', 'woo-organization-accounts-pro' ); ?></label>
-					<select id="<?php echo esc_attr( $woap_field_base . '-status' ); ?>" name="status">
+					<select id="<?php echo esc_attr( $woap_field_base . '-status' ); ?>" name="woap_status">
 						<option value="<?php echo esc_attr( Member::STATUS_ACTIVE ); ?>" <?php selected( (string) $woap_member->get( 'status' ), Member::STATUS_ACTIVE ); ?>>
 							<?php esc_html_e( 'Active', 'woo-organization-accounts-pro' ); ?>
 						</option>
@@ -100,7 +100,7 @@ $woap_labels   = Roles::labels();
 					<legend><?php esc_html_e( 'Permissions', 'woo-organization-accounts-pro' ); ?></legend>
 					<?php foreach ( $woap_labels as $woap_capability => $woap_label ) : ?>
 						<label>
-							<input type="checkbox" name="capabilities[]" value="<?php echo esc_attr( $woap_capability ); ?>" <?php checked( ! empty( $woap_effective[ $woap_capability ] ) ); ?>>
+							<input type="checkbox" name="woap_capabilities[]" value="<?php echo esc_attr( $woap_capability ); ?>" <?php checked( ! empty( $woap_effective[ $woap_capability ] ) ); ?>>
 							<?php echo esc_html( $woap_label ); ?>
 						</label><br>
 					<?php endforeach; ?>
@@ -122,7 +122,7 @@ $woap_labels   = Roles::labels();
 						<p class="woap-account__note"><?php esc_html_e( 'Leave all unticked for access to every one.', 'woo-organization-accounts-pro' ); ?></p>
 						<?php foreach ( $locations as $woap_location ) : ?>
 							<label>
-								<input type="checkbox" name="location_access[]" value="<?php echo esc_attr( (string) $woap_location->get_id() ); ?>" <?php checked( in_array( $woap_location->get_id(), $woap_access, true ) ); ?>>
+								<input type="checkbox" name="woap_location_access[]" value="<?php echo esc_attr( (string) $woap_location->get_id() ); ?>" <?php checked( in_array( $woap_location->get_id(), $woap_access, true ) ); ?>>
 								<?php echo esc_html( $woap_location->get_name() ); ?>
 							</label><br>
 						<?php endforeach; ?>
@@ -137,7 +137,7 @@ $woap_labels   = Roles::labels();
 			<?php if ( ! $woap_is_self ) : ?>
 				<form class="woap-member__remove" method="post" action="<?php echo $woap_post_url; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Escaped above with esc_url(). ?>">
 					<input type="hidden" name="<?php echo esc_attr( AccountHandlers::ACTION_FIELD ); ?>" value="remove_member">
-					<input type="hidden" name="member_id" value="<?php echo esc_attr( (string) $woap_member->get_id() ); ?>">
+					<input type="hidden" name="woap_member_id" value="<?php echo esc_attr( (string) $woap_member->get_id() ); ?>">
 					<?php wp_nonce_field( 'woap_remove_member' ); ?>
 					<button type="submit" class="woocommerce-Button button woap-button--danger">
 						<?php esc_html_e( 'Remove from this account', 'woo-organization-accounts-pro' ); ?>

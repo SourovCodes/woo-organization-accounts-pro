@@ -97,7 +97,68 @@ final class Install {
 			dbDelta( $sql );
 		}
 
+		self::migrate_location_contacts();
+
 		update_option( self::VERSION_OPTION, WOAP_DB_VERSION, false );
+	}
+
+	/**
+	 * Move the old single contact name onto the WooCommerce address columns.
+	 *
+	 * Schema 1.0.0 gave a location one `contact_name`, which had to be split into a
+	 * first and last name every time an order was shipped to it — and a contact called
+	 * "Grace" arrived at the courier with no surname at all. The columns are now
+	 * WooCommerce's own, so nothing is guessed at checkout; this splits each stored
+	 * name once, here, where a person can see the result and correct it.
+	 *
+	 * The split takes the last whitespace-separated word as the surname, so
+	 * "Mary Jane Watson" keeps "Mary Jane" together. A single word becomes a first name
+	 * with no surname, which is the truthful reading of what was stored.
+	 *
+	 * dbDelta() adds the new columns but never removes the old ones, so the old ones
+	 * are dropped here once their contents are safely moved.
+	 *
+	 * @return void
+	 */
+	private static function migrate_location_contacts() {
+		global $wpdb;
+
+		$table = self::table( self::LOCATIONS );
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name from a class constant; SHOW COLUMNS takes no placeholders.
+		$legacy = $wpdb->get_col( "SHOW COLUMNS FROM {$table} LIKE 'contact_%'" );
+
+		if ( empty( $legacy ) ) {
+			return;
+		}
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name from a class constant.
+		$rows = $wpdb->get_results( "SELECT id, contact_name, contact_phone FROM {$table}", ARRAY_A );
+
+		foreach ( (array) $rows as $row ) {
+			$contact = trim( (string) $row['contact_name'] );
+			$parts   = '' === $contact ? array() : preg_split( '/\s+/', $contact );
+			$last    = count( $parts ) > 1 ? array_pop( $parts ) : '';
+
+			$wpdb->update(
+				$table,
+				array(
+					'first_name' => implode( ' ', $parts ),
+					'last_name'  => $last,
+					'phone'      => (string) $row['contact_phone'],
+				),
+				array( 'id' => (int) $row['id'] ),
+				array( '%s', '%s', '%s' ),
+				array( '%d' )
+			);
+		}
+
+		foreach ( $legacy as $column ) {
+			$column = preg_replace( '/[^a-z_]/', '', (string) $column );
+
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- A column name cannot be a placeholder; this one came from SHOW COLUMNS and is stripped to [a-z_].
+			$wpdb->query( "ALTER TABLE {$table} DROP COLUMN {$column}" );
+		}
 	}
 
 	/**
@@ -233,19 +294,27 @@ final class Install {
 			KEY organization_role (organization_id,role)
 		) {$collate};";
 
+		/*
+		 * The columns are WooCommerce's shipping address fields, named exactly as
+		 * WooCommerce names them, so a location can be handed to an order without
+		 * anything being reshaped on the way. The earlier schema had a single
+		 * `contact_name` that had to be split into a first and last name at checkout,
+		 * which produced an empty last name for every one-word contact.
+		 */
 		$schema[] = "CREATE TABLE {$locations} (
 			id bigint(20) unsigned NOT NULL auto_increment,
 			organization_id bigint(20) unsigned NOT NULL default 0,
 			name varchar(200) NOT NULL default '',
+			first_name varchar(100) NOT NULL default '',
+			last_name varchar(100) NOT NULL default '',
+			company varchar(200) NOT NULL default '',
 			address_1 varchar(200) NOT NULL default '',
 			address_2 varchar(200) NOT NULL default '',
 			city varchar(100) NOT NULL default '',
 			state varchar(100) NOT NULL default '',
 			postcode varchar(20) NOT NULL default '',
 			country varchar(2) NOT NULL default '',
-			contact_name varchar(200) NOT NULL default '',
-			contact_phone varchar(50) NOT NULL default '',
-			contact_email varchar(100) NOT NULL default '',
+			phone varchar(50) NOT NULL default '',
 			is_default tinyint(1) NOT NULL default 0,
 			date_created datetime NULL default null,
 			PRIMARY KEY  (id),

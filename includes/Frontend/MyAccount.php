@@ -96,6 +96,7 @@ class MyAccount {
 		add_action( 'init', array( __CLASS__, 'add_endpoints' ) );
 		add_filter( 'woocommerce_get_query_vars', array( $this, 'add_query_vars' ) );
 		add_filter( 'woocommerce_account_menu_items', array( $this, 'add_menu_items' ) );
+		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 
 		foreach ( array_keys( self::endpoints() ) as $endpoint ) {
 			add_action( 'woocommerce_account_' . $endpoint . '_endpoint', array( $this, 'render_' . str_replace( '-', '_', $endpoint ) ) );
@@ -175,6 +176,31 @@ class MyAccount {
 	}
 
 	/**
+	 * Load WooCommerce's country and address scripts on the screens with an address.
+	 *
+	 * Hooked on the query variable rather than on `is_account_page()`, which asks
+	 * WooCommerce a question it memoises the first time anything asks it. The endpoints
+	 * only exist on the account page, so their presence is answer enough.
+	 *
+	 * @return void
+	 */
+	public function enqueue_assets() {
+		global $wp_query;
+
+		if ( ! $wp_query instanceof \WP_Query ) {
+			return;
+		}
+
+		foreach ( array( self::ENDPOINT_PROFILE, self::ENDPOINT_LOCATIONS ) as $endpoint ) {
+			if ( isset( $wp_query->query_vars[ $endpoint ] ) ) {
+				AddressFields::enqueue();
+
+				return;
+			}
+		}
+	}
+
+	/**
 	 * The page title for one of our endpoints.
 	 *
 	 * @param string $title    Title so far.
@@ -204,7 +230,6 @@ class MyAccount {
 			array(
 				'organization' => $organization,
 				'can_billing'  => current_user_can( Roles::MANAGE_BILLING ),
-				'countries'    => WC()->countries->get_allowed_countries(),
 			)
 		);
 	}
@@ -264,7 +289,6 @@ class MyAccount {
 				'organization' => $organization,
 				'locations'    => LocationRepository::for_organization( $organization->get_id() ),
 				'editing'      => $editing > 0 ? LocationRepository::find_for_organization( $editing, $organization->get_id() ) : null,
-				'countries'    => WC()->countries->get_allowed_countries(),
 			)
 		);
 	}

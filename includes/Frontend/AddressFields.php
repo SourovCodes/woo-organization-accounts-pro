@@ -1,0 +1,403 @@
+<?php
+/**
+ * Address fields, rendered and validated the way WooCommerce does.
+ *
+ * @package WooOrgAccounts
+ */
+
+namespace WooOrgAccounts\Frontend;
+
+defined( 'ABSPATH' ) || exit;
+
+/**
+ * The one place this plugin builds an address form.
+ *
+ * Every address the plugin collects — the organization's billing address, and each
+ * location's shipping address — is defined, rendered and validated from WooCommerce's
+ * own `WC()->countries->get_address_fields()`. Nothing here decides what an address
+ * looks like.
+ *
+ * That matters more than it sounds. An address form written by hand is wrong in a
+ * different way in every country: it asks a German customer for a state they do not
+ * have, offers a Canadian a free-text province instead of the list their courier
+ * expects, insists on a postcode in Ireland, calls a ZIP a postcode in Ohio, and
+ * accepts "Californa" without blinking. WooCommerce already knows all of that, per
+ * country, and keeps knowing it as countries change. Asking it is the only way these
+ * forms stay consistent with the checkout the customer will see next.
+ *
+ * The prefixes are `billing_` and `shipping_` on purpose, and the wrapper classes are
+ * WooCommerce's own: `country-select.js` looks for `#billing_state` / `#shipping_state`
+ * inside `.woocommerce-billing-fields` / `.woocommerce-shipping-fields` by those exact
+ * names. Rename either and the state field silently stops following the country.
+ */
+final class AddressFields {
+
+	/**
+	 * The billing address of an organization.
+	 */
+	const BILLING = 'billing';
+
+	/**
+	 * The shipping address of a location.
+	 */
+	const SHIPPING = 'shipping';
+
+	/**
+	 * WooCommerce's field definitions for one address, for one country.
+	 *
+	 * @param string $type    self::BILLING or self::SHIPPING.
+	 * @param string $country Two-letter country code, or an empty string for the shop's base.
+	 * @return array Field definitions keyed by prefixed field name, in display order.
+	 */
+	public static function fields( $type, $country = '' ) {
+		$country = '' !== $country ? $country : WC()->countries->get_base_country();
+		$fields  = WC()->countries->get_address_fields( $country, $type . '_' );
+
+		/**
+		 * Filters the address fields this plugin collects.
+		 *
+		 * Applied on top of WooCommerce's own definitions, so a shop that has already
+		 * customised its checkout fields sees the same customisation here.
+		 *
+		 * @since 0.2.0
+		 *
+		 * @param array  $fields  Field definitions, keyed by prefixed field name.
+		 * @param string $type    'billing' or 'shipping'.
+		 * @param string $country Two-letter country code.
+		 */
+		$fields = apply_filters( 'woo_org_accounts_address_fields', $fields, $type, $country );
+
+		uasort( $fields, 'wc_checkout_fields_uasort_comparison' );
+
+		return $fields;
+	}
+
+	/**
+	 * The unprefixed names of the fields in an address.
+	 *
+	 * @param string $type    self::BILLING or self::SHIPPING.
+	 * @param string $country Two-letter country code.
+	 * @return string[] Field names without their prefix.
+	 */
+	public static function keys( $type, $country = '' ) {
+		$keys   = array();
+		$length = strlen( $type ) + 1;
+
+		foreach ( array_keys( self::fields( $type, $country ) ) as $key ) {
+			$keys[] = substr( $key, $length );
+		}
+
+		return $keys;
+	}
+
+	/**
+	 * Render an address form.
+	 *
+	 * @param string $type    self::BILLING or self::SHIPPING.
+	 * @param array  $values  Current values, keyed without the prefix.
+	 * @param array  $args {
+	 *     Optional.
+	 *
+	 *     @type bool     $readonly Render every field readonly.
+	 *     @type string[] $exclude  Unprefixed field names to leave out.
+	 * }
+	 * @return void
+	 */
+	public static function render( $type, array $values, array $args = array() ) {
+		$args = wp_parse_args(
+			$args,
+			array(
+				'readonly' => false,
+				'exclude'  => array(),
+			)
+		);
+
+		$country = isset( $values['country'] ) && '' !== $values['country']
+			? $values['country']
+			: WC()->countries->get_base_country();
+
+		printf( '<div class="woocommerce-%s-fields woap-address-fields">', esc_attr( $type ) );
+
+		foreach ( self::fields( $type, $country ) as $key => $field ) {
+			$name = substr( $key, strlen( $type ) + 1 );
+
+			if ( in_array( $name, $args['exclude'], true ) ) {
+				continue;
+			}
+
+			if ( $args['readonly'] ) {
+				$field['custom_attributes'] = array_merge(
+					isset( $field['custom_attributes'] ) ? (array) $field['custom_attributes'] : array(),
+					array( 'readonly' => 'readonly' )
+				);
+			}
+
+			woocommerce_form_field( $key, $field, isset( $values[ $name ] ) ? $values[ $name ] : '' );
+		}
+
+		echo '</div>';
+	}
+
+	/**
+	 * Read an address out of a submission.
+	 *
+	 * The country is resolved first, because which other fields exist at all depends
+	 * on it. Anything not in that country's field set is dropped rather than stored:
+	 * a state posted for a country that has no states is not data, it is noise.
+	 *
+	 * @param string $type self::BILLING or self::SHIPPING.
+	 * @return array Values keyed without the prefix.
+	 */
+	public static function posted( $type ) {
+		$prefix  = $type . '_';
+		$country = self::posted_value( $prefix . 'country' );
+		$country = '' !== $country ? strtoupper( $country ) : WC()->countries->get_base_country();
+
+		$values = array();
+
+		foreach ( self::fields( $type, $country ) as $key => $field ) {
+			$name = substr( $key, strlen( $prefix ) );
+
+			if ( 'country' === $name ) {
+				$values[ $name ] = $country;
+				continue;
+			}
+
+			$raw = self::posted_value( $key );
+
+			$values[ $name ] = ( isset( $field['type'] ) && 'email' === $field['type'] )
+				? sanitize_email( $raw )
+				: $raw;
+		}
+
+		return $values;
+	}
+
+	/**
+	 * Check an address the way WooCommerce checks one at checkout.
+	 *
+	 * Deliberately the same rules in the same order as
+	 * `WC_Checkout::validate_posted_data()`: a country that exists, a postcode
+	 * formatted and validated for that country, a plausible phone, a real email, a
+	 * state from that country's list, and every field the country marks required. An
+	 * address accepted here is one the checkout will accept too — which is the whole
+	 * point of collecting it in advance.
+	 *
+	 * Values are normalised in place, so the caller stores what WooCommerce would:
+	 * postcodes formatted, states upper-cased to their key.
+	 *
+	 * @param string    $type   self::BILLING or self::SHIPPING.
+	 * @param array     $values Values keyed without the prefix. Normalised in place.
+	 * @param \WP_Error $errors Errors to add to.
+	 * @return void
+	 */
+	public static function validate( $type, array &$values, \WP_Error $errors ) {
+		$country = isset( $values['country'] ) ? (string) $values['country'] : '';
+
+		if ( '' !== $country && ! WC()->countries->country_exists( $country ) ) {
+			$errors->add(
+				$type . '_country',
+				sprintf(
+					/* translators: %s: the two-letter country code that was submitted. */
+					__( '"%s" is not a country we recognise.', 'woo-organization-accounts-pro' ),
+					$country
+				)
+			);
+
+			return;
+		}
+
+		foreach ( self::fields( $type, $country ) as $key => $field ) {
+			$name = substr( $key, strlen( $type ) + 1 );
+
+			if ( ! array_key_exists( $name, $values ) ) {
+				continue;
+			}
+
+			$label  = isset( $field['label'] ) ? $field['label'] : $name;
+			$format = array_filter( isset( $field['validate'] ) ? (array) $field['validate'] : array() );
+
+			if ( in_array( 'postcode', $format, true ) ) {
+				$values[ $name ] = wc_format_postcode( $values[ $name ], $country );
+
+				if ( '' !== $values[ $name ] && ! \WC_Validation::is_postcode( $values[ $name ], $country ) ) {
+					/* translators: %s: name of the field, in bold. */
+					$errors->add( $key, self::invalid( __( '%s is not a valid postcode or ZIP.', 'woo-organization-accounts-pro' ), $label ) );
+				}
+			}
+
+			if ( in_array( 'phone', $format, true ) ) {
+				$values[ $name ] = wc_remove_non_displayable_chars( $values[ $name ] );
+
+				if ( '' !== $values[ $name ] && ! \WC_Validation::is_phone( $values[ $name ] ) ) {
+					/* translators: %s: name of the field, in bold. */
+					$errors->add( $key, self::invalid( __( '%s is not a valid phone number.', 'woo-organization-accounts-pro' ), $label ) );
+				}
+			}
+
+			if ( in_array( 'email', $format, true ) && '' !== $values[ $name ] && ! is_email( $values[ $name ] ) ) {
+				/* translators: %s: name of the field, in bold. */
+				$errors->add( $key, self::invalid( __( '%s is not a valid email address.', 'woo-organization-accounts-pro' ), $label ) );
+			}
+
+			if ( in_array( 'state', $format, true ) && '' !== $values[ $name ] ) {
+				self::validate_state( $key, $label, $country, $values[ $name ], $errors );
+			}
+
+			if ( ! empty( $field['required'] ) && '' === trim( (string) $values[ $name ] ) ) {
+				$errors->add(
+					$key,
+					sprintf(
+						/* translators: %s: name of the field, in bold. */
+						__( '%s is a required field.', 'woo-organization-accounts-pro' ),
+						'<strong>' . esc_html( $label ) . '</strong>'
+					)
+				);
+			}
+		}
+	}
+
+	/**
+	 * Check a state against the list its country actually has.
+	 *
+	 * A country with no state list accepts anything, which is why this is skipped
+	 * rather than refused for those. Where there is a list, the full name is accepted
+	 * as well as the code and normalised to the code — a customer typing "California"
+	 * has not made a mistake.
+	 *
+	 * @param string    $key     Prefixed field name, used as the error code.
+	 * @param string    $label   Field label.
+	 * @param string    $country Two-letter country code.
+	 * @param string    $state   Submitted state; replaced with its key when it matches.
+	 * @param \WP_Error $errors  Errors to add to.
+	 * @return void
+	 */
+	private static function validate_state( $key, $label, $country, &$state, \WP_Error $errors ) {
+		$valid = WC()->countries->get_states( $country );
+
+		if ( empty( $valid ) || ! is_array( $valid ) ) {
+			return;
+		}
+
+		$by_name = array_map( 'wc_strtoupper', array_flip( array_map( 'wc_strtoupper', $valid ) ) );
+		$state   = wc_strtoupper( $state );
+
+		if ( isset( $by_name[ $state ] ) ) {
+			$state = $by_name[ $state ];
+		}
+
+		if ( in_array( $state, $by_name, true ) ) {
+			return;
+		}
+
+		$errors->add(
+			$key,
+			sprintf(
+				/* translators: 1: name of the field, in bold. 2: comma-separated list of the values it accepts. */
+				__( '%1$s is not valid. Please choose one of: %2$s', 'woo-organization-accounts-pro' ),
+				'<strong>' . esc_html( $label ) . '</strong>',
+				implode( ', ', $valid )
+			)
+		);
+	}
+
+	/**
+	 * Build an "X is not valid" message with the field name emphasised.
+	 *
+	 * @param string $template Translated message with one %s placeholder.
+	 * @param string $label    Field label.
+	 * @return string Message.
+	 */
+	private static function invalid( $template, $label ) {
+		return sprintf( $template, '<strong>' . esc_html( $label ) . '</strong>' );
+	}
+
+	/**
+	 * Read one posted field.
+	 *
+	 * @param string $key Field name.
+	 * @return string Sanitised value.
+	 */
+	private static function posted_value( $key ) {
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Every caller verifies a nonce before reading a submission; this is only the reader.
+		return isset( $_POST[ $key ] ) ? sanitize_text_field( wp_unslash( $_POST[ $key ] ) ) : '';
+	}
+
+	/**
+	 * Load the scripts that make the state field follow the country.
+	 *
+	 * These are WooCommerce's own, so the behaviour is the checkout's behaviour rather
+	 * than an imitation of it. On the frontend they are already registered; in the
+	 * admin they are not, so they are registered here against WooCommerce's own files.
+	 * Both scripts return early when their parameters are missing, so the worst a
+	 * future WooCommerce rename can do is leave the server-rendered control in place.
+	 *
+	 * @return void
+	 */
+	public static function enqueue() {
+		if ( ! wp_script_is( 'wc-country-select', 'registered' ) ) {
+			wp_register_script(
+				'wc-country-select',
+				WC()->plugin_url() . '/assets/js/frontend/country-select.min.js',
+				array( 'jquery', 'selectWoo' ),
+				WC_VERSION,
+				true
+			);
+
+			wp_localize_script( 'wc-country-select', 'wc_country_select_params', self::country_select_params() );
+		}
+
+		if ( ! wp_script_is( 'wc-address-i18n', 'registered' ) ) {
+			wp_register_script(
+				'wc-address-i18n',
+				WC()->plugin_url() . '/assets/js/frontend/address-i18n.min.js',
+				array( 'jquery', 'wc-country-select' ),
+				WC_VERSION,
+				true
+			);
+
+			wp_localize_script( 'wc-address-i18n', 'wc_address_i18n_params', self::address_i18n_params() );
+		}
+
+		wp_enqueue_script( 'wc-country-select' );
+		wp_enqueue_script( 'wc-address-i18n' );
+
+		if ( wp_style_is( 'select2', 'registered' ) ) {
+			wp_enqueue_style( 'select2' );
+		}
+	}
+
+	/**
+	 * The parameters `country-select.js` reads.
+	 *
+	 * @return array Script parameters.
+	 */
+	private static function country_select_params() {
+		return array(
+			'countries'              => wp_json_encode(
+				array_merge(
+					WC()->countries->get_allowed_country_states(),
+					WC()->countries->get_shipping_country_states()
+				),
+				JSON_HEX_TAG | JSON_UNESCAPED_SLASHES
+			),
+			'i18n_select_state_text' => esc_attr__( 'Select an option…', 'woo-organization-accounts-pro' ),
+			'i18n_no_matches'        => esc_attr__( 'No matches found', 'woo-organization-accounts-pro' ),
+			'i18n_searching'         => esc_attr__( 'Searching…', 'woo-organization-accounts-pro' ),
+		);
+	}
+
+	/**
+	 * The parameters `address-i18n.js` reads.
+	 *
+	 * @return array Script parameters.
+	 */
+	private static function address_i18n_params() {
+		return array(
+			'locale'             => wp_json_encode( WC()->countries->get_country_locale() ),
+			'locale_fields'      => wp_json_encode( WC()->countries->get_country_locale_field_selectors() ),
+			'i18n_required_text' => esc_attr__( 'required', 'woo-organization-accounts-pro' ),
+			'i18n_optional_text' => esc_attr__( 'optional', 'woo-organization-accounts-pro' ),
+		);
+	}
+}

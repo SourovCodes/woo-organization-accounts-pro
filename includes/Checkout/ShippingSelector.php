@@ -288,7 +288,19 @@ class ShippingSelector {
 		}
 
 		if ( $location instanceof Location ) {
-			$order->set_address( $location->get_shipping_address(), 'shipping' );
+			$address = $location->get_shipping_address();
+
+			/*
+			 * A parcel with no company on the label is one nobody at a loading bay
+			 * recognises. The location's own company wins when it has one — a branch may
+			 * trade under a different name — and the organization's name fills in when
+			 * it does not.
+			 */
+			if ( '' === trim( $address['company'] ) ) {
+				$address['company'] = $organization->get_name();
+			}
+
+			$order->set_address( $address, 'shipping' );
 		}
 
 		OrderMeta::stamp( $order, $organization, $location, get_current_user_id() );

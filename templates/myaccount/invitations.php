@@ -35,12 +35,12 @@ $woap_post_url = esc_url( wc_get_account_endpoint_url( MyAccount::ENDPOINT_INVIT
 
 		<p class="woocommerce-form-row form-row-first">
 			<label for="woap-invite-email"><?php esc_html_e( 'Email address', 'woo-organization-accounts-pro' ); ?></label>
-			<input type="email" class="woocommerce-Input input-text" id="woap-invite-email" name="email" required>
+			<input type="email" class="woocommerce-Input input-text" id="woap-invite-email" name="woap_email" required>
 		</p>
 
 		<p class="woocommerce-form-row form-row-last">
 			<label for="woap-invite-role"><?php esc_html_e( 'Role', 'woo-organization-accounts-pro' ); ?></label>
-			<select id="woap-invite-role" name="role">
+			<select id="woap-invite-role" name="woap_role">
 				<option value="<?php echo esc_attr( Member::ROLE_MEMBER ); ?>"><?php echo esc_html( Labels::member() ); ?></option>
 				<option value="<?php echo esc_attr( Member::ROLE_ADMIN ); ?>"><?php echo esc_html( Labels::organization_admin() ); ?></option>
 			</select>
@@ -87,13 +87,13 @@ $woap_post_url = esc_url( wc_get_account_endpoint_url( MyAccount::ENDPOINT_INVIT
 							<?php if ( Invitation::STATUS_PENDING === (string) $woap_invitation->get( 'status' ) ) : ?>
 								<form method="post" action="<?php echo $woap_post_url; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Escaped above with esc_url(). ?>">
 									<input type="hidden" name="<?php echo esc_attr( AccountHandlers::ACTION_FIELD ); ?>" value="resend_invitation">
-									<input type="hidden" name="invitation_id" value="<?php echo esc_attr( (string) $woap_invitation->get_id() ); ?>">
+									<input type="hidden" name="woap_invitation_id" value="<?php echo esc_attr( (string) $woap_invitation->get_id() ); ?>">
 									<?php wp_nonce_field( 'woap_resend_invitation' ); ?>
 									<button type="submit" class="woap-link-button"><?php esc_html_e( 'Send again', 'woo-organization-accounts-pro' ); ?></button>
 								</form>
 								<form method="post" action="<?php echo $woap_post_url; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Escaped above with esc_url(). ?>">
 									<input type="hidden" name="<?php echo esc_attr( AccountHandlers::ACTION_FIELD ); ?>" value="revoke_invitation">
-									<input type="hidden" name="invitation_id" value="<?php echo esc_attr( (string) $woap_invitation->get_id() ); ?>">
+									<input type="hidden" name="woap_invitation_id" value="<?php echo esc_attr( (string) $woap_invitation->get_id() ); ?>">
 									<?php wp_nonce_field( 'woap_revoke_invitation' ); ?>
 									<button type="submit" class="woap-link-button"><?php esc_html_e( 'Withdraw', 'woo-organization-accounts-pro' ); ?></button>
 								</form>

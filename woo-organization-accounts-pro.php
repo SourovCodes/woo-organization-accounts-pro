@@ -35,7 +35,7 @@ define( 'WOAP_MIN_WC_VERSION', '11.0' );
  * Bumped whenever includes/Install.php changes a table, which is what makes an
  * existing site run dbDelta again on the next load.
  */
-define( 'WOAP_DB_VERSION', '1.0.0' );
+define( 'WOAP_DB_VERSION', '1.1.0' );
 
 /**
  * Load the Composer autoloader.

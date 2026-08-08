@@ -146,10 +146,14 @@ abstract class TestCase extends \WP_UnitTestCase {
 				array(
 					'organization_id' => $organization->get_id(),
 					'name'            => 'Warehouse North',
+					'first_name'      => 'Grace',
+					'last_name'       => 'Hopper',
+					'company'         => 'Warehouse North',
 					'address_1'       => '9 Lagerweg',
 					'city'            => 'Hamburg',
 					'postcode'        => '20095',
 					'country'         => 'DE',
+					'phone'           => '+49 40 123456',
 				),
 				$props
 			)

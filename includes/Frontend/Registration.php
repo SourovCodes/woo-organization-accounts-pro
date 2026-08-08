@@ -93,6 +93,23 @@ class Registration {
 		add_filter( 'pre_option_users_can_register', array( $this, 'disable_wordpress_registration' ) );
 
 		add_action( 'woocommerce_before_customer_login_form', array( $this, 'render_registration_link' ) );
+		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_assets' ) );
+	}
+
+	/**
+	 * Load WooCommerce's country and address scripts on the registration page.
+	 *
+	 * Without them the state field never follows the country, and a customer in a
+	 * country with a state list is left typing one by hand.
+	 *
+	 * @return void
+	 */
+	public function enqueue_assets() {
+		$page_id = absint( Settings::get( 'registration_page_id', 0 ) );
+
+		if ( $page_id > 0 && is_page( $page_id ) ) {
+			AddressFields::enqueue();
+		}
 	}
 
 	/**
@@ -170,12 +187,24 @@ class Registration {
 			);
 		}
 
+		$billing = array_fill_keys( AddressFields::keys( AddressFields::BILLING ), '' );
+
+		foreach ( array_keys( $billing ) as $field ) {
+			if ( isset( self::$submitted[ 'billing_' . $field ] ) ) {
+				$billing[ $field ] = self::$submitted[ 'billing_' . $field ];
+			}
+		}
+
+		if ( '' === $billing['country'] ) {
+			$billing['country'] = WC()->countries->get_base_country();
+		}
+
 		return Templates::get(
 			'registration/organization-form.php',
 			array(
 				'errors'    => self::$errors,
 				'submitted' => self::$submitted,
-				'countries' => WC()->countries->get_allowed_countries(),
+				'billing'   => $billing,
 				'action'    => self::REGISTER_ACTION,
 				'honeypot'  => self::HONEYPOT_FIELD,
 			)
@@ -418,14 +447,6 @@ class Registration {
 			'organization_email' => isset( $_POST['organization_email'] ) ? sanitize_email( wp_unslash( $_POST['organization_email'] ) ) : '',
 			'organization_phone' => $text( 'organization_phone' ),
 			'tax_id'             => $text( 'tax_id' ),
-			'billing_first_name' => $text( 'billing_first_name' ),
-			'billing_last_name'  => $text( 'billing_last_name' ),
-			'billing_address_1'  => $text( 'billing_address_1' ),
-			'billing_address_2'  => $text( 'billing_address_2' ),
-			'billing_city'       => $text( 'billing_city' ),
-			'billing_state'      => $text( 'billing_state' ),
-			'billing_postcode'   => $text( 'billing_postcode' ),
-			'billing_country'    => strtoupper( $text( 'billing_country' ) ),
 			'admin_first_name'   => $text( 'admin_first_name' ),
 			'admin_last_name'    => $text( 'admin_last_name' ),
 			'admin_email'        => isset( $_POST['admin_email'] ) ? sanitize_email( wp_unslash( $_POST['admin_email'] ) ) : '',
@@ -437,16 +458,26 @@ class Registration {
 		);
 		// phpcs:enable WordPress.Security.NonceVerification.Missing
 
+		/*
+		 * The billing block comes from WooCommerce's own field set for the chosen
+		 * country, so the registration form collects exactly what the checkout will
+		 * later insist on. Collecting a fixed list here instead is how an organization
+		 * ends up registered with an address its own checkout then rejects.
+		 */
+		foreach ( AddressFields::posted( AddressFields::BILLING ) as $key => $value ) {
+			$fields[ 'billing_' . $key ] = $value;
+		}
+
 		return $fields;
 	}
 
 	/**
 	 * Check a registration submission.
 	 *
-	 * @param array $fields Sanitised submission.
+	 * @param array $fields Sanitised submission. Address values are normalised in place.
 	 * @return \WP_Error Errors; empty when the submission is good.
 	 */
-	private static function validate_registration( array $fields ) {
+	private static function validate_registration( array &$fields ) {
 		$errors = new \WP_Error();
 
 		if ( ! self::honeypot_is_empty() ) {
@@ -511,43 +542,40 @@ class Registration {
 	/**
 	 * Check the billing address a registration supplied.
 	 *
-	 * The required set comes from WooCommerce's own country definitions rather than
-	 * from a list here, so a country without postcodes does not demand one.
+	 * The same checks the checkout will run, because they are literally the same code.
+	 * The country is checked against what the shop actually sells to first, which is a
+	 * narrower question than "is this a country" and the one that matters here: an
+	 * organization registered outside the shop's delivery area could never order.
 	 *
-	 * @param array     $fields Sanitised submission.
+	 * Values are normalised in place, so what gets stored is what WooCommerce would
+	 * have stored — a formatted postcode, a state as its code.
+	 *
+	 * @param array     $fields Sanitised submission. Billing values normalised in place.
 	 * @param \WP_Error $errors Errors to add to.
 	 * @return void
 	 */
-	private static function validate_billing( array $fields, \WP_Error $errors ) {
+	private static function validate_billing( array &$fields, \WP_Error $errors ) {
+		$address = array();
+		$prefix  = AddressFields::BILLING . '_';
+
+		foreach ( $fields as $key => $value ) {
+			if ( 0 === strpos( $key, $prefix ) ) {
+				$address[ substr( $key, strlen( $prefix ) ) ] = $value;
+			}
+		}
+
 		$allowed = WC()->countries->get_allowed_countries();
 
-		if ( ! isset( $allowed[ $fields['billing_country'] ] ) ) {
-			$errors->add( 'billing_country', __( 'Please choose a country the shop delivers to.', 'woo-organization-accounts-pro' ) );
+		if ( ! isset( $allowed[ $address['country'] ] ) ) {
+			$errors->add( $prefix . 'country', __( 'Please choose a country the shop delivers to.', 'woo-organization-accounts-pro' ) );
 
 			return;
 		}
 
-		$address_fields = WC()->countries->get_address_fields( $fields['billing_country'], 'billing_' );
+		AddressFields::validate( AddressFields::BILLING, $address, $errors );
 
-		foreach ( $address_fields as $key => $field ) {
-			if ( empty( $field['required'] ) || ! array_key_exists( $key, $fields ) ) {
-				continue;
-			}
-
-			if ( '' === $fields[ $key ] ) {
-				$errors->add(
-					$key,
-					sprintf(
-						/* translators: %s: name of a required billing field. */
-						__( '%s is a required billing field.', 'woo-organization-accounts-pro' ),
-						isset( $field['label'] ) ? $field['label'] : $key
-					)
-				);
-			}
-		}
-
-		if ( '' !== $fields['billing_postcode'] && ! \WC_Validation::is_postcode( $fields['billing_postcode'], $fields['billing_country'] ) ) {
-			$errors->add( 'billing_postcode', __( 'Please enter a valid postcode.', 'woo-organization-accounts-pro' ) );
+		foreach ( $address as $key => $value ) {
+			$fields[ $prefix . $key ] = $value;
 		}
 	}
 
@@ -627,21 +655,30 @@ class Registration {
 			)
 		);
 
-		$organization->set_billing_address(
-			array(
-				'first_name' => $fields['billing_first_name'],
-				'last_name'  => $fields['billing_last_name'],
-				'company'    => $fields['organization_name'],
-				'address_1'  => $fields['billing_address_1'],
-				'address_2'  => $fields['billing_address_2'],
-				'city'       => $fields['billing_city'],
-				'state'      => $fields['billing_state'],
-				'postcode'   => $fields['billing_postcode'],
-				'country'    => $fields['billing_country'],
-				'email'      => $fields['organization_email'],
-				'phone'      => $fields['organization_phone'],
-			)
-		);
+		$address = array();
+
+		foreach ( $fields as $key => $value ) {
+			if ( 0 === strpos( $key, 'billing_' ) ) {
+				$address[ substr( $key, strlen( 'billing_' ) ) ] = $value;
+			}
+		}
+
+		/*
+		 * A shop that hides the company, phone or email billing fields does not collect
+		 * them above, so the organization's own details fill those in. An invoice with
+		 * no company name and no way to reach anybody is not much of an invoice.
+		 */
+		foreach ( array(
+			'company' => 'organization_name',
+			'email'   => 'organization_email',
+			'phone'   => 'organization_phone',
+		) as $field => $source ) {
+			if ( '' === trim( (string) ( $address[ $field ] ?? '' ) ) ) {
+				$address[ $field ] = $fields[ $source ];
+			}
+		}
+
+		$organization->set_billing_address( $address );
 
 		$organization_id = OrganizationRepository::save( $organization );
 

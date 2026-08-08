@@ -115,6 +115,16 @@ which cannot discover capabilities this plugin grants at runtime.
 - **Authorise every state change**: `check_admin_referer()` / `wp_verify_nonce()` *and*
   `current_user_can()`. A nonce alone is not authorisation. On the frontend, use
   `Guard::check_request()`, which does both and returns the organization being acted on.
+- **Never invent an input.** Before adding a field, work out where the value ends up. If it
+  ends up on an order, it is a WooCommerce field and has to be collected with WooCommerce's own
+  definition of that field — see *Address fields* below. A field with no destination is worse than
+  a missing one: somebody fills it in and nothing uses it.
+- **Every field this plugin defines is prefixed `woap_`.** WordPress reads its 82 public query
+  variables out of `$_POST` as readily as out of the URL, so a form posting back to its own page
+  with a field called `name` sets the post-slug query var, resolves the main query to nothing and
+  returns a 404 — after the write has landed. `AccountHandlersTest` asserts no template posts a
+  field named after a query variable. The only exceptions are the WooCommerce address blocks,
+  which must keep `billing_` and `shipping_`.
 - **Frontend forms are handled on `template_redirect`, never through `admin-post.php`.**
   WooCommerce decides what to load from `is_admin()`, and `admin-post.php` is an admin request:
   `wc_load_cart()` never runs there, so `wc_add_notice()` is undefined and `WC()->session` does not
@@ -179,6 +189,41 @@ this order for?" has exactly one answer.
 Relational tables rather than post types: these are relationships queried by status and by owner on
 every request that touches the checkout, and post meta would turn each of those into a join against
 a table the whole site shares — with no way to make the uniqueness above a constraint.
+
+### Address fields
+
+`Frontend\AddressFields` is the only place the plugin builds an address form, and it builds none
+of it itself: the fields, their labels, their order, which are required and how each is validated
+all come from `WC()->countries->get_address_fields()` and mirror
+`WC_Checkout::validate_posted_data()`. Three screens use it — registration, the account billing
+address, and the location form — and the admin organization screen uses the same helper, so all
+four ask for exactly what the checkout will ask for.
+
+This is not tidiness. A hand-written address form is wrong in a different way in every country: it
+asks a German customer for a state they do not have, gives a Canadian free text where their courier
+expects a province from a list, calls a ZIP a postcode in Ohio, and accepts "Californa". The first
+version of this plugin did all of those, and an organization could register with an address its own
+checkout then rejected.
+
+- **The prefixes and wrapper classes are load-bearing.** `country-select.js` looks for
+  `#billing_state` / `#shipping_state` inside `.woocommerce-billing-fields` /
+  `.woocommerce-shipping-fields`, by those exact names. Rename either and the state field silently
+  stops following the country on a screen that still looks correct.
+- **The server renders the right control on its own**, and WooCommerce's scripts are layered on top
+  for live switching. Both scripts return early when their parameters are missing, so a future
+  WooCommerce rename degrades to a correct static form rather than a broken one. The admin needs
+  the scripts registered by hand, because WooCommerce registers them for the frontend only.
+- **A location is a WooCommerce shipping address, column for column** — `first_name`, `last_name`,
+  `company`, `address_1`, `address_2`, `city`, `state`, `postcode`, `country`, `phone` — plus a
+  `name` that is only the label in the checkout selector. Nothing is derived at checkout. Schema
+  1.0.0 stored a single `contact_name` and split it on whitespace when an order was placed, which
+  gave every one-word contact an empty surname; `Install` migrates those once and drops the old
+  columns.
+- **A blank company falls back to the organization's name**, at save time and again when the order
+  is built, because a parcel with no company on the label is one nobody at a loading bay
+  recognises.
+- **A rejected submission is handed back, not redirected away.** Losing a twelve-field address to
+  one mistyped postcode is not an acceptable way to report an error.
 
 ### Capabilities
 

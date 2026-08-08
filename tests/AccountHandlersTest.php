@@ -92,6 +92,40 @@ class AccountHandlersTest extends TestCase {
 	}
 
 	/**
+	 * No form field is named after one of WordPress's public query variables.
+	 *
+	 * These forms post back to the page they are on, and `WP::parse_request()` reads
+	 * every public query variable out of `$_POST` as readily as out of the URL. A field
+	 * called `name` therefore sets the post-slug query var, the main query resolves to
+	 * nothing, and the whole submission returns a 404 — after saving, so the write
+	 * lands and the customer is told the page does not exist. The plugin's own fields
+	 * are prefixed to stay clear of all 82 of them; only the WooCommerce address blocks
+	 * keep their own names, and those are prefixed `billing_` and `shipping_` anyway.
+	 */
+	public function testNoFieldNameCollidesWithAWordPressQueryVar() {
+		global $wp;
+
+		$templates = glob( dirname( __DIR__ ) . '/templates/myaccount/*.php' );
+
+		$this->assertNotEmpty( $templates );
+
+		foreach ( $templates as $template ) {
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- Reading a file from this repository, not a remote URL.
+			$markup = (string) file_get_contents( $template );
+
+			preg_match_all( '/name="([a-z_][a-z_0-9]*)(\[\])?"/', $markup, $matches );
+
+			foreach ( $matches[1] as $field ) {
+				$this->assertNotContains(
+					$field,
+					$wp->public_query_vars,
+					sprintf( '%s posts a field called "%s", which WordPress reads as a query variable.', basename( $template ), $field )
+				);
+			}
+		}
+	}
+
+	/**
 	 * Saving a location stores it, says so, and returns to the locations screen.
 	 */
 	public function testSaveLocation() {
@@ -101,10 +135,14 @@ class AccountHandlersTest extends TestCase {
 		$location = $this->submit(
 			'save_location',
 			array(
-				'name'      => 'Depot Ost',
-				'country'   => 'DE',
-				'city'      => 'Leipzig',
-				'address_1' => '4 Ringstrasse',
+				'woap_name'           => 'Depot Ost',
+				'shipping_first_name' => 'Grace',
+				'shipping_last_name'  => 'Hopper',
+				'shipping_country'    => 'DE',
+				'shipping_address_1'  => '4 Ringstrasse',
+				'shipping_postcode'   => '04109',
+				'shipping_city'       => 'Leipzig',
+				'shipping_phone'      => '+49 341 123456',
 			),
 			'woap_save_location'
 		);
@@ -116,7 +154,76 @@ class AccountHandlersTest extends TestCase {
 		$this->assertCount( 1, $saved );
 		$this->assertSame( 'Depot Ost', $saved[0]->get_name() );
 		$this->assertSame( 'Leipzig', $saved[0]->get( 'city' ) );
+		$this->assertSame( 'Grace', $saved[0]->get( 'first_name' ) );
+		$this->assertSame( 'Hopper', $saved[0]->get( 'last_name' ) );
 		$this->assertNotEmpty( wc_get_notices( 'success' ) );
+
+		wc_clear_notices();
+	}
+
+	/**
+	 * An address the checkout would refuse is refused here too, and handed back.
+	 *
+	 * Collecting an address the checkout will later reject is worse than refusing it:
+	 * the location looks saved, and the failure surfaces at the till.
+	 */
+	public function testIncompleteLocationAddressIsRefused() {
+		$organization = $this->make_organization();
+		$this->act_as( $this->make_member( $organization, Member::ROLE_ADMIN ) );
+
+		$_POST = array(
+			AccountHandlers::ACTION_FIELD => 'save_location',
+			'_wpnonce'                    => wp_create_nonce( 'woap_save_location' ),
+			'woap_name'                   => 'Depot Ost',
+			'shipping_country'            => 'DE',
+			'shipping_city'               => 'Leipzig',
+		);
+
+		$_REQUEST = $_POST; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Building the request the handler will verify; the nonce is set above.
+
+		( new AccountHandlers() )->dispatch();
+
+		$this->assertCount( 0, LocationRepository::for_organization( $organization->get_id() ), 'A half-filled address was stored.' );
+
+		$errors = AccountHandlers::errors();
+
+		$this->assertInstanceOf( \WP_Error::class, $errors );
+		$this->assertContains( 'shipping_first_name', $errors->get_error_codes() );
+		$this->assertContains( 'shipping_address_1', $errors->get_error_codes() );
+		$this->assertContains( 'shipping_postcode', $errors->get_error_codes() );
+
+		// What was typed comes back rather than being thrown away with a redirect.
+		$this->assertSame( 'Depot Ost', AccountHandlers::value( 'woap_name' ) );
+		$this->assertSame( 'Leipzig', AccountHandlers::value( 'shipping_city' ) );
+
+		wc_clear_notices();
+	}
+
+	/**
+	 * A blank company falls back to the organization, so the label names somebody.
+	 */
+	public function testBlankCompanyFallsBackToTheOrganization() {
+		$organization = $this->make_organization();
+		$this->act_as( $this->make_member( $organization, Member::ROLE_ADMIN ) );
+
+		$this->submit(
+			'save_location',
+			array(
+				'woap_name'           => 'Depot Ost',
+				'shipping_first_name' => 'Grace',
+				'shipping_last_name'  => 'Hopper',
+				'shipping_country'    => 'DE',
+				'shipping_address_1'  => '4 Ringstrasse',
+				'shipping_postcode'   => '04109',
+				'shipping_city'       => 'Leipzig',
+				'shipping_phone'      => '+49 341 123456',
+			),
+			'woap_save_location'
+		);
+
+		$saved = LocationRepository::for_organization( $organization->get_id() );
+
+		$this->assertSame( 'Acme GmbH', $saved[0]->get( 'company' ) );
 
 		wc_clear_notices();
 	}
@@ -131,9 +238,9 @@ class AccountHandlersTest extends TestCase {
 		$this->submit(
 			'save_organization',
 			array(
-				'name'   => 'Acme Holdings AG',
-				'email'  => 'hello@acme.test',
-				'tax_id' => 'DE999',
+				'woap_name'   => 'Acme Holdings AG',
+				'woap_email'  => 'hello@acme.test',
+				'woap_tax_id' => 'DE999',
 			),
 			'woap_save_organization'
 		);
@@ -158,8 +265,13 @@ class AccountHandlersTest extends TestCase {
 			'save_billing',
 			array(
 				'billing_first_name' => 'Grace',
-				'billing_city'       => 'Munich',
+				'billing_last_name'  => 'Hopper',
 				'billing_country'    => 'DE',
+				'billing_address_1'  => '3 Sendlinger Strasse',
+				'billing_postcode'   => '80331',
+				'billing_city'       => 'Munich',
+				'billing_email'      => 'invoices@acme.test',
+				'billing_phone'      => '+49 89 123456',
 			),
 			'woap_save_billing'
 		);
@@ -168,6 +280,7 @@ class AccountHandlersTest extends TestCase {
 
 		$this->assertSame( 'Grace', $address['first_name'] );
 		$this->assertSame( 'Munich', $address['city'] );
+		$this->assertSame( '80331', $address['postcode'] );
 
 		wc_clear_notices();
 	}
@@ -223,9 +336,9 @@ class AccountHandlersTest extends TestCase {
 		$this->submit(
 			'update_member',
 			array(
-				'member_id' => $admin->get_id(),
-				'role'      => Member::ROLE_MEMBER,
-				'status'    => Member::STATUS_ACTIVE,
+				'woap_member_id' => $admin->get_id(),
+				'woap_role'      => Member::ROLE_MEMBER,
+				'woap_status'    => Member::STATUS_ACTIVE,
 			),
 			'woap_update_member'
 		);
@@ -250,7 +363,7 @@ class AccountHandlersTest extends TestCase {
 
 		$this->submit(
 			'remove_member',
-			array( 'member_id' => $victim->get_id() ),
+			array( 'woap_member_id' => $victim->get_id() ),
 			'woap_remove_member'
 		);
 
