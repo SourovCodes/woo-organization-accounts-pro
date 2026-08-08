@@ -2,14 +2,14 @@
 # This file is distributed under the GPL-2.0-or-later.
 msgid ""
 msgstr ""
-"Project-Id-Version: WooCommerce Organization Accounts Pro 0.1.0\n"
+"Project-Id-Version: WooCommerce Organization Accounts Pro 0.2.0\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/woo-organization-accounts-pro\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-08-08T16:05:42+00:00\n"
+"POT-Creation-Date: 2026-08-08T19:25:50+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: woo-organization-accounts-pro\n"
@@ -51,7 +51,7 @@ msgid "Now called %s."
 msgstr ""
 
 #: includes/Admin/OrderColumn.php:187
-#: templates/myaccount/organization-orders.php:47
+#: templates/myaccount/organization-orders.php:36
 msgid "Placed by"
 msgstr ""
 
@@ -78,7 +78,7 @@ msgstr ""
 #: includes/Admin/Organizations.php:340
 #: includes/Admin/Organizations.php:386
 #: templates/myaccount/location-form.php:92
-#: templates/myaccount/locations.php:70
+#: templates/myaccount/locations.php:29
 #: templates/myaccount/organization.php:71
 msgid "Name"
 msgstr ""
@@ -86,16 +86,16 @@ msgstr ""
 #: includes/Admin/Organizations.php:287
 #: includes/Admin/Organizations.php:341
 #: includes/Admin/Organizations.php:420
-#: templates/myaccount/invitations.php:37
-#: templates/myaccount/invitations.php:62
+#: templates/myaccount/invitations.php:30
+#: templates/myaccount/invitations.php:51
 #: templates/myaccount/organization.php:76
-#: templates/registration/organization-form.php:74
+#: templates/registration/organization-form.php:95
 msgid "Email address"
 msgstr ""
 
 #: includes/Admin/Organizations.php:288
 #: templates/myaccount/organization.php:81
-#: templates/registration/organization-form.php:79
+#: templates/registration/organization-form.php:100
 msgid "Phone"
 msgstr ""
 
@@ -109,9 +109,9 @@ msgstr ""
 #: includes/Admin/Organizations.php:422
 #: includes/Admin/Organizations.php:458
 #: includes/Admin/OrganizationsListTable.php:58
-#: templates/myaccount/invitations.php:64
+#: templates/myaccount/invitations.php:32
 #: templates/myaccount/members.php:88
-#: templates/myaccount/organization-orders.php:49
+#: templates/myaccount/organization-orders.php:38
 msgid "Status"
 msgstr ""
 
@@ -125,7 +125,7 @@ msgstr ""
 
 #: includes/Admin/Organizations.php:313
 #: templates/myaccount/organization.php:110
-#: templates/registration/organization-form.php:88
+#: templates/registration/organization-form.php:109
 msgid "Billing address"
 msgstr ""
 
@@ -135,8 +135,8 @@ msgstr ""
 
 #: includes/Admin/Organizations.php:342
 #: includes/Admin/Organizations.php:421
-#: templates/myaccount/invitations.php:42
-#: templates/myaccount/invitations.php:63
+#: templates/myaccount/invitations.php:31
+#: templates/myaccount/invitations.php:56
 #: templates/myaccount/members.php:76
 msgid "Role"
 msgstr ""
@@ -173,7 +173,7 @@ msgstr ""
 
 #: includes/Admin/Organizations.php:409
 #: includes/Frontend/MyAccount.php:88
-#: templates/myaccount/invitations.php:54
+#: templates/myaccount/invitations.php:68
 msgid "Invitations"
 msgstr ""
 
@@ -190,17 +190,17 @@ msgid "No orders yet."
 msgstr ""
 
 #: includes/Admin/Organizations.php:455
-#: templates/myaccount/organization-orders.php:45
+#: templates/myaccount/organization-orders.php:34
 msgid "Order"
 msgstr ""
 
 #: includes/Admin/Organizations.php:456
-#: templates/myaccount/organization-orders.php:46
+#: templates/myaccount/organization-orders.php:35
 msgid "Date"
 msgstr ""
 
 #: includes/Admin/Organizations.php:459
-#: templates/myaccount/organization-orders.php:50
+#: templates/myaccount/organization-orders.php:39
 msgid "Total"
 msgstr ""
 
@@ -240,7 +240,7 @@ msgid "Reject"
 msgstr ""
 
 #: includes/Admin/OrganizationsListTable.php:174
-#: templates/myaccount/locations.php:117
+#: templates/myaccount/locations.php:129
 msgid "Edit"
 msgstr ""
 
@@ -249,7 +249,7 @@ msgid "Delete this account and every member, location and invitation belonging t
 msgstr ""
 
 #: includes/Admin/OrganizationsListTable.php:189
-#: templates/myaccount/locations.php:134
+#: templates/myaccount/locations.php:146
 msgid "Delete"
 msgstr ""
 
@@ -264,6 +264,7 @@ msgid "Organization mode"
 msgstr ""
 
 #: includes/Admin/Settings.php:145
+#: includes/Admin/ThemeSettings.php:99
 msgid "Mode"
 msgstr ""
 
@@ -272,10 +273,12 @@ msgid "Registration"
 msgstr ""
 
 #: includes/Admin/Settings.php:160
+#: includes/Admin/ThemeSettings.php:100
 msgid "Approval"
 msgstr ""
 
 #: includes/Admin/Settings.php:168
+#: includes/Admin/ThemeSettings.php:103
 msgid "Registration page"
 msgstr ""
 
@@ -302,6 +305,7 @@ msgstr ""
 #: includes/Admin/Settings.php:221
 #: includes/Admin/Settings.php:222
 #: includes/Admin/Settings.php:533
+#: includes/Admin/ThemeSettings.php:70
 msgid "Organization Accounts"
 msgstr ""
 
@@ -399,6 +403,30 @@ msgstr ""
 
 #: includes/Admin/Settings.php:598
 msgid "Check for updates"
+msgstr ""
+
+#: includes/Admin/ThemeSettings.php:101
+msgid "New registrations wait for an administrator"
+msgstr ""
+
+#: includes/Admin/ThemeSettings.php:102
+msgid "New registrations are active immediately"
+msgstr ""
+
+#: includes/Admin/ThemeSettings.php:106
+msgid "This shop uses organization accounts. Customers belong to an organization, billing is centralised on it, and there is no guest checkout."
+msgstr ""
+
+#: includes/Admin/ThemeSettings.php:121
+msgid "Change these settings"
+msgstr ""
+
+#: includes/Admin/ThemeSettings.php:124
+msgid "They are kept on the plugin's own screen rather than here, so that resetting Theme Settings or importing a demo cannot rename your organizations or let unapproved accounts start buying."
+msgstr ""
+
+#: includes/Admin/ThemeSettings.php:139
+msgid "Not set"
 msgstr ""
 
 #. translators: %s: the organization noun for the site's mode, for example "Company".
@@ -599,7 +627,7 @@ msgstr ""
 
 #: includes/Frontend/AccountHandlers.php:259
 #: includes/Frontend/AccountHandlers.php:337
-#: includes/Frontend/MyAccount.php:337
+#: includes/Frontend/MyAccount.php:399
 msgid "That entry no longer exists."
 msgstr ""
 
@@ -732,76 +760,76 @@ msgid "%s orders"
 msgstr ""
 
 #. translators: %s: the organization noun for the site's mode, for example "Company".
-#: includes/Frontend/MyAccount.php:493
+#: includes/Frontend/MyAccount.php:555
 #, php-format
 msgid "Your account is not linked to a %s."
 msgstr ""
 
-#: includes/Frontend/MyAccount.php:503
+#: includes/Frontend/MyAccount.php:565
 msgid "You do not have permission to view this."
 msgstr ""
 
 #. translators: 1: opening link tag, 2: closing link tag, 3: the organization noun for the site's mode.
-#: includes/Frontend/Registration.php:162
+#: includes/Frontend/Registration.php:179
 #, php-format
 msgid "New here? %1$sRegister your %3$s%2$s to start ordering."
 msgstr ""
 
 #. translators: %s: the invited email address.
-#: includes/Frontend/Registration.php:357
+#: includes/Frontend/Registration.php:374
 #, php-format
 msgid "An account already exists for %s. Sign in with it first and follow the invitation link again."
 msgstr ""
 
-#: includes/Frontend/Registration.php:409
-#: includes/Frontend/Registration.php:525
+#: includes/Frontend/Registration.php:426
+#: includes/Frontend/Registration.php:542
 msgid "Please enter your first name."
 msgstr ""
 
-#: includes/Frontend/Registration.php:484
+#: includes/Frontend/Registration.php:501
 msgid "That submission could not be accepted."
 msgstr ""
 
 #. translators: %s: the organization noun for the site's mode, for example "Company".
-#: includes/Frontend/Registration.php:494
+#: includes/Frontend/Registration.php:511
 #, php-format
 msgid "Please enter the %s name."
 msgstr ""
 
 #. translators: %s: the organization noun for the site's mode, for example "Company".
-#: includes/Frontend/Registration.php:505
+#: includes/Frontend/Registration.php:522
 #, php-format
 msgid "Please enter a valid %s email address."
 msgstr ""
 
-#: includes/Frontend/Registration.php:512
+#: includes/Frontend/Registration.php:529
 msgid "Please enter a valid email address for the account holder."
 msgstr ""
 
 #. translators: %s: URL of the My Account page.
-#: includes/Frontend/Registration.php:518
+#: includes/Frontend/Registration.php:535
 #, php-format
 msgid "An account already exists for that address. <a href=\"%s\">Sign in instead</a>."
 msgstr ""
 
-#: includes/Frontend/Registration.php:570
+#: includes/Frontend/Registration.php:587
 msgid "Please choose a country the shop delivers to."
 msgstr ""
 
-#: includes/Frontend/Registration.php:592
+#: includes/Frontend/Registration.php:609
 msgid "Please choose a password of at least 8 characters."
 msgstr ""
 
-#: includes/Frontend/Registration.php:598
+#: includes/Frontend/Registration.php:615
 msgid "The two passwords do not match."
 msgstr ""
 
-#: includes/Frontend/Registration.php:689
-#: includes/Frontend/Registration.php:708
+#: includes/Frontend/Registration.php:706
+#: includes/Frontend/Registration.php:725
 msgid "Registration failed. Please try again."
 msgstr ""
 
-#: includes/Frontend/Registration.php:762
+#: includes/Frontend/Registration.php:779
 msgid "Register your organization"
 msgstr ""
 
@@ -1101,47 +1129,47 @@ msgstr ""
 msgid "Your account:"
 msgstr ""
 
-#: templates/myaccount/invitations.php:26
-msgid "Invite somebody"
-msgstr ""
-
-#: templates/myaccount/invitations.php:29
-msgid "They receive a one-time link. It works only for the address you enter, and only once."
-msgstr ""
-
-#: templates/myaccount/invitations.php:50
-msgid "Send invitation"
-msgstr ""
-
-#: templates/myaccount/invitations.php:57
-msgid "None sent yet."
-msgstr ""
-
-#: templates/myaccount/invitations.php:65
+#: templates/myaccount/invitations.php:33
 msgid "Expires"
 msgstr ""
 
-#: templates/myaccount/invitations.php:66
-#: templates/myaccount/locations.php:73
-#: templates/myaccount/organization-orders.php:51
+#: templates/myaccount/invitations.php:34
+#: templates/myaccount/locations.php:32
+#: templates/myaccount/organization-orders.php:40
 msgid "Actions"
 msgstr ""
 
-#: templates/myaccount/invitations.php:81
+#: templates/myaccount/invitations.php:40
+msgid "Invite somebody"
+msgstr ""
+
+#: templates/myaccount/invitations.php:43
+msgid "They receive a one-time link. It works only for the address you enter, and only once."
+msgstr ""
+
+#: templates/myaccount/invitations.php:64
+msgid "Send invitation"
+msgstr ""
+
+#: templates/myaccount/invitations.php:71
+msgid "None sent yet."
+msgstr ""
+
+#: templates/myaccount/invitations.php:93
 msgid "Never"
 msgstr ""
 
-#: templates/myaccount/invitations.php:92
+#: templates/myaccount/invitations.php:104
 msgid "Send again"
 msgstr ""
 
 #. translators: %s: the invited email address.
-#: templates/myaccount/invitations.php:103
+#: templates/myaccount/invitations.php:115
 #, php-format
 msgid "Withdraw the invitation to %s? Their link stops working immediately."
 msgstr ""
 
-#: templates/myaccount/invitations.php:108
+#: templates/myaccount/invitations.php:120
 msgid "Withdraw"
 msgstr ""
 
@@ -1159,7 +1187,7 @@ msgstr ""
 
 #. translators: %s: the singular location noun for the site's mode, for example "Branch".
 #: templates/myaccount/location-form.php:78
-#: templates/myaccount/locations.php:43
+#: templates/myaccount/locations.php:56
 #, php-format
 msgid "Add a %s"
 msgstr ""
@@ -1188,42 +1216,42 @@ msgstr ""
 msgid "Cancel"
 msgstr ""
 
-#. translators: %s: the plural location noun for the site's mode, for example "Branches".
+#: templates/myaccount/locations.php:30
+msgid "Delivery address"
+msgstr ""
+
 #: templates/myaccount/locations.php:31
+msgid "Delivery contact"
+msgstr ""
+
+#. translators: %s: the plural location noun for the site's mode, for example "Branches".
+#: templates/myaccount/locations.php:44
 #, php-format
 msgid "Orders are delivered to one of these %s. Members choose one at checkout."
 msgstr ""
 
 #. translators: %s: the plural location noun for the site's mode, for example "Branches".
-#: templates/myaccount/locations.php:58
+#: templates/myaccount/locations.php:71
 #, php-format
 msgid "No %s yet. Members cannot choose a delivery destination until there is at least one."
 msgstr ""
 
-#: templates/myaccount/locations.php:71
-msgid "Delivery address"
-msgstr ""
-
-#: templates/myaccount/locations.php:72
-msgid "Delivery contact"
-msgstr ""
-
-#: templates/myaccount/locations.php:85
+#: templates/myaccount/locations.php:97
 msgid "Default"
 msgstr ""
 
-#: templates/myaccount/locations.php:88
+#: templates/myaccount/locations.php:100
 msgid "Incomplete"
 msgstr ""
 
 #. translators: %s: comma-separated list of the address fields that are empty.
-#: templates/myaccount/locations.php:94
+#: templates/myaccount/locations.php:106
 #, php-format
 msgid "Cannot be delivered to until %s is filled in."
 msgstr ""
 
 #. translators: %s: the name of the location being deleted.
-#: templates/myaccount/locations.php:128
+#: templates/myaccount/locations.php:140
 #, php-format
 msgid "Delete “%s”? Orders already sent there keep their address."
 msgstr ""
@@ -1270,30 +1298,30 @@ msgid "Remove from this account"
 msgstr ""
 
 #. translators: %s: the organization noun for the site's mode, for example "Company".
-#: templates/myaccount/organization-orders.php:33
+#: templates/myaccount/organization-orders.php:71
 #, php-format
 msgid "This %s has not placed any orders yet."
 msgstr ""
 
-#: templates/myaccount/organization-orders.php:64
+#: templates/myaccount/organization-orders.php:111
 msgid "Unknown"
 msgstr ""
 
-#: templates/myaccount/organization-orders.php:70
+#: templates/myaccount/organization-orders.php:124
 msgid "View"
 msgstr ""
 
-#: templates/myaccount/organization-orders.php:82
+#: templates/myaccount/organization-orders.php:136
 msgid "Previous"
 msgstr ""
 
 #. translators: 1: current page, 2: total pages.
-#: templates/myaccount/organization-orders.php:91
+#: templates/myaccount/organization-orders.php:145
 #, php-format
 msgid "Page %1$d of %2$d"
 msgstr ""
 
-#: templates/myaccount/organization-orders.php:101
+#: templates/myaccount/organization-orders.php:155
 msgid "Next"
 msgstr ""
 
@@ -1305,13 +1333,13 @@ msgstr ""
 
 #. translators: %s: the organization noun for the site's mode, for example "Company".
 #: templates/myaccount/organization.php:63
-#: templates/registration/organization-form.php:50
+#: templates/registration/organization-form.php:71
 #, php-format
 msgid "%s details"
 msgstr ""
 
 #: templates/myaccount/organization.php:86
-#: templates/registration/organization-form.php:84
+#: templates/registration/organization-form.php:105
 msgid "VAT number, tax ID or registration number"
 msgstr ""
 
@@ -1350,102 +1378,112 @@ msgid "Go to my account"
 msgstr ""
 
 #. translators: %s: organization name.
-#: templates/registration/invitation-form.php:34
-#: templates/registration/invitation-form.php:115
+#: templates/registration/invitation-form.php:42
+#: templates/registration/invitation-form.php:129
 #, php-format
 msgid "Join %s"
 msgstr ""
 
 #. translators: 1: organization name, 2: the invited email address.
-#: templates/registration/invitation-form.php:46
+#: templates/registration/invitation-form.php:54
 #, php-format
 msgid "You have been invited to join %1$s as %2$s."
 msgstr ""
 
-#: templates/registration/invitation-form.php:65
+#: templates/registration/invitation-form.php:73
 msgid "An account already exists for that address. Sign in with it, then follow the invitation link again."
 msgstr ""
 
-#: templates/registration/invitation-form.php:69
+#: templates/registration/invitation-form.php:77
 msgid "Sign in"
 msgstr ""
 
-#: templates/registration/invitation-form.php:81
-#: templates/registration/organization-form.php:41
+#: templates/registration/invitation-form.php:95
+#: templates/registration/organization-form.php:62
 msgid "Leave this field empty"
 msgstr ""
 
-#: templates/registration/invitation-form.php:88
-#: templates/registration/organization-form.php:123
+#: templates/registration/invitation-form.php:102
+#: templates/registration/organization-form.php:144
 msgid "First name"
 msgstr ""
 
-#: templates/registration/invitation-form.php:93
-#: templates/registration/organization-form.php:128
+#: templates/registration/invitation-form.php:107
+#: templates/registration/organization-form.php:149
 msgid "Last name"
 msgstr ""
 
-#: templates/registration/invitation-form.php:98
+#: templates/registration/invitation-form.php:112
 msgid "Choose a password"
 msgstr ""
 
-#: templates/registration/invitation-form.php:103
-#: templates/registration/organization-form.php:148
+#: templates/registration/invitation-form.php:117
+#: templates/registration/organization-form.php:169
 msgid "Repeat password"
 msgstr ""
 
 #. translators: %s: the organization noun for the site's mode, for example "Company".
-#: templates/registration/organization-form.php:63
+#: templates/registration/organization-form.php:84
 #, php-format
 msgid "%s name"
 msgstr ""
 
 #. translators: %s: the organization noun for the site's mode, for example "Company".
-#: templates/registration/organization-form.php:94
+#: templates/registration/organization-form.php:115
 #, php-format
 msgid "Every order is billed to this address. It belongs to the %s, so individual members cannot change it at checkout."
 msgstr ""
 
 #. translators: %s: the organization admin noun for the site's mode, for example "Company Admin".
-#: templates/registration/organization-form.php:115
+#: templates/registration/organization-form.php:136
 #, php-format
 msgid "Your account (%s)"
 msgstr ""
 
-#: templates/registration/organization-form.php:133
+#: templates/registration/organization-form.php:154
 msgid "Your email address"
 msgstr ""
 
-#: templates/registration/organization-form.php:138
+#: templates/registration/organization-form.php:159
 msgid "Your phone (optional)"
 msgstr ""
 
-#: templates/registration/organization-form.php:143
+#: templates/registration/organization-form.php:164
 msgid "Password"
 msgstr ""
 
 #. translators: %s: the organization noun for the site's mode, for example "Company".
-#: templates/registration/organization-form.php:167
+#: templates/registration/organization-form.php:188
 #, php-format
 msgid "Register %s"
 msgstr ""
 
-#: woo-organization-accounts-pro.php:68
+#: woo-organization-accounts-pro.php:77
 msgid "WooCommerce Organization Accounts Pro is missing its dependencies. Run \"composer install\" in the plugin directory."
 msgstr ""
 
 #. translators: %s: minimum supported WooCommerce version.
-#: woo-organization-accounts-pro.php:86
+#: woo-organization-accounts-pro.php:95
 #, php-format
 msgid "WooCommerce Organization Accounts Pro requires WooCommerce %s or newer to be installed and active."
 msgstr ""
 
-#: woo-organization-accounts-pro.php:101
+#: woo-organization-accounts-pro.php:110
 msgid "WooCommerce Organization Accounts Pro requires High-Performance Order Storage. Organization accounts stay disabled until it is enabled."
 msgstr ""
 
-#: woo-organization-accounts-pro.php:106
+#: woo-organization-accounts-pro.php:115
 msgid "Enable High-Performance Order Storage"
+msgstr ""
+
+#. translators: 1: required theme name, 2: minimum supported theme version.
+#: woo-organization-accounts-pro.php:130
+#, php-format
+msgid "WooCommerce Organization Accounts Pro is built for the %1$s theme and requires version %2$s or newer to be the active theme, or the parent of it. Organization accounts stay disabled until it is."
+msgstr ""
+
+#: woo-organization-accounts-pro.php:136
+msgid "Choose a theme"
 msgstr ""
 
 #: assets/js/blocks/checkout.js:152

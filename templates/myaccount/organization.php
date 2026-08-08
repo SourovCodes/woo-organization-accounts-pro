@@ -103,7 +103,7 @@ if ( AccountHandlers::has_submission() ) {
 		</p>
 
 		<p>
-			<button type="submit" class="woocommerce-Button button"><?php esc_html_e( 'Save details', 'woo-organization-accounts-pro' ); ?></button>
+			<button type="submit" class="woocommerce-Button button btn-color-primary"><?php esc_html_e( 'Save details', 'woo-organization-accounts-pro' ); ?></button>
 		</p>
 	</form>
 
@@ -143,7 +143,7 @@ if ( AccountHandlers::has_submission() ) {
 			?>
 
 			<p>
-				<button type="submit" class="woocommerce-Button button"><?php esc_html_e( 'Save billing address', 'woo-organization-accounts-pro' ); ?></button>
+				<button type="submit" class="woocommerce-Button button btn-color-primary"><?php esc_html_e( 'Save billing address', 'woo-organization-accounts-pro' ); ?></button>
 			</p>
 		</form>
 

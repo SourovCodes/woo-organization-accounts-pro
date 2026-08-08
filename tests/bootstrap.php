@@ -59,6 +59,13 @@ function woap_manually_load_plugins() {
 	require_once $woocommerce;
 
 	/*
+	 * Woodmart is a commercial theme and cannot be installed into the test library or
+	 * into CI, so the theme gate is satisfied here instead. Registered before the
+	 * plugin loads, because its gate runs on plugins_loaded.
+	 */
+	add_filter( 'woap_theme_supported', '__return_true' );
+
+	/*
 	 * Load the plugin the way WordPress loads it: through wp-content/plugins, having
 	 * registered the real path behind the symlink first. Requiring the checkout
 	 * directly instead leaves plugin_basename() unable to shorten the path to the

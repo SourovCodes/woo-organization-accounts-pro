@@ -20,6 +20,20 @@ defined( 'ABSPATH' ) || exit;
 
 $woap_post_url = esc_url( wc_get_account_endpoint_url( MyAccount::ENDPOINT_INVITATIONS ) );
 
+/*
+ * The header labels, reused as each cell's data-title. Woodmart stacks a
+ * .shop_table_responsive on narrow screens, hides the header row and prints
+ * `attr(data-title)` in front of every value instead, so a cell without one loses
+ * its label on a phone. One array feeds both.
+ */
+$woap_columns = array(
+	'email'   => __( 'Email address', 'woo-organization-accounts-pro' ),
+	'role'    => __( 'Role', 'woo-organization-accounts-pro' ),
+	'status'  => __( 'Status', 'woo-organization-accounts-pro' ),
+	'expires' => __( 'Expires', 'woo-organization-accounts-pro' ),
+	'actions' => __( 'Actions', 'woo-organization-accounts-pro' ),
+);
+
 ?>
 <div class="woap-account woap-account--invitations">
 
@@ -47,7 +61,7 @@ $woap_post_url = esc_url( wc_get_account_endpoint_url( MyAccount::ENDPOINT_INVIT
 		</p>
 
 		<p>
-			<button type="submit" class="woocommerce-Button button"><?php esc_html_e( 'Send invitation', 'woo-organization-accounts-pro' ); ?></button>
+			<button type="submit" class="woocommerce-Button button btn-color-primary"><?php esc_html_e( 'Send invitation', 'woo-organization-accounts-pro' ); ?></button>
 		</p>
 	</form>
 
@@ -56,23 +70,21 @@ $woap_post_url = esc_url( wc_get_account_endpoint_url( MyAccount::ENDPOINT_INVIT
 	<?php if ( empty( $invitations ) ) : ?>
 		<p><?php esc_html_e( 'None sent yet.', 'woo-organization-accounts-pro' ); ?></p>
 	<?php else : ?>
-		<table class="woocommerce-table woap-invitations-table">
+		<table class="woocommerce-table shop_table shop_table_responsive woap-invitations-table">
 			<thead>
 				<tr>
-					<th><?php esc_html_e( 'Email address', 'woo-organization-accounts-pro' ); ?></th>
-					<th><?php esc_html_e( 'Role', 'woo-organization-accounts-pro' ); ?></th>
-					<th><?php esc_html_e( 'Status', 'woo-organization-accounts-pro' ); ?></th>
-					<th><?php esc_html_e( 'Expires', 'woo-organization-accounts-pro' ); ?></th>
-					<th class="woap-actions"><?php esc_html_e( 'Actions', 'woo-organization-accounts-pro' ); ?></th>
+					<?php foreach ( $woap_columns as $woap_column => $woap_label ) : ?>
+						<th scope="col" class="woap-column--<?php echo esc_attr( $woap_column ); ?>"><?php echo esc_html( $woap_label ); ?></th>
+					<?php endforeach; ?>
 				</tr>
 			</thead>
 			<tbody>
 				<?php foreach ( $invitations as $woap_invitation ) : ?>
 					<tr>
-						<td><?php echo esc_html( $woap_invitation->get_email() ); ?></td>
-						<td><?php echo esc_html( Member::ROLE_ADMIN === $woap_invitation->get_role() ? Labels::organization_admin() : Labels::member() ); ?></td>
-						<td><?php echo esc_html( $woap_invitation->get_status_label() ); ?></td>
-						<td>
+						<td data-title="<?php echo esc_attr( $woap_columns['email'] ); ?>"><?php echo esc_html( $woap_invitation->get_email() ); ?></td>
+						<td data-title="<?php echo esc_attr( $woap_columns['role'] ); ?>"><?php echo esc_html( Member::ROLE_ADMIN === $woap_invitation->get_role() ? Labels::organization_admin() : Labels::member() ); ?></td>
+						<td data-title="<?php echo esc_attr( $woap_columns['status'] ); ?>"><?php echo esc_html( $woap_invitation->get_status_label() ); ?></td>
+						<td data-title="<?php echo esc_attr( $woap_columns['expires'] ); ?>">
 							<?php
 							$woap_expires = $woap_invitation->get( 'expires_at' );
 
@@ -83,7 +95,7 @@ $woap_post_url = esc_url( wc_get_account_endpoint_url( MyAccount::ENDPOINT_INVIT
 							);
 							?>
 						</td>
-						<td class="woap-actions">
+						<td class="woap-actions" data-title="<?php echo esc_attr( $woap_columns['actions'] ); ?>">
 							<?php if ( Invitation::STATUS_PENDING === (string) $woap_invitation->get( 'status' ) ) : ?>
 								<form method="post" action="<?php echo $woap_post_url; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Escaped above with esc_url(). ?>">
 									<input type="hidden" name="<?php echo esc_attr( AccountHandlers::ACTION_FIELD ); ?>" value="resend_invitation">

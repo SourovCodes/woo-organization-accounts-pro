@@ -10,6 +10,7 @@ namespace WooOrgAccounts;
 use WooOrgAccounts\Admin\Organizations;
 use WooOrgAccounts\Admin\OrderColumn;
 use WooOrgAccounts\Admin\Settings;
+use WooOrgAccounts\Admin\ThemeSettings;
 use WooOrgAccounts\Checkout\BillingLock;
 use WooOrgAccounts\Checkout\Blocks\CheckoutIntegration;
 use WooOrgAccounts\Checkout\Gate;
@@ -122,6 +123,7 @@ final class Plugin {
 			( new Settings() )->register();
 			( new Organizations() )->register();
 			( new OrderColumn() )->register();
+			( new ThemeSettings() )->register();
 		}
 
 		/**

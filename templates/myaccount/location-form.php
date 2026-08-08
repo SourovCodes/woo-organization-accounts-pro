@@ -131,7 +131,7 @@ $woap_bad    = ( $woap_errors instanceof WP_Error ) && '' !== $woap_errors->get_
 		</p>
 
 		<p class="woap-account__actions">
-			<button type="submit" class="woocommerce-Button button">
+			<button type="submit" class="woocommerce-Button button btn-color-primary">
 				<?php
 				echo esc_html(
 					$woap_editing->exists()

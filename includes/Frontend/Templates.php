@@ -53,4 +53,39 @@ final class Templates {
 	public static function get( $template, array $args = array() ) {
 		return wc_get_template_html( $template, $args, self::THEME_PATH, self::path() );
 	}
+
+	/**
+	 * Ask Woodmart for the stylesheet parts a screen about to render depends on.
+	 *
+	 * **Call this while rendering, never from `wp_enqueue_scripts`.** Woodmart splits
+	 * its stylesheet into parts and each one is an ordinary `wp_enqueue_style()`, so
+	 * where it lands in the cascade is decided by when it is asked for — and several
+	 * of these parts tie with the theme's own `base.css` on specificity, leaving source
+	 * order to settle it.
+	 *
+	 * Asking on `wp_enqueue_scripts` puts the part *before* `base.css` and the theme's
+	 * own rules then win. That is not hypothetical: `.show-password-input` is
+	 * `position: absolute` in `woo-mod-login-form`, and `base.css` matches the same
+	 * button through `:is(.btn, .button, button, [type="submit"], [type="button"])`
+	 * with `position: relative` at identical specificity. Enqueued too early, the
+	 * show-password control drops out of the field it belongs in and sits underneath
+	 * it, while the input keeps the padding reserved for it.
+	 *
+	 * Woodmart's own templates call this from inside the template for the same reason.
+	 * Everything asked for at render time is printed through the theme's footer anchor.
+	 *
+	 * Guarded, because `woap_theme_supported` can be filtered true off Woodmart.
+	 *
+	 * @param string ...$keys Woodmart CSS part slugs.
+	 * @return void
+	 */
+	public static function enqueue_theme_parts( ...$keys ) {
+		if ( ! function_exists( 'woodmart_enqueue_inline_style' ) ) {
+			return;
+		}
+
+		foreach ( $keys as $key ) {
+			woodmart_enqueue_inline_style( $key );
+		}
+	}
 }

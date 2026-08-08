@@ -1,0 +1,18 @@
+/**
+ * Registration and invitation screens.
+ *
+ * Almost everything here is Woodmart's: the container is `wd-registration-page`, the
+ * rows are WooCommerce's own `form-row` classes the theme already styles, and the
+ * buttons take the theme's colour variants. What is left is the explanatory note
+ * under a heading, which has no WooCommerce or Woodmart equivalent — a paragraph that
+ * has to read as an aside rather than as part of the form.
+ *
+ * Colours come from Woodmart's custom properties, never a literal, for the same
+ * reason they do on the account screens — see assets/css/account.css.
+ */
+
+.woap-form-note {
+	margin-top: -0.5em;
+	color: var(--wd-text-color, #767676);
+	font-size: 0.95em;
+}

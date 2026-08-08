@@ -130,7 +130,7 @@ $woap_labels   = Roles::labels();
 				<?php endif; ?>
 
 				<p>
-					<button type="submit" class="woocommerce-Button button"><?php esc_html_e( 'Save', 'woo-organization-accounts-pro' ); ?></button>
+					<button type="submit" class="woocommerce-Button button btn-color-primary"><?php esc_html_e( 'Save', 'woo-organization-accounts-pro' ); ?></button>
 				</p>
 			</form>
 
@@ -139,7 +139,7 @@ $woap_labels   = Roles::labels();
 					<input type="hidden" name="<?php echo esc_attr( AccountHandlers::ACTION_FIELD ); ?>" value="remove_member">
 					<input type="hidden" name="woap_member_id" value="<?php echo esc_attr( (string) $woap_member->get_id() ); ?>">
 					<?php wp_nonce_field( 'woap_remove_member' ); ?>
-					<button type="submit" class="woocommerce-Button button woap-button--danger" data-woap-confirm="
+					<button type="submit" class="woocommerce-Button button btn-style-bordered woap-button--danger" data-woap-confirm="
 						<?php
 						echo esc_attr(
 							sprintf(

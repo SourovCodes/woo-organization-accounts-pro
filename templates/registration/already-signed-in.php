@@ -27,7 +27,7 @@ defined( 'ABSPATH' ) || exit;
 		?>
 	</p>
 	<p>
-		<a class="woocommerce-Button button" href="<?php echo esc_url( $account_url ); ?>">
+		<a class="woocommerce-Button button btn-color-primary" href="<?php echo esc_url( $account_url ); ?>">
 			<?php esc_html_e( 'Go to my account', 'woo-organization-accounts-pro' ); ?>
 		</a>
 	</p>

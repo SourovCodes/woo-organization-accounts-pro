@@ -24,7 +24,15 @@ $woap_value = static function ( $key ) use ( $submitted ) {
 };
 
 ?>
-<div class="woocommerce woap-invitation">
+<?php
+/*
+ * Woodmart's registration container, with the narrow modifier this time: the join
+ * form is a name and a password, so the theme's 450px single-column width is the
+ * right shape for it. The organization registration form is not — see
+ * registration/organization-form.php.
+ */
+?>
+<div class="woocommerce woap-invitation wd-registration-page wd-no-registration">
 
 	<h2>
 		<?php
@@ -65,19 +73,25 @@ $woap_value = static function ( $key ) use ( $submitted ) {
 			<?php esc_html_e( 'An account already exists for that address. Sign in with it, then follow the invitation link again.', 'woo-organization-accounts-pro' ); ?>
 		</p>
 		<p>
-			<a class="woocommerce-Button button" href="<?php echo esc_url( wc_get_page_permalink( 'myaccount' ) ); ?>">
+			<a class="woocommerce-Button button btn-color-primary" href="<?php echo esc_url( wc_get_page_permalink( 'myaccount' ) ); ?>">
 				<?php esc_html_e( 'Sign in', 'woo-organization-accounts-pro' ); ?>
 			</a>
 		</p>
 
 	<?php else : ?>
 
-		<form class="woocommerce-form woap-invitation-form" method="post">
+		<form class="woocommerce-form register woap-invitation-form" method="post">
 			<input type="hidden" name="woap_action" value="join">
 			<input type="hidden" name="token" value="<?php echo esc_attr( $token ); ?>">
 			<?php wp_nonce_field( $action ); ?>
 
-			<p class="woap-honeypot" aria-hidden="true">
+			<?php
+			/*
+			 * The trap is hidden inline rather than from a stylesheet. A honeypot that
+			 * only disappears once a stylesheet loads is one real customers fill in.
+			 */
+			?>
+			<p class="woap-honeypot" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;">
 				<label for="<?php echo esc_attr( $honeypot ); ?>"><?php esc_html_e( 'Leave this field empty', 'woo-organization-accounts-pro' ); ?></label>
 				<input type="text" id="<?php echo esc_attr( $honeypot ); ?>" name="<?php echo esc_attr( $honeypot ); ?>" value="" tabindex="-1" autocomplete="off">
 			</p>
@@ -107,7 +121,7 @@ $woap_value = static function ( $key ) use ( $submitted ) {
 			<?php endif; ?>
 
 			<p class="woocommerce-form-row form-row-wide">
-				<button type="submit" class="woocommerce-Button button">
+				<button type="submit" class="woocommerce-Button button btn-color-primary">
 					<?php
 					echo esc_html(
 						sprintf(

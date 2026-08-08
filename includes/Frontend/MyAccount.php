@@ -104,11 +104,32 @@ class MyAccount {
 		add_filter( 'woocommerce_get_query_vars', array( $this, 'add_query_vars' ) );
 		add_filter( 'woocommerce_account_menu_items', array( $this, 'add_menu_items' ) );
 		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_assets' ) );
+		add_action( 'woocommerce_account_content', array( $this, 'enqueue_theme_parts' ), 5 );
 
 		foreach ( array_keys( self::endpoints() ) as $endpoint ) {
 			add_action( 'woocommerce_account_' . $endpoint . '_endpoint', array( $this, 'render_' . str_replace( '-', '_', $endpoint ) ) );
 			add_filter( 'woocommerce_endpoint_' . $endpoint . '_title', array( $this, 'endpoint_title' ), 10, 2 );
 		}
+	}
+
+	/**
+	 * The Woodmart icon-font glyph for each endpoint's navigation item.
+	 *
+	 * Woodmart tags every account menu item with `wd-my-acc-<endpoint>` and draws the
+	 * item's icon from `--wd-my-acc-nav-icon` on that class. It defines the variable
+	 * for its own endpoints only, so without this the plugin's five items all fall
+	 * back to the theme's generic glyph and the menu reads as five copies of one item.
+	 *
+	 * @return array Map of endpoint to woodmart-font code point.
+	 */
+	public static function nav_icons() {
+		return array(
+			self::ENDPOINT_PROFILE     => '\f146',
+			self::ENDPOINT_MEMBERS     => '\f124',
+			self::ENDPOINT_LOCATIONS   => '\f183',
+			self::ENDPOINT_INVITATIONS => '\f132',
+			self::ENDPOINT_ORDERS      => '\f138',
+		);
 	}
 
 	/**
@@ -198,6 +219,8 @@ class MyAccount {
 			return;
 		}
 
+		$this->enqueue_nav_icons();
+
 		$ours = array_intersect( array_keys( self::endpoints() ), array_keys( (array) $wp_query->query_vars ) );
 
 		if ( empty( $ours ) ) {
@@ -225,6 +248,62 @@ class MyAccount {
 		if ( $editing_location || in_array( self::ENDPOINT_PROFILE, $ours, true ) ) {
 			AddressFields::enqueue();
 		}
+	}
+
+	/**
+	 * Ask Woodmart for the parts these screens borrow.
+	 *
+	 * On `woocommerce_account_content` rather than `wp_enqueue_scripts`, because a part
+	 * asked for that early lands ahead of the theme's own `base.css` and loses the ties
+	 * that source order settles — see `Templates::enqueue_theme_parts()`. This action
+	 * fires while the account content renders, just before the endpoint callbacks.
+	 *
+	 * @return void
+	 */
+	public function enqueue_theme_parts() {
+		global $wp_query;
+
+		if ( ! $wp_query instanceof \WP_Query ) {
+			return;
+		}
+
+		$ours = array_intersect( array_keys( self::endpoints() ), array_keys( (array) $wp_query->query_vars ) );
+
+		if ( empty( $ours ) ) {
+			return;
+		}
+
+		Templates::enqueue_theme_parts( 'woo-mod-shop-table', 'mod-notices-general' );
+	}
+
+	/**
+	 * Give the plugin's navigation items their Woodmart icons.
+	 *
+	 * On every account screen, not only the plugin's own: the menu lists the
+	 * organization items wherever it is drawn, so an icon that only appeared once the
+	 * customer was already on one of those screens would be missing exactly where it
+	 * is needed to get there.
+	 *
+	 * Emitted inline rather than shipped as a stylesheet so the endpoint slugs come
+	 * from the constants above and cannot drift from a hand-maintained copy.
+	 *
+	 * @return void
+	 */
+	private function enqueue_nav_icons() {
+		if ( ! is_page( wc_get_page_id( 'myaccount' ) ) ) {
+			return;
+		}
+
+		$rules = '';
+
+		foreach ( self::nav_icons() as $endpoint => $glyph ) {
+			// Both halves are class constants, never a request value.
+			$rules .= sprintf( '.wd-my-acc-%1$s{--wd-my-acc-nav-icon:"%2$s";}', $endpoint, $glyph );
+		}
+
+		wp_register_style( 'woap-account-nav', false, array(), WOAP_VERSION );
+		wp_enqueue_style( 'woap-account-nav' );
+		wp_add_inline_style( 'woap-account-nav', $rules );
 	}
 
 	/**

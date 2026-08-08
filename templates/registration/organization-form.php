@@ -23,7 +23,22 @@ $woap_value = static function ( $key ) use ( $submitted ) {
 };
 
 ?>
-<div class="woocommerce woap-registration">
+<?php
+/*
+ * `wd-registration-page` is Woodmart's container for this kind of screen: centred,
+ * capped at 1000px, so the form reads as a form rather than spanning the window.
+ *
+ * Deliberately without the theme's `wd-no-registration` modifier and without its
+ * `wd-grid-f-col` / `col-register` grid. Both exist to arrange a login column beside
+ * a register column, and this page has no login column — WooCommerce's registration
+ * is switched off while the plugin is active. The modifier in particular narrows the
+ * container to 450px, which would squeeze a twenty-field form including a full
+ * billing address into a single cramped strip.
+ *
+ * `register` is the class the theme's spacing rules key on.
+ */
+?>
+<div class="woocommerce woap-registration wd-registration-page">
 
 	<?php if ( $errors instanceof WP_Error && $errors->has_errors() ) : ?>
 		<ul class="woocommerce-error" role="alert">
@@ -33,11 +48,17 @@ $woap_value = static function ( $key ) use ( $submitted ) {
 		</ul>
 	<?php endif; ?>
 
-	<form class="woocommerce-form woap-registration-form" method="post">
+	<form class="woocommerce-form register woap-registration-form" method="post">
 		<input type="hidden" name="woap_action" value="register">
 		<?php wp_nonce_field( $action ); ?>
 
-		<p class="woap-honeypot" aria-hidden="true">
+		<?php
+		/*
+		 * The trap is hidden inline rather than from a stylesheet. A honeypot that
+		 * only disappears once a stylesheet loads is one real customers fill in.
+		 */
+		?>
+		<p class="woap-honeypot" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;">
 			<label for="<?php echo esc_attr( $honeypot ); ?>"><?php esc_html_e( 'Leave this field empty', 'woo-organization-accounts-pro' ); ?></label>
 			<input type="text" id="<?php echo esc_attr( $honeypot ); ?>" name="<?php echo esc_attr( $honeypot ); ?>" value="" tabindex="-1" autocomplete="off">
 		</p>
@@ -159,7 +180,7 @@ $woap_value = static function ( $key ) use ( $submitted ) {
 		?>
 
 		<p class="woocommerce-form-row form-row-wide">
-			<button type="submit" class="woocommerce-Button button">
+			<button type="submit" class="woocommerce-Button button btn-color-primary">
 				<?php
 				echo esc_html(
 					sprintf(

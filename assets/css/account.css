@@ -1,10 +1,24 @@
 /**
  * My Account: the organization screens.
  *
- * Deliberately small. These screens sit inside whatever the theme does with My
- * Account, so anything beyond layout and the states WooCommerce already styles would
- * fight the theme rather than help it.
+ * Deliberately small. These screens sit inside Woodmart's My Account layout, so
+ * anything beyond layout and the states WooCommerce already styles would fight the
+ * theme rather than help it.
+ *
+ * Every colour here is one of Woodmart's own custom properties, never a literal.
+ * The theme redefines them per colour scheme, so a shop switched to the dark scheme
+ * — or recoloured in Theme Settings — carries these screens with it instead of
+ * leaving a patch of wp-admin grey behind. The literals in the var() fallbacks are
+ * Woodmart's own defaults and only apply if the theme stops defining a token.
+ *
+ * The one exception is the danger colour: Woodmart defines success and warning
+ * notice colours in Theme Settings but no error colour, so the plugin declares one
+ * token for it. A child theme can redefine it in the same place.
  */
+
+body {
+	--woap-danger-color: #c1392b;
+}
 
 .woap-account__header {
 	display: flex;
@@ -22,7 +36,7 @@
 
 .woap-account__note,
 .woap-account__empty {
-	color: #50575e;
+	color: var(--wd-text-color, #767676);
 	font-size: 0.95em;
 }
 
@@ -32,13 +46,14 @@
 
 .woap-account__actions {
 	display: flex;
+	flex-wrap: wrap;
 	align-items: center;
 	gap: 1.5em;
 	margin-top: 1.5em;
 }
 
 .woap-account__cancel {
-	color: #50575e;
+	color: var(--wd-text-color, #767676);
 	text-decoration: underline;
 }
 
@@ -51,27 +66,49 @@
 	margin: 0;
 }
 
-/* A button that reads as a link, for a secondary action inside a table cell. */
-.woap-link-button {
+/*
+ * A button that reads as a link, for a secondary action inside a table cell.
+ * Woodmart's own .btn-style-link keeps a button's height and border, which is
+ * wrong inside a row, so the link look is built here instead.
+ *
+ * Written as `button.woap-link-button`, and that is load-bearing. Woodmart styles
+ * every button on the site through
+ * `:is(.btn, .button, button, [type="submit"], [type="button"])`, whose specificity
+ * is that of its most specific argument — a class, the same as a bare
+ * `.woap-link-button`. Tied rules are settled by source order, and this stylesheet is
+ * enqueued before the theme's `base.css`, so the plain class lost: every one of these
+ * rendered as a full grey 42px-tall button in the middle of a table row. Qualifying
+ * with the element name wins the comparison outright and stops the fix depending on
+ * which stylesheet happens to load first.
+ *
+ * `text-decoration` needs `!important` for the same reason from the other direction:
+ * the theme's rule declares `text-decoration: none !important`, so nothing but another
+ * `!important` restores the underline that makes this read as a link.
+ */
+button.woap-link-button {
+	display: inline;
+	min-height: 0;
 	padding: 0;
 	border: 0;
+	border-radius: 0;
 	background: none;
-	color: inherit;
+	box-shadow: none;
+	color: var(--wd-link-color, #333);
 	font: inherit;
-	text-decoration: underline;
+	text-transform: none;
+	text-decoration: underline !important;
 	cursor: pointer;
 }
 
-.woap-link-button--danger {
-	color: #8a2424;
+button.woap-link-button:hover,
+button.woap-link-button:focus {
+	color: var(--wd-link-color-hover, #242424);
 }
 
-.woap-honeypot {
-	position: absolute !important;
-	left: -9999px;
-	height: 1px;
-	width: 1px;
-	overflow: hidden;
+button.woap-link-button--danger,
+button.woap-link-button--danger:hover,
+button.woap-link-button--danger:focus {
+	color: var(--woap-danger-color);
 }
 
 .woap-member__summary {
@@ -84,7 +121,7 @@
 
 .woap-member__email,
 .woap-member__role {
-	color: #50575e;
+	color: var(--wd-text-color, #767676);
 	font-size: 0.9em;
 }
 
@@ -92,34 +129,40 @@
 .woap-member__locations {
 	margin: 1em 0;
 	padding: 1em;
-	border: 1px solid #e0e0e0;
+	border: 1px solid var(--brdcolor-gray-300, rgba(0, 0, 0, 0.105));
+	border-radius: var(--wd-brd-radius, 0);
 }
 
+/*
+ * Status pills. Woodmart's .wd-notice is a full-width banner, so a pill inside a
+ * table cell is the plugin's own component — but it is tinted from the theme's
+ * notice colours, which are what a shop owner edits in Theme Settings.
+ */
 .woap-status {
 	display: inline-block;
 	padding: 2px 8px;
-	border-radius: 9px;
+	border-radius: var(--wd-brd-radius, 9px);
 	font-size: 11px;
 	line-height: 1.6;
 	white-space: nowrap;
 }
 
 .woap-status--pending {
-	background: #fcf9e8;
-	color: #7f6000;
+	background: color-mix(in srgb, var(--notices-warning-bg, #e0b252) 18%, transparent);
+	color: color-mix(in srgb, var(--notices-warning-bg, #e0b252) 70%, var(--wd-title-color, #242424));
 }
 
 .woap-status--active {
-	background: #edfaef;
-	color: #00450c;
+	background: color-mix(in srgb, var(--notices-success-bg, #459647) 15%, transparent);
+	color: color-mix(in srgb, var(--notices-success-bg, #459647) 75%, var(--wd-title-color, #242424));
 }
 
 .woap-status--suspended {
-	background: #fcf0f1;
-	color: #8a2424;
+	background: color-mix(in srgb, var(--woap-danger-color) 14%, transparent);
+	color: color-mix(in srgb, var(--woap-danger-color) 78%, var(--wd-title-color, #242424));
 }
 
 .woap-status--rejected {
-	background: #f0f0f1;
-	color: #50575e;
+	background: var(--bgcolor-gray-200, #f7f7f7);
+	color: var(--wd-text-color, #767676);
 }

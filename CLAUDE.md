@@ -21,6 +21,7 @@ WordPress, WooCommerce or PHP.
 | PHP | 8.2 | `Requires PHP` header, `composer.json`, PHPCompatibilityWP `testVersion` |
 | WooCommerce | 11.0 (current latest) | `Requires Plugins` header plus a runtime `version_compare` check |
 | HPOS | **Required, not merely supported** | Runtime check; the plugin refuses to boot without it |
+| Woodmart theme | 8.5, as the active theme or its parent | Runtime check; the plugin refuses to boot without it |
 
 **High-Performance Order Storage is a hard requirement.** Declaring compatibility is not enough:
 `bootstrap()` calls `OrderUtil::custom_orders_table_usage_is_enabled()` and, when HPOS is off,
@@ -31,6 +32,24 @@ post-based store those queries would silently scope to the wrong data rather tha
 Because HPOS is guaranteed, order code uses the CRUD APIs directly and never carries a legacy
 fallback. When you bump these floors, update the plugin header, `WOAP_MIN_WC_VERSION`,
 `composer.json`, and the `testVersion` / `minimum_wp_version` values in `phpcs.xml.dist` together.
+
+**Woodmart is the theme this plugin is built for**, not one it happens to work with. Everything it
+renders on the frontend assumes Woodmart's markup and design tokens, so against another theme the
+result is a screen styled by nothing rather than a screen styled differently. WordPress has no
+`Requires Theme` header, so `is_theme_supported()` is a runtime check like the HPOS one.
+
+- **It reads `get_template()`, never `get_stylesheet()`.** A Woodmart child theme reports `woodmart`
+  from the former, and the requirement must not push a site off its own child theme.
+- **It runs on `plugins_loaded`, before the theme has loaded**, so it cannot read `WOODMART_VERSION`
+  or any other constant from `functions.php` — those do not exist yet. The template slug and the
+  theme headers are both readable that early.
+- **`woap_theme_supported` is the escape hatch.** Woodmart is commercial and cannot be installed
+  into the WordPress test library or into CI, and some sites run it under a renamed fork.
+  `tests/bootstrap.php` filters it to true before the plugin loads.
+- **Refusing to boot re-opens the shop.** With the plugin inert, nothing filters
+  `pre_option_woocommerce_enable_guest_checkout`, so guest checkout and WooCommerce's own
+  registration come back. That is true of every gate here, but a theme is the one most likely to be
+  switched by somebody who does not know it.
 
 ## Environment
 
@@ -152,6 +171,76 @@ Organization ── Members ── (WordPress users)
      ├── Billing address (centralised, one per organization)
      └── Orders (WooCommerce, tagged with the organization)
 ```
+
+### Designed for Woodmart
+
+Because the theme is a hard requirement, the frontend is built as part of Woodmart rather than
+layered on top of it. `WoodmartTest` covers the parts that can be asserted without the theme
+installed.
+
+- **No colour literals.** Every colour in `assets/css/account.css` and `assets/css/checkout.css`
+  reads a Woodmart custom property — `--wd-text-color`, `--wd-primary-color`, `--brdcolor-gray-*`,
+  `--notices-success-bg` and so on. The theme redefines those per colour scheme, so a shop on the
+  dark scheme carries these screens with it instead of leaving a patch of wp-admin grey. The literal
+  inside a `var()` fallback is Woodmart's own default and applies only if the theme drops the token.
+  The single exception is `--woap-danger-color`: Woodmart's Theme Settings define success and
+  warning notice colours but no error colour, so the plugin declares that one and nothing else.
+- **Woodmart loads its stylesheet in parts**, each only where the theme itself uses it, so a screen
+  that borrows the theme's tables, notices or login form has to ask for them by name. Always through
+  `Templates::enqueue_theme_parts()`, which is guarded with `function_exists()` because
+  `woap_theme_supported` can be filtered true off Woodmart — `WoodmartTest` asserts nothing else
+  calls `woodmart_enqueue_inline_style()` directly.
+- **Everything ties with `base.css`, so order and specificity both matter.** Woodmart styles every
+  button on the site through `:is(.btn, .button, button, [type="submit"], [type="button"])`. A
+  `:is()` takes the specificity of its most specific argument — here a class — so any plain
+  single-class rule of ours ties with it, and a tie is settled by source order. Two bugs came out of
+  that, and both are worth remembering because each looked like something else:
+  - **Ask for a theme part while rendering, never on `wp_enqueue_scripts`.** A part requested that
+    early loads *before* `base.css` and loses every tie. `woo-mod-login-form` sets
+    `.show-password-input { position: absolute }`; enqueued too early it became `relative`, and the
+    show/hide-password control dropped out of the field and sat underneath it while the input kept
+    the 42px of padding reserved for it. Woodmart's own templates call it during render for exactly
+    this reason, which is why the theme's own login page was unaffected.
+  - **Qualify our own button selectors with the element name.** `.woap-link-button` tied and lost,
+    so every secondary action inside the locations and invitations tables rendered as a full grey
+    42px-tall button. `button.woap-link-button` wins outright and does not depend on load order.
+    Its underline additionally needs `!important`, because the theme's rule declares
+    `text-decoration: none !important`.
+- **The registration page is forced to Woodmart's full-width layout.** It is an ordinary page, so
+  the theme gives it the site default — on a stock install a right sidebar of blog widgets beside a
+  twenty-field form. `Registration::page_layout()` supplies `full-width` on the
+  `woodmart_get_page_layout` filter, and defers to a layout set explicitly on the page so there is
+  still one answer. Woodmart makes the same correction for its own account pages, which is why
+  those looked right and this one did not.
+- **Tables are `shop_table shop_table_responsive`, and every `<td>` carries a `data-title`.** On a
+  narrow screen Woodmart hides the header row and prints `attr(data-title)` in front of each value
+  instead. A table with the class but not the attributes is a column of unlabelled values on a
+  phone — worse than the unstyled table it replaced. The header labels and the `data-title`s are
+  generated from one array per template so they cannot drift apart.
+- **The account navigation items need their own icons.** Woodmart tags each item with
+  `wd-my-acc-<endpoint>` and reads `--wd-my-acc-nav-icon` from it, defining the variable for its own
+  endpoints only. `MyAccount::nav_icons()` supplies a woodmart-font code point per endpoint, emitted
+  inline on every account screen — not only the plugin's own, since the menu is drawn everywhere —
+  and from the endpoint constants, so a slug cannot drift from a hand-written stylesheet.
+- **Buttons take Woodmart's colour variants.** `.button` is already the theme's button; adding
+  `btn-color-primary` or `btn-style-bordered` picks the variant. `.wd-login-title` is deliberately
+  *not* used: it carries no styling at all and exists only for the theme's login-tabs script.
+- **The registration screens use `wd-registration-page`**, the theme's centred 1000px container.
+  The invitation form adds `wd-no-registration`, which narrows it to 450px; the organization
+  registration form must not, because it would squeeze a twenty-field form including a full billing
+  address into a single strip. Neither uses the theme's `wd-grid-f-col` / `col-register` grid, which
+  exists to seat a login column beside a register column — and there is no login column, because
+  WooCommerce's registration is switched off while the plugin is active.
+
+**The plugin's settings are shown in Woodmart Theme Settings, not stored there.** `Admin\
+ThemeSettings` adds a read-only panel under the theme's *My account* section that reports the
+current configuration and links to the plugin's own screen. Woodmart writes its entire settings
+screen as one `xts-woodmart-options` array, and both *Reset to default* and the demo-content
+importer overwrite that array wholesale. `organization_mode` renames every organization noun on the
+site and `require_approval` decides whether a new account may buy anything; importing a demo to try
+a homepage layout must not quietly rename half the shop or reopen it. Editable copies would also
+leave two answers to one question with no defined winner — the same objection as a capability on the
+role, or an organization type column.
 
 ### Site-level organization mode
 

@@ -94,6 +94,37 @@ class Registration {
 
 		add_action( 'woocommerce_before_customer_login_form', array( $this, 'render_registration_link' ) );
 		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_assets' ) );
+		add_filter( 'woodmart_get_page_layout', array( $this, 'page_layout' ) );
+	}
+
+	/**
+	 * Give the registration page Woodmart's full-width layout.
+	 *
+	 * The page is an ordinary WordPress page, so the theme gives it whatever the site's
+	 * default layout is — on a stock install, a right sidebar of blog widgets. A
+	 * twenty-field form including a full billing address then renders in nine columns
+	 * next to Categories and Recent Posts. Woodmart makes the same correction for its
+	 * own account pages, which is why those look right and this one did not.
+	 *
+	 * A layout set explicitly on the page wins: this only supplies the default the
+	 * theme would otherwise take from the blog. That keeps one answer to the question
+	 * rather than the plugin and the page metabox disagreeing.
+	 *
+	 * @param string $layout Layout Woodmart resolved.
+	 * @return string Layout to use.
+	 */
+	public function page_layout( $layout ) {
+		$page_id = absint( Settings::get( 'registration_page_id', 0 ) );
+
+		if ( 0 === $page_id || ! is_page( $page_id ) ) {
+			return $layout;
+		}
+
+		if ( '' !== (string) get_post_meta( $page_id, '_woodmart_main_layout', true ) ) {
+			return $layout;
+		}
+
+		return 'full-width';
 	}
 
 	/**
@@ -107,9 +138,13 @@ class Registration {
 	public function enqueue_assets() {
 		$page_id = absint( Settings::get( 'registration_page_id', 0 ) );
 
-		if ( $page_id > 0 && is_page( $page_id ) ) {
-			AddressFields::enqueue();
+		if ( 0 === $page_id || ! is_page( $page_id ) ) {
+			return;
 		}
+
+		AddressFields::enqueue();
+
+		wp_enqueue_style( 'woap-registration', WOAP_PLUGIN_URL . 'assets/css/registration.css', array(), WOAP_VERSION );
 	}
 
 	/**
@@ -174,6 +209,13 @@ class Registration {
 	 * @return string Markup.
 	 */
 	public function render() {
+		/*
+		 * At render time, not on wp_enqueue_scripts — see Templates::enqueue_theme_parts().
+		 * The login-form part in particular loses to the theme's base button rule when it
+		 * is asked for too early, which drops the show-password control out of its field.
+		 */
+		Templates::enqueue_theme_parts( 'woo-mod-login-form', 'woo-page-login-register', 'mod-notices-general' );
+
 		$token = self::token_from_request();
 
 		if ( '' !== $token ) {

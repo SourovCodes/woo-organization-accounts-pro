@@ -382,6 +382,35 @@ class AccountTest extends TestCase {
 	}
 
 	/**
+	 * The honeypot is hidden by the markup itself, not by a stylesheet.
+	 *
+	 * It used to be hidden only by a rule in account.css, which is enqueued on the My
+	 * Account endpoints and nowhere else — so on the registration page, the one page
+	 * the trap is actually on, it rendered as a visible field labelled "Leave this
+	 * field empty". A honeypot real customers can see is one they fill in, and every
+	 * submission that fills it is discarded.
+	 */
+	public function testTheHoneypotIsHiddenWithoutAStylesheet() {
+		wp_set_current_user( 0 );
+
+		$markup = do_shortcode( '[' . Registration::SHORTCODE . ']' );
+
+		$this->assertMatchesRegularExpression(
+			'/class="woap-honeypot"[^>]*style="[^"]*position:\s*absolute/',
+			$markup,
+			'The honeypot is not hidden by an inline style.'
+		);
+
+		$css = file_get_contents( WOAP_PLUGIN_DIR . 'assets/css/account.css' ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- Reading a file this plugin ships.
+
+		$this->assertStringNotContainsString(
+			'.woap-honeypot',
+			$css,
+			'Hiding the honeypot has two homes again; the stylesheet copy is the one that does not load where the trap is.'
+		);
+	}
+
+	/**
 	 * A signed-in visitor is told to sign out rather than shown the form again.
 	 */
 	public function testShortcodeForASignedInVisitor() {

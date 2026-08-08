@@ -29,6 +29,26 @@ class PluginTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * The theme requirement is satisfied by Woodmart and by a child of it, and by
+	 * nothing else.
+	 *
+	 * The suite itself runs under the test library's default theme with the filter
+	 * forced on, so the check is exercised here with the filter removed. Everything
+	 * the plugin renders assumes Woodmart's markup and design tokens, and against any
+	 * other theme it produces a screen that is styled by nothing.
+	 */
+	public function testWoodmartIsRequired() {
+		remove_filter( 'woap_theme_supported', '__return_true' );
+
+		$this->assertNotSame( 'woodmart', get_template() );
+		$this->assertFalse( \WooOrgAccounts\is_theme_supported(), 'Another theme satisfied the requirement.' );
+
+		add_filter( 'woap_theme_supported', '__return_true' );
+
+		$this->assertTrue( \WooOrgAccounts\is_theme_supported(), 'The documented escape hatch did not work.' );
+	}
+
+	/**
 	 * Compatibility with HPOS and with the Cart and Checkout blocks is declared.
 	 *
 	 * Both matter: without the first the site is told the plugin is incompatible with

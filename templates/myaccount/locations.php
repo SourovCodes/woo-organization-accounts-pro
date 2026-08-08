@@ -19,6 +19,19 @@ defined( 'ABSPATH' ) || exit;
 
 $woap_post_url = esc_url( MyAccount::locations_url() );
 
+/*
+ * The header labels, reused as each cell's data-title. Woodmart stacks a
+ * .shop_table_responsive on narrow screens, hides the header row and prints
+ * `attr(data-title)` in front of every value instead, so a cell without one loses
+ * its label on a phone. One array feeds both.
+ */
+$woap_columns = array(
+	'name'    => __( 'Name', 'woo-organization-accounts-pro' ),
+	'address' => __( 'Delivery address', 'woo-organization-accounts-pro' ),
+	'contact' => __( 'Delivery contact', 'woo-organization-accounts-pro' ),
+	'actions' => __( 'Actions', 'woo-organization-accounts-pro' ),
+);
+
 ?>
 <div class="woap-account woap-account--locations">
 
@@ -35,7 +48,7 @@ $woap_post_url = esc_url( MyAccount::locations_url() );
 			?>
 		</p>
 
-		<a class="woocommerce-Button button woap-button--add" href="<?php echo esc_url( MyAccount::location_form_url() ); ?>">
+		<a class="woocommerce-Button button btn-color-primary woap-button--add" href="<?php echo esc_url( MyAccount::location_form_url() ); ?>">
 			<?php
 			echo esc_html(
 				sprintf(
@@ -64,20 +77,19 @@ $woap_post_url = esc_url( MyAccount::locations_url() );
 
 	<?php else : ?>
 
-		<table class="woocommerce-table woap-locations-table">
+		<table class="woocommerce-table shop_table shop_table_responsive woap-locations-table">
 			<thead>
 				<tr>
-					<th><?php esc_html_e( 'Name', 'woo-organization-accounts-pro' ); ?></th>
-					<th><?php esc_html_e( 'Delivery address', 'woo-organization-accounts-pro' ); ?></th>
-					<th><?php esc_html_e( 'Delivery contact', 'woo-organization-accounts-pro' ); ?></th>
-					<th class="woap-actions"><?php esc_html_e( 'Actions', 'woo-organization-accounts-pro' ); ?></th>
+					<?php foreach ( $woap_columns as $woap_column => $woap_label ) : ?>
+						<th scope="col" class="woap-column--<?php echo esc_attr( $woap_column ); ?>"><?php echo esc_html( $woap_label ); ?></th>
+					<?php endforeach; ?>
 				</tr>
 			</thead>
 			<tbody>
 				<?php foreach ( $locations as $woap_location ) : ?>
 					<tr>
 						<?php $woap_missing = AddressFields::missing( AddressFields::SHIPPING, $woap_location->get_shipping_address() ); ?>
-						<td>
+						<td data-title="<?php echo esc_attr( $woap_columns['name'] ); ?>">
 							<a href="<?php echo esc_url( MyAccount::location_form_url( $woap_location->get_id() ) ); ?>">
 								<?php echo esc_html( $woap_location->get_name() ); ?>
 							</a>
@@ -99,8 +111,8 @@ $woap_post_url = esc_url( MyAccount::locations_url() );
 								</span>
 							<?php endif; ?>
 						</td>
-						<td><?php echo wp_kses_post( $woap_location->get_formatted_address() ); ?></td>
-						<td>
+						<td data-title="<?php echo esc_attr( $woap_columns['address'] ); ?>"><?php echo wp_kses_post( $woap_location->get_formatted_address() ); ?></td>
+						<td data-title="<?php echo esc_attr( $woap_columns['contact'] ); ?>">
 							<?php
 							$woap_contact = $woap_location->get_contact_name();
 							$woap_tel     = (string) $woap_location->get( 'phone' );
@@ -112,7 +124,7 @@ $woap_post_url = esc_url( MyAccount::locations_url() );
 							}
 							?>
 						</td>
-						<td class="woap-actions">
+						<td class="woap-actions" data-title="<?php echo esc_attr( $woap_columns['actions'] ); ?>">
 							<a href="<?php echo esc_url( MyAccount::location_form_url( $woap_location->get_id() ) ); ?>">
 								<?php esc_html_e( 'Edit', 'woo-organization-accounts-pro' ); ?>
 							</a>
