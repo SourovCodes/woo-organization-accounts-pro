@@ -172,19 +172,6 @@ body {
 	color: var(--woap-danger-color);
 }
 
-/* A panel that folds away, for a form the list above it is more important than. */
-
-.woap-disclosure__summary {
-	color: var(--wd-title-color, #242424);
-	font-size: 1.1em;
-	font-weight: 600;
-	cursor: pointer;
-}
-
-.woap-disclosure[open] .woap-disclosure__summary {
-	margin-bottom: 1.5em;
-}
-
 /* Choose one answer, then fill in what it needs ---------------------------- */
 
 .woap-choice__option {

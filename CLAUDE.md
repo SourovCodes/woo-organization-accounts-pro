@@ -217,11 +217,17 @@ installed.
   instead. A table with the class but not the attributes is a column of unlabelled values on a
   phone — worse than the unstyled table it replaced. The header labels and the `data-title`s are
   generated from one array per template so they cannot drift apart.
-- **The account navigation items need their own icons.** Woodmart tags each item with
-  `wd-my-acc-<endpoint>` and reads `--wd-my-acc-nav-icon` from it, defining the variable for its own
-  endpoints only. `MyAccount::nav_icons()` supplies a woodmart-font code point per endpoint, emitted
-  inline on every account screen — not only the plugin's own, since the menu is drawn everywhere —
-  and from the endpoint constants, so a slug cannot drift from a hand-written stylesheet.
+- **The account navigation items need their own icons, and the code point has to be one the font
+  assigns.** Woodmart tags each item with `wd-my-acc-<endpoint>` and reads `--wd-my-acc-nav-icon`
+  from it, defining the variable for its own endpoints only. `MyAccount::nav_icons()` supplies a
+  woodmart-font code point per endpoint, emitted inline on every account screen — not only the
+  plugin's own, since the menu is drawn everywhere — and from the endpoint constants, so a slug
+  cannot drift from a hand-written stylesheet. woodmart-font is **not a complete range**: an
+  unassigned code point renders as nothing, leaving the item with the space for an icon and no icon,
+  which is what `\f132` did to Invitations. Check a new one against the theme before using it —
+  `grep -c '\f157' wp-content/themes/woodmart/css/style.min.css` — because CI has no theme to check
+  it against, and `AccountTest::testNavigationIconsAreGlyphsTheThemeAssigns` can only hold the list
+  to the ones already verified that way.
 - **Buttons take Woodmart's colour variants.** `.button` is already the theme's button; adding
   `btn-color-primary` or `btn-style-bordered` picks the variant. `.wd-login-title` is deliberately
   *not* used: it carries no styling at all and exists only for the theme's login-tabs script.
@@ -320,8 +326,12 @@ checkout then rejected.
 
 ### Editing one of many
 
-A screen that edits one row out of a list is its own screen, reached by a query argument
-(`?woap_location=<id>` or `new`, `?woap_member=<id>`), never a form underneath the list. Three
+A screen that writes one row of a list is its own screen, reached by a query argument
+(`?woap_location=<id>` or `new`, `?woap_member=<id>`, `?woap_invite=new`), never a form underneath
+the list — and never a form folded away above it either, which is the same mistake wearing a
+disclosure triangle. A primary button called *Invite somebody* has to lead to the form; leading to
+the list it was already on, with the form shut inside it, is a button that does not do what it
+says. Three
 things go wrong with the form-under-the-list shape, and the locations screen had all of them: you
 scroll past everything else to reach it, nothing says which row is open, and — the real bug — the
 row being edited lives only in a query argument the form does not post back, so a rejected

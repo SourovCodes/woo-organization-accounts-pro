@@ -538,6 +538,16 @@ class AccountHandlersTest extends TestCase {
 		$this->assertSame( Member::ROLE_ADMIN, AccountHandlers::value( 'woap_role' ) );
 		$this->assertNotEmpty( wc_get_notices( 'error' ) );
 
+		// And the screen it comes back on is the form, with the reason under the field.
+		$_GET[ MyAccount::INVITE_VAR ] = 'new';
+
+		ob_start();
+		( new MyAccount() )->render_organization_invitations();
+		$markup = (string) ob_get_clean();
+
+		$this->assertStringContainsString( 'value="' . esc_attr( $email ) . '"', $markup );
+		$this->assertStringContainsString( 'woocommerce-invalid', $markup );
+
 		wc_clear_notices();
 		AccountHandlers::flush();
 	}

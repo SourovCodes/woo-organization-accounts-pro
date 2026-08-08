@@ -69,6 +69,13 @@ class MyAccount {
 	const MEMBER_VAR = 'woap_member';
 
 	/**
+	 * Query variable that asks for the invitation form.
+	 *
+	 * Holds `new`. Its absence is what means "show the list".
+	 */
+	const INVITE_VAR = 'woap_invite';
+
+	/**
 	 * Every endpoint, mapped to the capability that reveals it.
 	 *
 	 * @return array Map of endpoint to capability.
@@ -128,6 +135,19 @@ class MyAccount {
 	 * for its own endpoints only, so without this the plugin's five items all fall
 	 * back to the theme's generic glyph and the menu reads as five copies of one item.
 	 *
+	 * **Every code point here has to be one the theme itself uses.** woodmart-font is
+	 * not a complete range: an unassigned code point renders as nothing at all, and the
+	 * item ends up with an empty square of space where the other four have an icon —
+	 * which is exactly what `\f132` did to Invitations. There is no way to assert this
+	 * in CI, because the font ships with the theme and the theme cannot be installed
+	 * there, so check a new one against the theme's own stylesheet first:
+	 *
+	 *     grep -c '\\f157' wp-content/themes/woodmart/css/style.min.css
+	 *
+	 * Each of these is borrowed from the theme rule that already draws it: the shop
+	 * toolbar icon, the my-account icon, `.wd-init-map`, `.social-email` and Woodmart's
+	 * own Orders item.
+	 *
 	 * @return array Map of endpoint to woodmart-font code point.
 	 */
 	public static function nav_icons() {
@@ -135,7 +155,7 @@ class MyAccount {
 			self::ENDPOINT_PROFILE     => '\f146',
 			self::ENDPOINT_MEMBERS     => '\f124',
 			self::ENDPOINT_LOCATIONS   => '\f183',
-			self::ENDPOINT_INVITATIONS => '\f132',
+			self::ENDPOINT_INVITATIONS => '\f157',
 			self::ENDPOINT_ORDERS      => '\f138',
 		);
 	}
@@ -592,6 +612,20 @@ class MyAccount {
 			return;
 		}
 
+		/*
+		 * Sending one is a screen of its own, like adding a location or managing a
+		 * member. It was a fold-away panel above the list, which meant the primary
+		 * "Invite somebody" button on the members screen promised a form and delivered
+		 * a list with the form shut — and a refused address came back to a form the
+		 * visitor had to re-open to read the reason.
+		 */
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Choosing which read-only view to render; the write itself is nonce-checked when submitted.
+		if ( isset( $_GET[ self::INVITE_VAR ] ) ) {
+			Templates::render( 'myaccount/invitation-form.php', array( 'organization' => $organization ) );
+
+			return;
+		}
+
 		Templates::render(
 			'myaccount/invitations.php',
 			array(
@@ -599,6 +633,24 @@ class MyAccount {
 				'invitations'  => InvitationRepository::for_organization( $organization->get_id() ),
 			)
 		);
+	}
+
+	/**
+	 * The URL of the invitation list.
+	 *
+	 * @return string URL.
+	 */
+	public static function invitations_url() {
+		return wc_get_account_endpoint_url( self::ENDPOINT_INVITATIONS );
+	}
+
+	/**
+	 * The URL of the form that sends one invitation.
+	 *
+	 * @return string URL.
+	 */
+	public static function invite_form_url() {
+		return add_query_arg( self::INVITE_VAR, 'new', self::invitations_url() );
 	}
 
 	/**

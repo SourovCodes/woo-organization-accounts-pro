@@ -443,6 +443,84 @@ class AccountTest extends TestCase {
 	}
 
 	/**
+	 * Render the invitations endpoint and give back its markup.
+	 *
+	 * @return string Markup.
+	 */
+	private function render_invitations() {
+		ob_start();
+		( new MyAccount() )->render_organization_invitations();
+
+		return (string) ob_get_clean();
+	}
+
+	/**
+	 * The invitation list is a list, with the form on a screen of its own.
+	 *
+	 * The form used to fold away above the list, which made the primary "Invite
+	 * somebody" button on the members screen promise a form and deliver a list with
+	 * that form shut.
+	 */
+	public function testInvitationListShowsNoForm() {
+		$organization = $this->make_organization();
+		$this->act_as( $this->make_member( $organization, Member::ROLE_ADMIN ) );
+
+		\WooOrgAccounts\Members\Invitations::create( $organization->get_id(), 'bob@acme.test', Member::ROLE_MEMBER );
+
+		$markup = $this->render_invitations();
+
+		$this->assertStringContainsString( 'bob@acme.test', $markup );
+		$this->assertStringNotContainsString( 'value="invite_member"', $markup, 'The list should not carry the invite form.' );
+		$this->assertStringContainsString( MyAccount::INVITE_VAR . '=new', $markup, 'The list needs a way to send one.' );
+	}
+
+	/**
+	 * Asking for the invitation form gets the form, and not the list.
+	 */
+	public function testInviteScreenShowsTheForm() {
+		$organization = $this->make_organization();
+		$this->act_as( $this->make_member( $organization, Member::ROLE_ADMIN ) );
+
+		\WooOrgAccounts\Members\Invitations::create( $organization->get_id(), 'bob@acme.test', Member::ROLE_MEMBER );
+
+		$_GET[ MyAccount::INVITE_VAR ] = 'new';
+
+		$markup = $this->render_invitations();
+
+		$this->assertStringContainsString( 'value="invite_member"', $markup );
+		$this->assertStringContainsString( 'name="woap_email"', $markup );
+		$this->assertStringNotContainsString( 'bob@acme.test', $markup, 'The list should not be on the form screen.' );
+		$this->assertStringContainsString( esc_url( MyAccount::invite_form_url() ), $markup, 'The form must post back to itself.' );
+	}
+
+	/**
+	 * Every navigation icon is a code point woodmart-font actually assigns.
+	 *
+	 * The font is not a complete range, and an unassigned code point renders as
+	 * nothing at all — the item keeps its space in the menu and shows no icon, which
+	 * is what `\f132` did to Invitations. The font ships with the theme and cannot be
+	 * installed in CI, so this asserts the weaker thing that can be checked anywhere:
+	 * every icon is one of the code points the theme is known to assign.
+	 */
+	public function testNavigationIconsAreGlyphsTheThemeAssigns() {
+		/*
+		 * Read off Woodmart 8.5's own stylesheet — the toolbar shop icon, the
+		 * my-account icon, `.wd-init-map`, `.social-email` and the theme's own Orders
+		 * item. Re-check with `grep -c '\\fXXX' woodmart/css/style.min.css` before
+		 * adding to this list.
+		 */
+		$assigned = array( '\f146', '\f124', '\f183', '\f157', '\f138' );
+
+		foreach ( MyAccount::nav_icons() as $endpoint => $glyph ) {
+			$this->assertContains(
+				$glyph,
+				$assigned,
+				$endpoint . ' uses ' . $glyph . ', which woodmart-font may not assign — it would render as no icon at all.'
+			);
+		}
+	}
+
+	/**
 	 * `?action=register` on My Account goes to the registration page.
 	 *
 	 * It is Woodmart's own signal for "show me the register side" — the header

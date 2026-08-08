@@ -2,10 +2,10 @@
 /**
  * My Account: outstanding and past invitations.
  *
- * The list comes first and the form folds away above it, because the question this
- * screen is usually opened to answer is "did they get it yet?" rather than "let me send
- * another one". It opens by itself when there is nothing to look at, and again when a
- * submission has been handed back for correction.
+ * A list, and nothing else. Sending one is its own screen — see invitation-form.php —
+ * because the question this screen is usually opened to answer is "did they get it
+ * yet?", and because a primary button called "Invite somebody" should lead to the form
+ * rather than to a list with the form folded shut inside it.
  *
  * Override in a theme at woo-organization-accounts/myaccount/invitations.php.
  *
@@ -23,10 +23,7 @@ use WooOrgAccounts\Labels;
 
 defined( 'ABSPATH' ) || exit;
 
-$woap_post_url = esc_url( wc_get_account_endpoint_url( MyAccount::ENDPOINT_INVITATIONS ) );
-$woap_errors   = AccountHandlers::errors();
-$woap_rejected = ( $woap_errors instanceof WP_Error ) && '' !== $woap_errors->get_error_message( 'woap_email' );
-$woap_open     = $woap_rejected || empty( $invitations );
+$woap_post_url = esc_url( MyAccount::invitations_url() );
 
 /*
  * The header labels, reused as each cell's data-title. Woodmart stacks a
@@ -67,52 +64,22 @@ $woap_pills = array(
 			);
 			?>
 		</p>
+
+		<a class="woocommerce-Button button btn-color-primary" href="<?php echo esc_url( MyAccount::invite_form_url() ); ?>">
+			<?php esc_html_e( 'Invite somebody', 'woo-organization-accounts-pro' ); ?>
+		</a>
 	</div>
-
-	<details class="woap-panel woap-disclosure" <?php echo $woap_open ? 'open' : ''; ?>>
-		<summary class="woap-disclosure__summary"><?php esc_html_e( 'Invite somebody', 'woo-organization-accounts-pro' ); ?></summary>
-
-		<form class="woocommerce-form woap-account__form" method="post" action="<?php echo $woap_post_url; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Escaped above with esc_url(). ?>">
-			<input type="hidden" name="<?php echo esc_attr( AccountHandlers::ACTION_FIELD ); ?>" value="invite_member">
-			<?php wp_nonce_field( 'woap_invite_member' ); ?>
-
-			<p class="form-row form-row-first validate-required<?php echo $woap_rejected ? ' woocommerce-invalid woocommerce-invalid-required-field' : ''; ?>">
-				<label for="woap-invite-email" class="required_field">
-					<?php esc_html_e( 'Email address', 'woo-organization-accounts-pro' ); ?>&nbsp;<span class="required" aria-hidden="true">*</span>
-				</label>
-				<span class="woocommerce-input-wrapper">
-					<input type="email" class="woocommerce-Input input-text" id="woap-invite-email" name="woap_email" required aria-required="true" value="<?php echo esc_attr( AccountHandlers::value( 'woap_email', '' ) ); ?>">
-					<?php if ( $woap_rejected ) : ?>
-						<span class="description"><?php echo esc_html( $woap_errors->get_error_message( 'woap_email' ) ); ?></span>
-					<?php endif; ?>
-				</span>
-			</p>
-
-			<p class="form-row form-row-last">
-				<label for="woap-invite-role"><?php esc_html_e( 'Role', 'woo-organization-accounts-pro' ); ?></label>
-				<span class="woocommerce-input-wrapper">
-					<select id="woap-invite-role" name="woap_role">
-						<?php foreach ( Member::roles() as $woap_value => $woap_label ) : ?>
-							<option value="<?php echo esc_attr( $woap_value ); ?>" <?php selected( AccountHandlers::value( 'woap_role', Member::ROLE_MEMBER ), $woap_value ); ?>>
-								<?php echo esc_html( $woap_label ); ?>
-							</option>
-						<?php endforeach; ?>
-					</select>
-					<span class="description"><?php esc_html_e( 'You can change this, and everything else about them, once they have joined.', 'woo-organization-accounts-pro' ); ?></span>
-				</span>
-			</p>
-
-			<p class="woap-account__actions">
-				<button type="submit" class="woocommerce-Button button btn-color-primary"><?php esc_html_e( 'Send invitation', 'woo-organization-accounts-pro' ); ?></button>
-			</p>
-		</form>
-	</details>
 
 	<?php if ( empty( $invitations ) ) : ?>
 
 		<div class="woap-empty">
 			<p class="woap-empty__title"><?php esc_html_e( 'No invitations sent yet.', 'woo-organization-accounts-pro' ); ?></p>
 			<p class="woap-account__note"><?php esc_html_e( 'Whoever you invite appears here until they accept.', 'woo-organization-accounts-pro' ); ?></p>
+			<p>
+				<a class="woocommerce-Button button btn-color-primary" href="<?php echo esc_url( MyAccount::invite_form_url() ); ?>">
+					<?php esc_html_e( 'Invite somebody', 'woo-organization-accounts-pro' ); ?>
+				</a>
+			</p>
 		</div>
 
 	<?php else : ?>

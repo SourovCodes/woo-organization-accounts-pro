@@ -67,7 +67,7 @@ $woap_columns = array(
 		</p>
 
 		<?php if ( $woap_can_invite ) : ?>
-			<a class="woocommerce-Button button btn-color-primary" href="<?php echo esc_url( wc_get_account_endpoint_url( MyAccount::ENDPOINT_INVITATIONS ) ); ?>">
+			<a class="woocommerce-Button button btn-color-primary" href="<?php echo esc_url( MyAccount::invite_form_url() ); ?>">
 				<?php esc_html_e( 'Invite somebody', 'woo-organization-accounts-pro' ); ?>
 			</a>
 		<?php endif; ?>
@@ -75,7 +75,7 @@ $woap_columns = array(
 
 	<?php if ( $woap_can_invite && $pending > 0 ) : ?>
 		<p class="woocommerce-info woap-account__info">
-			<a href="<?php echo esc_url( wc_get_account_endpoint_url( MyAccount::ENDPOINT_INVITATIONS ) ); ?>">
+			<a href="<?php echo esc_url( MyAccount::invitations_url() ); ?>">
 				<?php
 				echo esc_html(
 					sprintf(

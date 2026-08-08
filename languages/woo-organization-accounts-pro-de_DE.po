@@ -86,7 +86,7 @@ msgstr "Name"
 #: includes/Admin/Organizations.php:287
 #: includes/Admin/Organizations.php:341
 #: includes/Admin/Organizations.php:420
-#: templates/myaccount/invitations.php:81
+#: templates/myaccount/invitation-form.php:60
 #: templates/myaccount/member-form.php:86
 #: templates/myaccount/organization.php:49
 #: templates/myaccount/organization.php:117
@@ -111,7 +111,7 @@ msgstr "USt-IdNr. / Steuernummer"
 #: includes/Admin/Organizations.php:422
 #: includes/Admin/Organizations.php:458
 #: includes/Admin/OrganizationsListTable.php:58
-#: templates/myaccount/invitations.php:40
+#: templates/myaccount/invitations.php:37
 #: templates/myaccount/member-form.php:133
 #: templates/myaccount/members.php:49
 #: templates/myaccount/organization-orders.php:39
@@ -139,8 +139,8 @@ msgstr "Noch niemand."
 
 #: includes/Admin/Organizations.php:342
 #: includes/Admin/Organizations.php:421
-#: templates/myaccount/invitations.php:39
-#: templates/myaccount/invitations.php:92
+#: templates/myaccount/invitation-form.php:71
+#: templates/myaccount/invitations.php:36
 #: templates/myaccount/member-form.php:108
 #: templates/myaccount/members.php:46
 msgid "Role"
@@ -179,7 +179,7 @@ msgid "Contact"
 msgstr "Kontakt"
 
 #: includes/Admin/Organizations.php:409
-#: includes/Frontend/MyAccount.php:96
+#: includes/Frontend/MyAccount.php:103
 msgid "Invitations"
 msgstr "Einladungen"
 
@@ -610,7 +610,7 @@ msgstr "Rechnungsadresse gespeichert."
 #: includes/Frontend/AccountHandlers.php:260
 #: includes/Frontend/AccountHandlers.php:344
 #: includes/Frontend/AccountHandlers.php:370
-#: includes/Frontend/MyAccount.php:534
+#: includes/Frontend/MyAccount.php:554
 msgid "That entry no longer exists."
 msgstr "Diesen Eintrag gibt es nicht mehr."
 
@@ -654,7 +654,7 @@ msgstr "Einladung erneut versendet."
 
 #: includes/Frontend/AccountHandlers.php:477
 #: includes/Frontend/AccountHandlers.php:564
-#: includes/Frontend/MyAccount.php:445
+#: includes/Frontend/MyAccount.php:465
 msgid "That member no longer exists."
 msgstr "Dieses Mitglied gibt es nicht mehr."
 
@@ -738,18 +738,18 @@ msgid "optional"
 msgstr "optional"
 
 #. translators: %s: the organization noun for the site's mode, for example "Company".
-#: includes/Frontend/MyAccount.php:99
+#: includes/Frontend/MyAccount.php:106
 #, php-format
 msgid "%s orders"
 msgstr "Bestellungen der %s"
 
 #. translators: %s: the organization noun for the site's mode, for example "Company".
-#: includes/Frontend/MyAccount.php:693
+#: includes/Frontend/MyAccount.php:745
 #, php-format
 msgid "Your account is not linked to a %s."
 msgstr "Dein Konto ist keiner %s zugeordnet."
 
-#: includes/Frontend/MyAccount.php:703
+#: includes/Frontend/MyAccount.php:755
 msgid "You do not have permission to view this."
 msgstr "Du hast keine Berechtigung, das anzusehen."
 
@@ -1112,41 +1112,43 @@ msgstr "Shop:"
 msgid "Your account:"
 msgstr "Dein Konto:"
 
-#: templates/myaccount/invitations.php:73
+#: templates/myaccount/invitation-form.php:39
+#: templates/myaccount/invitations.php:69
+#: templates/myaccount/invitations.php:80
 #: templates/myaccount/members.php:71
 msgid "Invite somebody"
 msgstr "Jemanden einladen"
 
-#: templates/myaccount/invitations.php:106
+#: templates/myaccount/invitation-form.php:95
 msgid "Send invitation"
 msgstr "Einladung senden"
 
-#: templates/myaccount/invitations.php:41
+#: templates/myaccount/invitations.php:38
 msgid "Expires"
 msgstr "Läuft ab"
 
-#: templates/myaccount/invitations.php:42
+#: templates/myaccount/invitations.php:39
 #: templates/myaccount/locations.php:32
 #: templates/myaccount/members.php:50
 #: templates/myaccount/organization-orders.php:41
 msgid "Actions"
 msgstr "Aktionen"
 
-#: templates/myaccount/invitations.php:166
+#: templates/myaccount/invitations.php:133
 msgid "Never"
 msgstr "Nie"
 
-#: templates/myaccount/invitations.php:177
+#: templates/myaccount/invitations.php:144
 msgid "Send again"
 msgstr "Erneut senden"
 
 #. translators: %s: the invited email address.
-#: templates/myaccount/invitations.php:188
+#: templates/myaccount/invitations.php:155
 #, php-format
 msgid "Withdraw the invitation to %s? Their link stops working immediately."
 msgstr "Die Einladung an %s zurückziehen? Der Link funktioniert sofort nicht mehr."
 
-#: templates/myaccount/invitations.php:193
+#: templates/myaccount/invitations.php:160
 msgid "Withdraw"
 msgstr "Zurückziehen"
 
@@ -1193,6 +1195,7 @@ msgstr "Änderungen speichern"
 msgid "Add %s"
 msgstr "%s hinzufügen"
 
+#: templates/myaccount/invitation-form.php:96
 #: templates/myaccount/location-form.php:162
 #: templates/myaccount/member-form.php:227
 msgid "Cancel"
@@ -1470,38 +1473,34 @@ msgstr "„%s“ ist jetzt die Standardauswahl an der Kasse."
 msgid "Choose at least one %s, or give access to all of them."
 msgstr "Wähle mindestens eine %s aus oder gib Zugriff auf alle."
 
-#: includes/Frontend/MyAccount.php:386
+#: includes/Frontend/MyAccount.php:406
 msgid "Invitations waiting"
 msgstr "Offene Einladungen"
 
-#: includes/Frontend/MyAccount.php:394
+#: includes/Frontend/MyAccount.php:414
 msgid "Orders"
 msgstr "Bestellungen"
 
-#: templates/myaccount/invitations.php:38
+#: templates/myaccount/invitations.php:35
 msgid "Sent to"
 msgstr "Gesendet an"
 
 #. translators: %s: the plural member noun for the site's mode, for example "Employees".
-#: templates/myaccount/invitations.php:64
+#: templates/myaccount/invitations.php:61
 #, php-format
 msgid "An invitation is the only way to add %s. Each one is a single-use link, good for the address it was sent to and nothing else."
 msgstr "Nur über eine Einladung lassen sich %s hinzufügen. Jede Einladung ist ein einmalig nutzbarer Link, der ausschließlich für die Adresse gilt, an die er gesendet wurde."
 
-#: templates/myaccount/invitations.php:101
-msgid "You can change this, and everything else about them, once they have joined."
-msgstr "Das und alles andere kannst du ändern, sobald die Person beigetreten ist."
-
-#: templates/myaccount/invitations.php:114
+#: templates/myaccount/invitations.php:76
 msgid "No invitations sent yet."
 msgstr "Noch keine Einladungen versendet."
 
-#: templates/myaccount/invitations.php:115
+#: templates/myaccount/invitations.php:77
 msgid "Whoever you invite appears here until they accept."
 msgstr "Wen du einlädst, erscheint hier, bis die Einladung angenommen wird."
 
 #. translators: %s: the date an invitation was sent.
-#: templates/myaccount/invitations.php:150
+#: templates/myaccount/invitations.php:117
 #, php-format
 msgid "Sent %s"
 msgstr "Gesendet am %s"
@@ -1648,3 +1647,19 @@ msgstr[1] "%d Bestellungen, neueste zuerst."
 #: templates/myaccount/organization.php:61
 msgid "VAT or tax ID"
 msgstr "USt-IdNr. oder Steuernummer"
+
+#: templates/myaccount/invitation-form.php:34
+msgid "← Back to invitations"
+msgstr "← Zurück zu den Einladungen"
+
+#. translators: %s: the organization noun for the site's mode, for example "Company".
+#: templates/myaccount/invitation-form.php:46
+#, php-format
+msgid "They get a single-use link. It works only for the address you enter, only once, and only for this %s — so send it to an address you know is theirs."
+msgstr "Die Person erhält einen einmalig nutzbaren Link. Er gilt nur für die eingegebene Adresse, nur ein einziges Mal und nur für diese %s — schicke ihn also an eine Adresse, von der du weißt, dass sie ihr gehört."
+
+#. translators: %s: the plural member noun for the site's mode, for example "Employees".
+#: templates/myaccount/invitation-form.php:85
+#, php-format
+msgid "You can change this, and everything else about them, from the %s screen once they have joined."
+msgstr "Das und alles andere kannst du nach dem Beitritt auf der Seite %s ändern."
