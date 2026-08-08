@@ -37,8 +37,9 @@ abstract class TestCase extends \WP_UnitTestCase {
 
 		Context::flush();
 		wp_set_current_user( 0 );
-		$_POST = array();
-		$_GET  = array();
+		$_POST    = array();
+		$_GET     = array();
+		$_REQUEST = array();
 	}
 
 	/**
@@ -48,8 +49,9 @@ abstract class TestCase extends \WP_UnitTestCase {
 	 */
 	public function tear_down() {
 		Context::flush();
-		$_POST = array();
-		$_GET  = array();
+		$_POST    = array();
+		$_GET     = array();
+		$_REQUEST = array();
 
 		parent::tear_down();
 	}

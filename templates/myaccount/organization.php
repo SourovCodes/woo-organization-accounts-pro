@@ -12,11 +12,13 @@
  */
 
 use WooOrgAccounts\Data\Organization;
+use WooOrgAccounts\Frontend\AccountHandlers;
+use WooOrgAccounts\Frontend\MyAccount;
 use WooOrgAccounts\Labels;
 
 defined( 'ABSPATH' ) || exit;
 
-$woap_post_url = esc_url( admin_url( 'admin-post.php' ) );
+$woap_post_url = esc_url( wc_get_account_endpoint_url( MyAccount::ENDPOINT_PROFILE ) );
 $woap_billing  = $organization->get_billing_address();
 
 ?>
@@ -44,7 +46,7 @@ $woap_billing  = $organization->get_billing_address();
 	<?php endif; ?>
 
 	<form class="woocommerce-form woap-account__form" method="post" action="<?php echo $woap_post_url; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Escaped above with esc_url(). ?>">
-		<input type="hidden" name="action" value="woap_save_organization">
+		<input type="hidden" name="<?php echo esc_attr( AccountHandlers::ACTION_FIELD ); ?>" value="save_organization">
 		<?php wp_nonce_field( 'woap_save_organization' ); ?>
 
 		<h3>
@@ -121,7 +123,7 @@ $woap_billing  = $organization->get_billing_address();
 		</p>
 
 		<form class="woocommerce-form woap-account__form" method="post" action="<?php echo $woap_post_url; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Escaped above with esc_url(). ?>">
-			<input type="hidden" name="action" value="woap_save_billing">
+			<input type="hidden" name="<?php echo esc_attr( AccountHandlers::ACTION_FIELD ); ?>" value="save_billing">
 			<?php wp_nonce_field( 'woap_save_billing' ); ?>
 
 			<p class="woocommerce-form-row form-row-first">

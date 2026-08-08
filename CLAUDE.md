@@ -115,6 +115,13 @@ which cannot discover capabilities this plugin grants at runtime.
 - **Authorise every state change**: `check_admin_referer()` / `wp_verify_nonce()` *and*
   `current_user_can()`. A nonce alone is not authorisation. On the frontend, use
   `Guard::check_request()`, which does both and returns the organization being acted on.
+- **Frontend forms are handled on `template_redirect`, never through `admin-post.php`.**
+  WooCommerce decides what to load from `is_admin()`, and `admin-post.php` is an admin request:
+  `wc_load_cart()` never runs there, so `wc_add_notice()` is undefined and `WC()->session` does not
+  exist. A handler there cannot tell the customer what happened — it fatals trying. Including the
+  notice functions by hand does not fix it either; `wc_add_notice()` then finds no session and drops
+  the message silently. `AccountHandlersTest` asserts none of these handlers drift back onto
+  `admin_post_*`.
 - **Scope every read and write to an organization.** The two questions — does this user hold the
   capability, and does this user belong to *this* organization — are easy to answer separately by
   mistake, and answering only the first is the whole of cross-tenant access. `Guard` answers both.

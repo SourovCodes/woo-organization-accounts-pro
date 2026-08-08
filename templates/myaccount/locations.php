@@ -13,12 +13,13 @@
  */
 
 use WooOrgAccounts\Data\Location;
+use WooOrgAccounts\Frontend\AccountHandlers;
 use WooOrgAccounts\Frontend\MyAccount;
 use WooOrgAccounts\Labels;
 
 defined( 'ABSPATH' ) || exit;
 
-$woap_post_url = esc_url( admin_url( 'admin-post.php' ) );
+$woap_post_url = esc_url( wc_get_account_endpoint_url( MyAccount::ENDPOINT_LOCATIONS ) );
 $woap_editing  = $editing instanceof Location ? $editing : new Location();
 $woap_list_url = wc_get_account_endpoint_url( MyAccount::ENDPOINT_LOCATIONS );
 
@@ -68,7 +69,7 @@ $woap_list_url = wc_get_account_endpoint_url( MyAccount::ENDPOINT_LOCATIONS );
 								<?php esc_html_e( 'Edit', 'woo-organization-accounts-pro' ); ?>
 							</a>
 							<form method="post" action="<?php echo $woap_post_url; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Escaped above with esc_url(). ?>">
-								<input type="hidden" name="action" value="woap_delete_location">
+								<input type="hidden" name="<?php echo esc_attr( AccountHandlers::ACTION_FIELD ); ?>" value="delete_location">
 								<input type="hidden" name="location_id" value="<?php echo esc_attr( (string) $woap_location->get_id() ); ?>">
 								<?php wp_nonce_field( 'woap_delete_location' ); ?>
 								<button type="submit" class="woap-link-button"><?php esc_html_e( 'Delete', 'woo-organization-accounts-pro' ); ?></button>
@@ -99,7 +100,7 @@ $woap_list_url = wc_get_account_endpoint_url( MyAccount::ENDPOINT_LOCATIONS );
 	</h3>
 
 	<form class="woocommerce-form woap-account__form" method="post" action="<?php echo $woap_post_url; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Escaped above with esc_url(). ?>">
-		<input type="hidden" name="action" value="woap_save_location">
+		<input type="hidden" name="<?php echo esc_attr( AccountHandlers::ACTION_FIELD ); ?>" value="save_location">
 		<input type="hidden" name="location_id" value="<?php echo esc_attr( (string) $woap_editing->get_id() ); ?>">
 		<?php wp_nonce_field( 'woap_save_location' ); ?>
 

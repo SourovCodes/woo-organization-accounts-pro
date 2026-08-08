@@ -12,11 +12,13 @@
 
 use WooOrgAccounts\Data\Invitation;
 use WooOrgAccounts\Data\Member;
+use WooOrgAccounts\Frontend\AccountHandlers;
+use WooOrgAccounts\Frontend\MyAccount;
 use WooOrgAccounts\Labels;
 
 defined( 'ABSPATH' ) || exit;
 
-$woap_post_url = esc_url( admin_url( 'admin-post.php' ) );
+$woap_post_url = esc_url( wc_get_account_endpoint_url( MyAccount::ENDPOINT_INVITATIONS ) );
 
 ?>
 <div class="woap-account woap-account--invitations">
@@ -28,7 +30,7 @@ $woap_post_url = esc_url( admin_url( 'admin-post.php' ) );
 	</p>
 
 	<form class="woocommerce-form woap-account__form" method="post" action="<?php echo $woap_post_url; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Escaped above with esc_url(). ?>">
-		<input type="hidden" name="action" value="woap_invite_member">
+		<input type="hidden" name="<?php echo esc_attr( AccountHandlers::ACTION_FIELD ); ?>" value="invite_member">
 		<?php wp_nonce_field( 'woap_invite_member' ); ?>
 
 		<p class="woocommerce-form-row form-row-first">
@@ -84,13 +86,13 @@ $woap_post_url = esc_url( admin_url( 'admin-post.php' ) );
 						<td class="woap-actions">
 							<?php if ( Invitation::STATUS_PENDING === (string) $woap_invitation->get( 'status' ) ) : ?>
 								<form method="post" action="<?php echo $woap_post_url; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Escaped above with esc_url(). ?>">
-									<input type="hidden" name="action" value="woap_resend_invitation">
+									<input type="hidden" name="<?php echo esc_attr( AccountHandlers::ACTION_FIELD ); ?>" value="resend_invitation">
 									<input type="hidden" name="invitation_id" value="<?php echo esc_attr( (string) $woap_invitation->get_id() ); ?>">
 									<?php wp_nonce_field( 'woap_resend_invitation' ); ?>
 									<button type="submit" class="woap-link-button"><?php esc_html_e( 'Send again', 'woo-organization-accounts-pro' ); ?></button>
 								</form>
 								<form method="post" action="<?php echo $woap_post_url; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Escaped above with esc_url(). ?>">
-									<input type="hidden" name="action" value="woap_revoke_invitation">
+									<input type="hidden" name="<?php echo esc_attr( AccountHandlers::ACTION_FIELD ); ?>" value="revoke_invitation">
 									<input type="hidden" name="invitation_id" value="<?php echo esc_attr( (string) $woap_invitation->get_id() ); ?>">
 									<?php wp_nonce_field( 'woap_revoke_invitation' ); ?>
 									<button type="submit" class="woap-link-button"><?php esc_html_e( 'Withdraw', 'woo-organization-accounts-pro' ); ?></button>

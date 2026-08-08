@@ -24,14 +24,44 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Every write the organization screens can make.
  *
- * All of them go through `admin-post.php` rather than posting back to the account
- * page, so each one is a single POST that redirects, and a refresh after saving does
- * not save again. Each handler opens with Guard::check_request(), which verifies the
- * nonce and the capability together and hands back the organization being acted on —
- * so a handler that forgets to scope its writes cannot be written without deleting
- * that line first.
+ * Each form posts back to the account page it came from and is handled on
+ * `template_redirect`, before anything has been sent to the browser, so a handler can
+ * still redirect and a refresh after saving does not save again. Each one opens with
+ * Guard::check_request(), which verifies the nonce and the capability together and
+ * hands back the organization being acted on — so a handler that forgets to scope its
+ * writes cannot be written without deleting that line first.
+ *
+ * These deliberately do *not* go through `admin-post.php`, which is the obvious place
+ * to put a form handler and the wrong one here. WooCommerce decides what to load from
+ * `is_admin()`, and `admin-post.php` is an admin request: `wc_load_cart()` never runs,
+ * so `wc_add_notice()` is not defined and `WC()->session` does not exist. A handler
+ * there cannot tell the customer what happened — it fatals trying.
  */
 class AccountHandlers {
+
+	/**
+	 * Field naming which handler a submission is for.
+	 */
+	const ACTION_FIELD = 'woap_account_action';
+
+	/**
+	 * The handlers, keyed by the value that selects them.
+	 *
+	 * @return array Map of action name to method name.
+	 */
+	public static function actions() {
+		return array(
+			'save_organization' => 'save_organization',
+			'save_billing'      => 'save_billing',
+			'save_location'     => 'save_location',
+			'delete_location'   => 'delete_location',
+			'invite_member'     => 'invite_member',
+			'revoke_invitation' => 'revoke_invitation',
+			'resend_invitation' => 'resend_invitation',
+			'update_member'     => 'update_member',
+			'remove_member'     => 'remove_member',
+		);
+	}
 
 	/**
 	 * Register the hooks.
@@ -39,21 +69,28 @@ class AccountHandlers {
 	 * @return void
 	 */
 	public function register() {
-		$actions = array(
-			'woap_save_organization' => 'save_organization',
-			'woap_save_billing'      => 'save_billing',
-			'woap_save_location'     => 'save_location',
-			'woap_delete_location'   => 'delete_location',
-			'woap_invite_member'     => 'invite_member',
-			'woap_revoke_invitation' => 'revoke_invitation',
-			'woap_resend_invitation' => 'resend_invitation',
-			'woap_update_member'     => 'update_member',
-			'woap_remove_member'     => 'remove_member',
-		);
+		add_action( 'template_redirect', array( $this, 'dispatch' ) );
+	}
 
-		foreach ( $actions as $action => $method ) {
-			add_action( 'admin_post_' . $action, array( $this, $method ) );
+	/**
+	 * Run the handler this submission asked for, if any.
+	 *
+	 * Only the choice of handler is made here. Each one verifies its own nonce and
+	 * capability, so naming a handler in the request buys nothing on its own.
+	 *
+	 * @return void
+	 */
+	public function dispatch() {
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Only selects which handler runs; the handler verifies the nonce before it does anything.
+		$requested = isset( $_POST[ self::ACTION_FIELD ] ) ? sanitize_key( wp_unslash( $_POST[ self::ACTION_FIELD ] ) ) : '';
+
+		$actions = self::actions();
+
+		if ( '' === $requested || ! isset( $actions[ $requested ] ) ) {
+			return;
 		}
+
+		$this->{$actions[ $requested ]}();
 	}
 
 	/**

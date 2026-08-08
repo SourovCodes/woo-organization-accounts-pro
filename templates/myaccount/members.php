@@ -15,12 +15,14 @@
  */
 
 use WooOrgAccounts\Data\Member;
+use WooOrgAccounts\Frontend\AccountHandlers;
+use WooOrgAccounts\Frontend\MyAccount;
 use WooOrgAccounts\Labels;
 use WooOrgAccounts\Roles;
 
 defined( 'ABSPATH' ) || exit;
 
-$woap_post_url = esc_url( admin_url( 'admin-post.php' ) );
+$woap_post_url = esc_url( wc_get_account_endpoint_url( MyAccount::ENDPOINT_MEMBERS ) );
 $woap_labels   = Roles::labels();
 
 ?>
@@ -66,7 +68,7 @@ $woap_labels   = Roles::labels();
 			</summary>
 
 			<form class="woocommerce-form woap-member__form" method="post" action="<?php echo $woap_post_url; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Escaped above with esc_url(). ?>">
-				<input type="hidden" name="action" value="woap_update_member">
+				<input type="hidden" name="<?php echo esc_attr( AccountHandlers::ACTION_FIELD ); ?>" value="update_member">
 				<input type="hidden" name="member_id" value="<?php echo esc_attr( (string) $woap_member->get_id() ); ?>">
 				<?php wp_nonce_field( 'woap_update_member' ); ?>
 
@@ -134,7 +136,7 @@ $woap_labels   = Roles::labels();
 
 			<?php if ( ! $woap_is_self ) : ?>
 				<form class="woap-member__remove" method="post" action="<?php echo $woap_post_url; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Escaped above with esc_url(). ?>">
-					<input type="hidden" name="action" value="woap_remove_member">
+					<input type="hidden" name="<?php echo esc_attr( AccountHandlers::ACTION_FIELD ); ?>" value="remove_member">
 					<input type="hidden" name="member_id" value="<?php echo esc_attr( (string) $woap_member->get_id() ); ?>">
 					<?php wp_nonce_field( 'woap_remove_member' ); ?>
 					<button type="submit" class="woocommerce-Button button woap-button--danger">
