@@ -8,6 +8,7 @@
 namespace WooOrgAccounts\Frontend;
 
 use WooOrgAccounts\Checkout\OrderMeta;
+use WooOrgAccounts\Data\Invitation;
 use WooOrgAccounts\Data\InvitationRepository;
 use WooOrgAccounts\Data\LocationRepository;
 use WooOrgAccounts\Data\MemberRepository;
@@ -59,6 +60,13 @@ class MyAccount {
 	 * Holds a location ID, or `new`. Its absence is what means "show the list".
 	 */
 	const LOCATION_VAR = 'woap_location';
+
+	/**
+	 * Query variable naming the member being managed.
+	 *
+	 * Holds a member ID. Its absence is what means "show the list".
+	 */
+	const MEMBER_VAR = 'woap_member';
 
 	/**
 	 * Every endpoint, mapped to the capability that reveals it.
@@ -336,8 +344,60 @@ class MyAccount {
 			array(
 				'organization' => $organization,
 				'can_billing'  => current_user_can( Roles::MANAGE_BILLING ),
+				'overview'     => self::overview( $organization ),
 			)
 		);
+	}
+
+	/**
+	 * What the other organization screens hold, for the profile screen to report.
+	 *
+	 * The profile is the first item in the account menu and the one every organization
+	 * admin lands on, so it doubles as the overview: how many people can order, how
+	 * many places they can order to, and whether anything is waiting. Only the screens
+	 * this member may open are counted — a tile leading to a refusal is worse than no
+	 * tile, and the count itself would leak how many people are on an account somebody
+	 * has no business administering.
+	 *
+	 * @param \WooOrgAccounts\Data\Organization $organization Organization to describe.
+	 * @return array List of tiles, each with a label, a count and a URL.
+	 */
+	private static function overview( $organization ) {
+		$tiles = array();
+
+		if ( current_user_can( Roles::MANAGE_MEMBERS ) ) {
+			$tiles[] = array(
+				'label' => Labels::members(),
+				'count' => MemberRepository::count_for_organization( $organization->get_id() ),
+				'url'   => self::members_url(),
+			);
+		}
+
+		if ( current_user_can( Roles::MANAGE_LOCATIONS ) ) {
+			$tiles[] = array(
+				'label' => Labels::locations(),
+				'count' => LocationRepository::count_for_organization( $organization->get_id() ),
+				'url'   => self::locations_url(),
+			);
+		}
+
+		if ( current_user_can( Roles::INVITE_MEMBERS ) ) {
+			$tiles[] = array(
+				'label' => __( 'Invitations waiting', 'woo-organization-accounts-pro' ),
+				'count' => InvitationRepository::count_for_organization( $organization->get_id(), Invitation::STATUS_PENDING ),
+				'url'   => wc_get_account_endpoint_url( self::ENDPOINT_INVITATIONS ),
+			);
+		}
+
+		if ( current_user_can( Roles::VIEW_ORGANIZATION_ORDERS ) ) {
+			$tiles[] = array(
+				'label' => __( 'Orders', 'woo-organization-accounts-pro' ),
+				'count' => self::organization_orders( $organization->get_id(), 1, 1 )['total'],
+				'url'   => wc_get_account_endpoint_url( self::ENDPOINT_ORDERS ),
+			);
+		}
+
+		return $tiles;
 	}
 
 	/**
@@ -350,6 +410,39 @@ class MyAccount {
 
 		if ( null === $organization ) {
 			return;
+		}
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Choosing which read-only view to render; the write itself is nonce-checked when submitted.
+		$requested = isset( $_GET[ self::MEMBER_VAR ] ) ? absint( wp_unslash( $_GET[ self::MEMBER_VAR ] ) ) : 0;
+		$locations = LocationRepository::for_organization( $organization->get_id() );
+
+		/*
+		 * One member is a screen of its own, for the reasons the location form is:
+		 * everything about that person in one place, a rejected submission that comes
+		 * back knowing who it was for, and a list that stays a list. It used to be a
+		 * stack of accordions, every one of them holding a fifteen-control form, so a
+		 * hundred-employee account shipped a hundred forms to say who works there.
+		 */
+		if ( $requested > 0 ) {
+			$member = MemberRepository::find_for_organization( $requested, $organization->get_id() );
+
+			if ( null !== $member ) {
+				Templates::render(
+					'myaccount/member-form.php',
+					array(
+						'organization' => $organization,
+						'member'       => $member,
+						'user'         => get_user_by( 'id', $member->get_user_id() ),
+						'access'       => MemberRepository::location_ids( $member->get_id() ),
+						'locations'    => $locations,
+						'is_self'      => $member->get_user_id() === get_current_user_id(),
+					)
+				);
+
+				return;
+			}
+
+			wc_print_notice( esc_html__( 'That member no longer exists.', 'woo-organization-accounts-pro' ), 'error' );
 		}
 
 		$members = MemberRepository::for_organization( $organization->get_id() );
@@ -368,10 +461,35 @@ class MyAccount {
 				'members'      => $members,
 				'users'        => $users,
 				'access'       => $access,
-				'locations'    => LocationRepository::for_organization( $organization->get_id() ),
+				'locations'    => $locations,
 				'current_user' => get_current_user_id(),
+				'pending'      => current_user_can( Roles::INVITE_MEMBERS )
+					? InvitationRepository::count_for_organization( $organization->get_id(), Invitation::STATUS_PENDING )
+					: 0,
 			)
 		);
+	}
+
+	/**
+	 * The URL of the member list.
+	 *
+	 * @return string URL.
+	 */
+	public static function members_url() {
+		return wc_get_account_endpoint_url( self::ENDPOINT_MEMBERS );
+	}
+
+	/**
+	 * The URL of the screen that manages one member.
+	 *
+	 * The member is named in the URL rather than only in a hidden field, so a rejected
+	 * submission returns to the same screen still knowing whose it was.
+	 *
+	 * @param int $member_id Member to manage.
+	 * @return string URL.
+	 */
+	public static function member_form_url( $member_id ) {
+		return add_query_arg( self::MEMBER_VAR, absint( $member_id ), self::members_url() );
 	}
 
 	/**
@@ -508,6 +626,7 @@ class MyAccount {
 				'orders'       => $orders['orders'],
 				'page'         => $page,
 				'pages'        => $orders['pages'],
+				'total'        => $orders['total'],
 			)
 		);
 	}
@@ -525,6 +644,7 @@ class MyAccount {
 	 * @return array {
 	 *     @type \WC_Order[] $orders The orders on this page.
 	 *     @type int         $pages  Total number of pages.
+	 *     @type int         $total  Total number of orders.
 	 * }
 	 */
 	public static function organization_orders( $organization_id, $per_page = 20, $page = 1 ) {
@@ -550,6 +670,7 @@ class MyAccount {
 		return array(
 			'orders' => isset( $query->orders ) ? $query->orders : array(),
 			'pages'  => isset( $query->max_num_pages ) ? (int) $query->max_num_pages : 1,
+			'total'  => isset( $query->total ) ? (int) $query->total : 0,
 		);
 	}
 

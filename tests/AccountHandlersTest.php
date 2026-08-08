@@ -13,6 +13,7 @@ use WooOrgAccounts\Data\MemberRepository;
 use WooOrgAccounts\Data\OrganizationRepository;
 use WooOrgAccounts\Frontend\AccountHandlers;
 use WooOrgAccounts\Frontend\MyAccount;
+use WooOrgAccounts\Roles;
 
 /**
  * The writes the My Account organization screens make.
@@ -35,6 +36,43 @@ class AccountHandlersTest extends TestCase {
 	 * @return string Redirect target.
 	 */
 	private function submit( $action, array $fields, $nonce ) {
+		$location = $this->dispatch_form( $action, $fields, $nonce );
+
+		if ( null === $location ) {
+			$this->fail( 'The handler did not redirect.' );
+		}
+
+		return $location;
+	}
+
+	/**
+	 * Run a handler that is expected to hand the form back rather than redirect.
+	 *
+	 * A rejected submission is re-rendered with what was typed still in it — see
+	 * `AccountHandlers::hold()` — so "did not redirect" is the passing outcome here
+	 * rather than the failure it is above.
+	 *
+	 * @param string $action Value of the action field.
+	 * @param array  $fields Everything else to post.
+	 * @param string $nonce  Nonce action the handler checks.
+	 * @return void
+	 */
+	private function submit_expecting_the_form_back( $action, array $fields, $nonce ) {
+		$this->assertNull(
+			$this->dispatch_form( $action, $fields, $nonce ),
+			'The handler redirected, which loses everything that was typed.'
+		);
+	}
+
+	/**
+	 * Build the request and dispatch it, reporting where it went.
+	 *
+	 * @param string $action Value of the action field.
+	 * @param array  $fields Everything else to post.
+	 * @param string $nonce  Nonce action the handler checks.
+	 * @return string|null Redirect target, or null when the handler returned instead.
+	 */
+	private function dispatch_form( $action, array $fields, $nonce ) {
 		$_POST = array_merge(
 			$fields,
 			array(
@@ -64,7 +102,7 @@ class AccountHandlersTest extends TestCase {
 			remove_filter( 'wp_redirect', $catch );
 		}
 
-		$this->fail( 'The handler did not redirect.' );
+		return null;
 	}
 
 	/**
@@ -333,7 +371,7 @@ class AccountHandlersTest extends TestCase {
 		$admin        = $this->make_member( $organization, Member::ROLE_ADMIN );
 		$this->act_as( $admin );
 
-		$this->submit(
+		$this->submit_expecting_the_form_back(
 			'update_member',
 			array(
 				'woap_member_id' => $admin->get_id(),
@@ -347,6 +385,161 @@ class AccountHandlersTest extends TestCase {
 		$this->assertNotEmpty( wc_get_notices( 'error' ) );
 
 		wc_clear_notices();
+		AccountHandlers::flush();
+	}
+
+	/**
+	 * Promoting somebody to admin gives them an admin's permissions.
+	 *
+	 * The permissions form stores only what differs from the role's own answer, and it
+	 * used to derive that difference from checkboxes drawn for the role the member held
+	 * *before* the change. Promoting an employee therefore stored "everything off" as
+	 * six overrides against the admin defaults, and produced an organization admin who
+	 * could not manage anything. The form now asks the question outright — follow the
+	 * role, or choose them one by one — and following the role stores no overrides.
+	 */
+	public function testPromotingToAdminGrantsTheAdminDefaults() {
+		$organization = $this->make_organization();
+		$this->act_as( $this->make_member( $organization, Member::ROLE_ADMIN ) );
+
+		$member = $this->make_member( $organization, Member::ROLE_MEMBER );
+
+		$this->submit(
+			'update_member',
+			array(
+				'woap_member_id'         => $member->get_id(),
+				'woap_role'              => Member::ROLE_ADMIN,
+				'woap_status'            => Member::STATUS_ACTIVE,
+				'woap_permissions_scope' => 'role',
+				'woap_location_scope'    => 'all',
+			),
+			'woap_update_member'
+		);
+
+		$saved = MemberRepository::find( $member->get_id() );
+
+		$this->assertTrue( $saved->is_admin() );
+		$this->assertSame( array(), $saved->get_capabilities(), 'Following the role must not store overrides against it.' );
+		$this->assertTrue( user_can( $saved->get_user_id(), Roles::MANAGE_MEMBERS ), 'The new admin cannot manage members.' );
+
+		wc_clear_notices();
+	}
+
+	/**
+	 * Choosing permissions one by one stores only what differs from the role.
+	 */
+	public function testChosenPermissionsAreStoredAsOverrides() {
+		$organization = $this->make_organization();
+		$this->act_as( $this->make_member( $organization, Member::ROLE_ADMIN ) );
+
+		$member = $this->make_member( $organization, Member::ROLE_MEMBER );
+
+		$this->submit(
+			'update_member',
+			array(
+				'woap_member_id'         => $member->get_id(),
+				'woap_role'              => Member::ROLE_MEMBER,
+				'woap_status'            => Member::STATUS_ACTIVE,
+				'woap_permissions_scope' => 'custom',
+				'woap_capabilities'      => array( Roles::PLACE_ORDERS, Roles::MANAGE_LOCATIONS ),
+				'woap_location_scope'    => 'all',
+			),
+			'woap_update_member'
+		);
+
+		$saved = MemberRepository::find( $member->get_id() );
+
+		$this->assertSame( array( Roles::MANAGE_LOCATIONS => true ), $saved->get_capabilities() );
+		$this->assertTrue( user_can( $saved->get_user_id(), Roles::MANAGE_LOCATIONS ) );
+
+		wc_clear_notices();
+	}
+
+	/**
+	 * "Only the ones I tick", with nothing ticked, is a question rather than an answer.
+	 *
+	 * An empty access list is how "every location" is stored, so accepting this would
+	 * quietly save the opposite of what the form says.
+	 */
+	public function testRestrictingToNoLocationIsRefused() {
+		$organization = $this->make_organization();
+		$this->act_as( $this->make_member( $organization, Member::ROLE_ADMIN ) );
+
+		$member = $this->make_member( $organization, Member::ROLE_MEMBER );
+		$north  = $this->make_location( $organization );
+
+		MemberRepository::set_location_ids( $member->get_id(), array( $north->get_id() ) );
+
+		$this->submit_expecting_the_form_back(
+			'update_member',
+			array(
+				'woap_member_id'         => $member->get_id(),
+				'woap_role'              => Member::ROLE_MEMBER,
+				'woap_status'            => Member::STATUS_ACTIVE,
+				'woap_permissions_scope' => 'role',
+				'woap_location_scope'    => 'selected',
+			),
+			'woap_update_member'
+		);
+
+		$this->assertSame(
+			array( $north->get_id() ),
+			MemberRepository::location_ids( $member->get_id() ),
+			'A refused submission must not have changed anything.'
+		);
+		$this->assertNotEmpty( wc_get_notices( 'error' ) );
+
+		wc_clear_notices();
+		AccountHandlers::flush();
+	}
+
+	/**
+	 * Making one location the default takes it off the one that had it.
+	 */
+	public function testMakingALocationTheDefault() {
+		$organization = $this->make_organization();
+		$this->act_as( $this->make_member( $organization, Member::ROLE_ADMIN ) );
+
+		$north = $this->make_location( $organization, array( 'is_default' => true ) );
+		$south = $this->make_location( $organization, array( 'name' => 'Warehouse South' ) );
+
+		$this->submit(
+			'default_location',
+			array( 'woap_location_id' => $south->get_id() ),
+			'woap_default_location'
+		);
+
+		$this->assertTrue( LocationRepository::find( $south->get_id() )->is_default() );
+		$this->assertFalse( LocationRepository::find( $north->get_id() )->is_default(), 'Two locations are default at once.' );
+
+		wc_clear_notices();
+	}
+
+	/**
+	 * A refused invitation comes back on the form with the address still in it.
+	 */
+	public function testRefusedInvitationKeepsWhatWasTyped() {
+		$organization = $this->make_organization();
+		$this->act_as( $this->make_member( $organization, Member::ROLE_ADMIN ) );
+
+		$existing = $this->make_member( $organization, Member::ROLE_MEMBER );
+		$email    = get_userdata( $existing->get_user_id() )->user_email;
+
+		$this->submit_expecting_the_form_back(
+			'invite_member',
+			array(
+				'woap_email' => $email,
+				'woap_role'  => Member::ROLE_ADMIN,
+			),
+			'woap_invite_member'
+		);
+
+		$this->assertSame( $email, AccountHandlers::value( 'woap_email' ) );
+		$this->assertSame( Member::ROLE_ADMIN, AccountHandlers::value( 'woap_role' ) );
+		$this->assertNotEmpty( wc_get_notices( 'error' ) );
+
+		wc_clear_notices();
+		AccountHandlers::flush();
 	}
 
 	/**

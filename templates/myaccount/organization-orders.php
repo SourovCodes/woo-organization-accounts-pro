@@ -10,6 +10,7 @@
  * @var \WC_Order[]                       $orders       Orders on this page.
  * @var int                               $page         Current page, one-based.
  * @var int                               $pages        Total number of pages.
+ * @var int                               $total        Total number of orders.
  */
 
 use WooOrgAccounts\Checkout\OrderMeta;
@@ -63,21 +64,53 @@ $woap_cell = static function ( $column ) use ( $woap_columns ) {
 
 	<?php if ( empty( $orders ) ) : ?>
 
-		<p>
-			<?php
-			echo esc_html(
-				sprintf(
-					/* translators: %s: the organization noun for the site's mode, for example "Company". */
-					__( 'This %s has not placed any orders yet.', 'woo-organization-accounts-pro' ),
-					Labels::organization()
-				)
-			);
-			?>
-		</p>
+		<div class="woap-empty">
+			<p class="woap-empty__title">
+				<?php
+				echo esc_html(
+					sprintf(
+						/* translators: %s: the organization noun for the site's mode, for example "Company". */
+						__( 'This %s has not placed any orders yet.', 'woo-organization-accounts-pro' ),
+						Labels::organization()
+					)
+				);
+				?>
+			</p>
+			<p class="woap-account__note">
+				<?php
+				echo esc_html(
+					sprintf(
+						/* translators: %s: the plural member noun for the site's mode, for example "Employees". */
+						__( 'Every order any of your %s places appears here, whoever placed it.', 'woo-organization-accounts-pro' ),
+						Labels::members()
+					)
+				);
+				?>
+			</p>
+		</div>
 
 	<?php else : ?>
 
-		<table class="woocommerce-orders-table shop_table shop_table_responsive woap-orders-table">
+		<div class="woap-account__header">
+			<p class="woap-account__note">
+				<?php
+				echo esc_html(
+					sprintf(
+						/* translators: %d: total number of orders the organization has placed. */
+						_n(
+							'%d order, newest first.',
+							'%d orders, newest first.',
+							$total,
+							'woo-organization-accounts-pro'
+						),
+						$total
+					)
+				);
+				?>
+			</p>
+		</div>
+
+		<table class="woocommerce-orders-table shop_table shop_table_responsive woap-table woap-orders-table">
 			<thead>
 				<tr>
 					<?php foreach ( $woap_columns as $woap_column => $woap_label ) : ?>

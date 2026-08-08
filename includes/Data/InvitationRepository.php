@@ -142,6 +142,36 @@ class InvitationRepository extends Repository {
 	}
 
 	/**
+	 * How many invitations an organization has in one state.
+	 *
+	 * A count rather than a fetch, because the screens that report "two are still
+	 * waiting" have no use for the rows behind the number.
+	 *
+	 * @param int    $organization_id Organization ID.
+	 * @param string $status          Status to count, or an empty string for all of them.
+	 * @return int Invitation count.
+	 */
+	public static function count_for_organization( $organization_id, $status = '' ) {
+		global $wpdb;
+
+		$table = static::table();
+
+		if ( '' === (string) $status ) {
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name from a class constant; the value is a placeholder.
+			return (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$table} WHERE organization_id = %d", absint( $organization_id ) ) );
+		}
+
+		return (int) $wpdb->get_var(
+			$wpdb->prepare(
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name from a class constant; every value is a placeholder.
+				"SELECT COUNT(*) FROM {$table} WHERE organization_id = %d AND status = %s",
+				absint( $organization_id ),
+				(string) $status
+			)
+		);
+	}
+
+	/**
 	 * The open invitation an organization already has for an email address.
 	 *
 	 * Used to turn a second invitation to the same person into a re-send rather than

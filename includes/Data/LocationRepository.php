@@ -35,6 +35,24 @@ class LocationRepository extends Repository {
 	}
 
 	/**
+	 * How many locations an organization has.
+	 *
+	 * A count rather than a fetch, because the account overview reports the number and
+	 * has no use for the rows behind it.
+	 *
+	 * @param int $organization_id Organization ID.
+	 * @return int Location count.
+	 */
+	public static function count_for_organization( $organization_id ) {
+		global $wpdb;
+
+		$table = static::table();
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name from a class constant; the value is a placeholder.
+		return (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$table} WHERE organization_id = %d", absint( $organization_id ) ) );
+	}
+
+	/**
 	 * Every location belonging to an organization.
 	 *
 	 * @param int $organization_id Organization ID.

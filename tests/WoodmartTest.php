@@ -250,6 +250,7 @@ class WoodmartTest extends WP_UnitTestCase {
 	public function testResponsiveTablesCarryTheirLabels() {
 		$templates = array(
 			'templates/myaccount/locations.php',
+			'templates/myaccount/members.php',
 			'templates/myaccount/invitations.php',
 			'templates/myaccount/organization-orders.php',
 		);

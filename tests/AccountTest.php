@@ -352,6 +352,177 @@ class AccountTest extends TestCase {
 	}
 
 	/**
+	 * Render the members endpoint and give back its markup.
+	 *
+	 * @return string Markup.
+	 */
+	private function render_members() {
+		ob_start();
+		( new MyAccount() )->render_organization_members();
+
+		return (string) ob_get_clean();
+	}
+
+	/**
+	 * The member list is a list, with no form on it.
+	 *
+	 * It used to be one `<details>` per member, each holding a form of a role, a
+	 * status, seven permission checkboxes and a checkbox per location — so an account
+	 * with fifty employees shipped fifty forms to answer "who works here?", and the
+	 * answer itself was hidden inside them.
+	 */
+	public function testMemberListShowsNoForm() {
+		$organization = $this->make_organization();
+		$this->act_as( $this->make_member( $organization, Member::ROLE_ADMIN ) );
+
+		$other = $this->make_member( $organization, Member::ROLE_MEMBER );
+
+		$markup = $this->render_members();
+
+		$this->assertStringNotContainsString( 'name="woap_capabilities[]"', $markup, 'The list should not carry a permissions form.' );
+		$this->assertStringNotContainsString( 'value="update_member"', $markup );
+		$this->assertStringContainsString( MyAccount::MEMBER_VAR . '=' . $other->get_id(), $markup, 'The list needs a way to open one member.' );
+	}
+
+	/**
+	 * Managing one member shows that one, and the form that changes them.
+	 */
+	public function testManagingOneMemberOpensTheirForm() {
+		$organization = $this->make_organization();
+		$this->act_as( $this->make_member( $organization, Member::ROLE_ADMIN ) );
+
+		$other = $this->make_member( $organization, Member::ROLE_MEMBER );
+
+		$_GET[ MyAccount::MEMBER_VAR ] = (string) $other->get_id();
+
+		$markup = $this->render_members();
+
+		$this->assertStringContainsString( 'value="update_member"', $markup );
+		$this->assertStringContainsString( 'name="woap_capabilities[]"', $markup );
+		$this->assertStringContainsString( 'name="woap_member_id" value="' . $other->get_id() . '"', $markup );
+		$this->assertStringContainsString( esc_url( MyAccount::member_form_url( $other->get_id() ) ), $markup );
+	}
+
+	/**
+	 * The screen never offers to remove the person using it.
+	 *
+	 * The handler refuses it too, but an account admin should not be given a button
+	 * whose only outcome is a refusal.
+	 */
+	public function testYouCannotRemoveYourself() {
+		$organization = $this->make_organization();
+		$self         = $this->make_member( $organization, Member::ROLE_ADMIN );
+		$this->act_as( $self );
+
+		$_GET[ MyAccount::MEMBER_VAR ] = (string) $self->get_id();
+
+		$markup = $this->render_members();
+
+		$this->assertStringContainsString( 'value="update_member"', $markup );
+		$this->assertStringNotContainsString( 'value="remove_member"', $markup );
+	}
+
+	/**
+	 * Another organization's member cannot be opened by guessing their ID.
+	 */
+	public function testManagingAForeignMemberIsRefused() {
+		$ours   = $this->make_organization();
+		$theirs = $this->make_organization( array( 'name' => 'Rival Ltd' ) );
+
+		$this->act_as( $this->make_member( $ours, Member::ROLE_ADMIN ) );
+		$foreign = $this->make_member( $theirs, Member::ROLE_MEMBER );
+
+		$_GET[ MyAccount::MEMBER_VAR ] = (string) $foreign->get_id();
+
+		$markup = $this->render_members();
+
+		$this->assertStringNotContainsString( 'name="woap_member_id" value="' . $foreign->get_id() . '"', $markup );
+		$this->assertStringNotContainsString( 'value="update_member"', $markup, 'A foreign member must not open their form.' );
+
+		wc_clear_notices();
+	}
+
+	/**
+	 * `?action=register` on My Account goes to the registration page.
+	 *
+	 * It is Woodmart's own signal for "show me the register side" — the header
+	 * dropdown's *Create an Account* link and the login page's button both use it — and
+	 * WooCommerce's registration is switched off while this plugin is active. Without
+	 * the redirect the visitor asks to sign up and the site answers by asking them to
+	 * sign in.
+	 */
+	public function testRegisterActionGoesToTheRegistrationPage() {
+		wp_set_current_user( 0 );
+
+		$page_id = Registration::create_page();
+
+		$_GET['action']            = 'register';
+		$_SERVER['REQUEST_METHOD'] = 'GET';
+
+		$this->assertSame(
+			get_permalink( $page_id ),
+			$this->account_redirect(),
+			'?action=register still lands on the login form.'
+		);
+	}
+
+	/**
+	 * Somebody already signed in is sent to their account rather than to a sign-up form.
+	 */
+	public function testRegisterActionForASignedInVisitor() {
+		$this->act_as( $this->make_member( $this->make_organization() ) );
+
+		Registration::create_page();
+
+		$_GET['action']            = 'register';
+		$_SERVER['REQUEST_METHOD'] = 'GET';
+
+		$this->assertSame( wc_get_page_permalink( 'myaccount' ), $this->account_redirect() );
+	}
+
+	/**
+	 * Any other account screen is left alone.
+	 */
+	public function testAccountPagesWithoutTheArgumentAreLeftAlone() {
+		wp_set_current_user( 0 );
+
+		Registration::create_page();
+
+		$_SERVER['REQUEST_METHOD'] = 'GET';
+
+		$this->assertSame( '', $this->account_redirect() );
+	}
+
+	/**
+	 * Where an account-page request is sent, if anywhere.
+	 *
+	 * `is_account_page()` asks the main query a question a unit test has no page to
+	 * answer with, so the filter WooCommerce provides for exactly that stands in.
+	 *
+	 * @return string Redirect target, or an empty string when the request was left alone.
+	 */
+	private function account_redirect() {
+		$catch = static function ( $location ) {
+			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Carried to an assertion in a test, never rendered.
+			throw new RedirectException( $location );
+		};
+
+		add_filter( 'woocommerce_is_account_page', '__return_true' );
+		add_filter( 'wp_redirect', $catch );
+
+		try {
+			( new Registration() )->redirect_register_action();
+		} catch ( RedirectException $redirect ) {
+			return $redirect->location;
+		} finally {
+			remove_filter( 'wp_redirect', $catch );
+			remove_filter( 'woocommerce_is_account_page', '__return_true' );
+		}
+
+		return '';
+	}
+
+	/**
 	 * Activation creates the registration page and remembers it.
 	 */
 	public function testRegistrationPageIsCreatedOnce() {

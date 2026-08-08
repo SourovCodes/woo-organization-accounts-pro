@@ -64,25 +64,39 @@ $woap_bad    = ( $woap_errors instanceof WP_Error ) && '' !== $woap_errors->get_
 		</a>
 	</p>
 
-	<h3>
-		<?php
-		echo esc_html(
-			$woap_editing->exists()
-				? sprintf(
-					/* translators: %s: the name of the location being edited. */
-					__( 'Edit “%s”', 'woo-organization-accounts-pro' ),
-					$woap_editing->get_name()
-				)
-				: sprintf(
-					/* translators: %s: the singular location noun for the site's mode, for example "Branch". */
-					__( 'Add a %s', 'woo-organization-accounts-pro' ),
-					Labels::location()
-				)
-		);
-		?>
-	</h3>
+	<div class="woap-identity">
+		<h3 class="woap-identity__name">
+			<?php
+			echo esc_html(
+				$woap_editing->exists()
+					? sprintf(
+						/* translators: %s: the name of the location being edited. */
+						__( 'Edit “%s”', 'woo-organization-accounts-pro' ),
+						$woap_editing->get_name()
+					)
+					: sprintf(
+						/* translators: %s: the singular location noun for the site's mode, for example "Branch". */
+						__( 'Add a %s', 'woo-organization-accounts-pro' ),
+						Labels::location()
+					)
+			);
+			?>
+		</h3>
 
-	<form class="woocommerce-form woap-account__form" method="post" action="<?php echo $woap_post_url; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Escaped above with esc_url(). ?>">
+		<p class="woap-account__note">
+			<?php
+			echo esc_html(
+				sprintf(
+					/* translators: %s: the organization noun for the site's mode, for example "Company". */
+					__( 'This is a delivery address, and the checkout asks for exactly these fields. A blank company is filled in with the %s name.', 'woo-organization-accounts-pro' ),
+					Labels::organization()
+				)
+			);
+			?>
+		</p>
+	</div>
+
+	<form class="woocommerce-form woap-account__form woap-panel" method="post" action="<?php echo $woap_post_url; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Escaped above with esc_url(). ?>">
 		<input type="hidden" name="<?php echo esc_attr( AccountHandlers::ACTION_FIELD ); ?>" value="save_location">
 		<input type="hidden" name="woap_location_id" value="<?php echo esc_attr( (string) $woap_editing->get_id() ); ?>">
 		<?php wp_nonce_field( 'woap_save_location' ); ?>

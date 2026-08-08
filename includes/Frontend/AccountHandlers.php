@@ -148,6 +148,7 @@ class AccountHandlers {
 			'save_organization' => 'save_organization',
 			'save_billing'      => 'save_billing',
 			'save_location'     => 'save_location',
+			'default_location'  => 'default_location',
 			'delete_location'   => 'delete_location',
 			'invite_member'     => 'invite_member',
 			'revoke_invitation' => 'revoke_invitation',
@@ -325,6 +326,38 @@ class AccountHandlers {
 	}
 
 	/**
+	 * Make one location the default at checkout.
+	 *
+	 * A row in the list rather than a trip through the form: choosing which of four
+	 * addresses a new order should start at is not editing an address, and making
+	 * somebody open a fourteen-field form and save it to tick one box invites them to
+	 * change something they did not mean to. The repository is what keeps at most one
+	 * default per organization, so nothing here has to clear the old one.
+	 *
+	 * @return void
+	 */
+	public function default_location() {
+		$organization = Guard::check_request( 'woap_default_location', Roles::MANAGE_LOCATIONS );
+		$location     = LocationRepository::find_for_organization( self::posted_int( 'woap_location_id' ), $organization->get_id() );
+
+		if ( null === $location ) {
+			self::finish( MyAccount::ENDPOINT_LOCATIONS, __( 'That entry no longer exists.', 'woo-organization-accounts-pro' ), 'error' );
+		}
+
+		$location->set( 'is_default', true );
+		LocationRepository::save( $location );
+
+		self::finish(
+			MyAccount::ENDPOINT_LOCATIONS,
+			sprintf(
+				/* translators: %s: the name of the location that is now the default. */
+				__( '“%s” is now the default at checkout.', 'woo-organization-accounts-pro' ),
+				$location->get_name()
+			)
+		);
+	}
+
+	/**
 	 * Delete a location.
 	 *
 	 * @return void
@@ -357,15 +390,29 @@ class AccountHandlers {
 	public function invite_member() {
 		$organization = Guard::check_request( 'woap_invite_member', Roles::INVITE_MEMBERS );
 
-		$result = Invitations::create(
-			$organization->get_id(),
-			self::posted_email( 'woap_email' ),
-			self::posted( 'woap_role' ),
-			get_current_user_id()
-		);
+		$email = self::posted_email( 'woap_email' );
+		$role  = self::posted( 'woap_role' );
+
+		$result = Invitations::create( $organization->get_id(), $email, $role, get_current_user_id() );
 
 		if ( is_wp_error( $result ) ) {
-			self::finish( MyAccount::ENDPOINT_INVITATIONS, $result->get_error_message(), 'error' );
+			/*
+			 * Handed back rather than redirected away. Every refusal here is about the
+			 * address that was typed — it already has an invitation, or it already has a
+			 * membership — so the answer is worth reading next to the field it is about,
+			 * with the address still in it.
+			 */
+			$errors = new \WP_Error( 'woap_email', $result->get_error_message() );
+
+			self::hold(
+				$errors,
+				array(
+					'woap_email' => $email,
+					'woap_role'  => $role,
+				)
+			);
+
+			return;
 		}
 
 		self::finish( MyAccount::ENDPOINT_INVITATIONS, __( 'Invitation sent.', 'woo-organization-accounts-pro' ) );
@@ -430,30 +477,65 @@ class AccountHandlers {
 			self::finish( MyAccount::ENDPOINT_MEMBERS, __( 'That member no longer exists.', 'woo-organization-accounts-pro' ), 'error' );
 		}
 
-		$role   = ( Member::ROLE_ADMIN === self::posted( 'woap_role' ) ) ? Member::ROLE_ADMIN : Member::ROLE_MEMBER;
-		$status = ( Member::STATUS_INACTIVE === self::posted( 'woap_status' ) ) ? Member::STATUS_INACTIVE : Member::STATUS_ACTIVE;
+		$role         = ( Member::ROLE_ADMIN === self::posted( 'woap_role' ) ) ? Member::ROLE_ADMIN : Member::ROLE_MEMBER;
+		$status       = ( Member::STATUS_INACTIVE === self::posted( 'woap_status' ) ) ? Member::STATUS_INACTIVE : Member::STATUS_ACTIVE;
+		$perm_scope   = ( 'custom' === self::posted( 'woap_permissions_scope' ) ) ? 'custom' : 'role';
+		$location_ids = self::posted_location_ids( $organization->get_id() );
+
+		$errors = new \WP_Error();
 
 		$losing_admin = $member->is_admin() && ( Member::ROLE_ADMIN !== $role || Member::STATUS_ACTIVE !== $status );
 
 		if ( $losing_admin && ! MemberRepository::has_other_admin( $organization->get_id(), $member->get_id() ) ) {
-			self::finish(
-				MyAccount::ENDPOINT_MEMBERS,
+			$errors->add(
+				'woap_role',
 				sprintf(
 					/* translators: 1: the organization noun, 2: the organization admin noun. */
 					__( 'A %1$s must keep at least one active %2$s. Promote somebody else first.', 'woo-organization-accounts-pro' ),
 					Labels::organization(),
 					Labels::organization_admin()
-				),
-				'error'
+				)
 			);
+		}
+
+		/*
+		 * An empty access list means "every location", so "only the ones I tick" with
+		 * nothing ticked would silently store the opposite of what it says. It is a
+		 * question, not a mistake to swallow.
+		 */
+		if ( self::restricting_locations() && empty( $location_ids ) ) {
+			$errors->add(
+				'woap_location_access',
+				sprintf(
+					/* translators: %s: the singular location noun for the site's mode, for example "Branch". */
+					__( 'Choose at least one %s, or give access to all of them.', 'woo-organization-accounts-pro' ),
+					Labels::location()
+				)
+			);
+		}
+
+		if ( $errors->has_errors() ) {
+			self::hold(
+				$errors,
+				array(
+					'woap_role'              => $role,
+					'woap_status'            => $status,
+					'woap_permissions_scope' => $perm_scope,
+					'woap_location_scope'    => self::restricting_locations() ? 'selected' : 'all',
+					'woap_capabilities'      => self::posted_list( 'woap_capabilities' ),
+					'woap_location_access'   => $location_ids,
+				)
+			);
+
+			return;
 		}
 
 		$member->set( 'role', $role );
 		$member->set( 'status', $status );
-		$member->set_capabilities( self::posted_capabilities( $role ) );
+		$member->set_capabilities( 'custom' === $perm_scope ? self::posted_capabilities( $role ) : array() );
 
 		MemberRepository::save( $member );
-		MemberRepository::set_location_ids( $member->get_id(), self::posted_location_ids( $organization->get_id() ) );
+		MemberRepository::set_location_ids( $member->get_id(), $location_ids );
 
 		$user = get_user_by( 'id', $member->get_user_id() );
 
@@ -520,9 +602,7 @@ class AccountHandlers {
 	 * @return array Map of capability to boolean.
 	 */
 	private static function posted_capabilities( $role ) {
-		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Guard::check_request() verified the nonce before this runs.
-		$granted = isset( $_POST['woap_capabilities'] ) ? array_map( 'sanitize_key', (array) wp_unslash( $_POST['woap_capabilities'] ) ) : array();
-
+		$granted   = self::posted_list( 'woap_capabilities' );
 		$defaults  = Roles::role_capabilities( $role );
 		$overrides = array();
 
@@ -538,17 +618,34 @@ class AccountHandlers {
 	}
 
 	/**
+	 * Whether the member form asked for a restricted list of locations at all.
+	 *
+	 * The stored form of "every location" is an empty list, so which of the two an
+	 * empty submission means cannot be read off the checkboxes — it is the radio above
+	 * them that says. Without it, unticking the last location would look identical to
+	 * granting access to all of them.
+	 *
+	 * @return bool True when the form asked to restrict access.
+	 */
+	private static function restricting_locations() {
+		return 'selected' === self::posted( 'woap_location_scope' );
+	}
+
+	/**
 	 * The locations a permissions form restricted a member to.
 	 *
 	 * Anything that is not a location of this organization is dropped rather than
 	 * stored, so a hand-edited form cannot grant access to another organization's row.
 	 *
 	 * @param int $organization_id Organization the member belongs to.
-	 * @return int[] Location IDs.
+	 * @return int[] Location IDs. Empty means every location.
 	 */
 	private static function posted_location_ids( $organization_id ) {
-		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Guard::check_request() verified the nonce before this runs.
-		$posted = isset( $_POST['woap_location_access'] ) ? array_map( 'absint', (array) wp_unslash( $_POST['woap_location_access'] ) ) : array();
+		if ( ! self::restricting_locations() ) {
+			return array();
+		}
+
+		$posted = array_map( 'absint', self::posted_list( 'woap_location_access' ) );
 
 		if ( empty( $posted ) ) {
 			return array();
@@ -572,6 +669,22 @@ class AccountHandlers {
 	private static function posted( $key ) {
 		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Guard::check_request() verified the nonce before this runs.
 		return isset( $_POST[ $key ] ) ? sanitize_text_field( wp_unslash( $_POST[ $key ] ) ) : '';
+	}
+
+	/**
+	 * Read a posted list of keys, as a group of checkboxes submits one.
+	 *
+	 * @param string $key Field name.
+	 * @return string[] Sanitised values.
+	 */
+	private static function posted_list( $key ) {
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Guard::check_request() verified the nonce before this runs.
+		if ( ! isset( $_POST[ $key ] ) ) {
+			return array();
+		}
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- As above.
+		return array_map( 'sanitize_key', (array) wp_unslash( $_POST[ $key ] ) );
 	}
 
 	/**

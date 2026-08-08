@@ -321,12 +321,36 @@ checkout then rejected.
 ### Editing one of many
 
 A screen that edits one row out of a list is its own screen, reached by a query argument
-(`?woap_location=<id>`, or `new`), never a form underneath the list. Three things go wrong with the
-form-under-the-list shape, and the locations screen had all of them: you scroll past everything else
-to reach it, nothing says which row is open, and — the real bug — the row being edited lives only in
-a query argument the form does not post back, so a rejected submission returns as a blank *add*
-form and saving again creates a duplicate instead of correcting the original. The form posts to its
-own URL, argument included.
+(`?woap_location=<id>` or `new`, `?woap_member=<id>`), never a form underneath the list. Three
+things go wrong with the form-under-the-list shape, and the locations screen had all of them: you
+scroll past everything else to reach it, nothing says which row is open, and — the real bug — the
+row being edited lives only in a query argument the form does not post back, so a rejected
+submission returns as a blank *add* form and saving again creates a duplicate instead of correcting
+the original. The form posts to its own URL, argument included.
+
+**Members follow the same shape, and the cost of not doing so was worse there.** That screen was one
+`<details>` per member, each holding a role, a status, seven permission checkboxes and a checkbox per
+location, so an account with fifty employees shipped fifty forms to answer *who works here* — and
+the answer was inside them rather than on the page. The list is now a row per person reporting role,
+delivery access, whether permissions follow the role, and status; `?woap_member=<id>` is where any
+of that changes.
+
+### One set of components across the five screens
+
+Every account screen is built from the same handful of pieces, so five screens read as one product:
+a `woap-account__header` (a sentence saying what the screen is for, and the primary action beside
+it), `woap-panel` for a bordered group, `woap-identity` + `woap-meta` for "what this record is",
+`woap-empty` for nothing-here-yet, `woap-status` pills, and `woap-table__title` / `woap-table__meta`
+inside a cell. **An empty state names what is missing, says what cannot happen until it exists, and
+carries the button that fixes it** — the locations one is the example, because with no locations
+nobody on the account can check out at all.
+
+`woap-choice` is the pattern for a setting whose stored form is ambiguous on its own: radios naming
+the answer, and a detail block per answer. Two settings need it, and both were previously stored as
+a bare list whose *empty* case meant the opposite of what the checkboxes suggested — see
+*Capabilities* below and `AccountHandlers::restricting_locations()`. The radio is what the server
+reads; `account.js` only disables the block that is not the answer, so the screens work unchanged
+with JavaScript off.
 
 ### Capabilities
 
@@ -341,6 +365,14 @@ Anyone with `manage_woocommerce` holds all of them, for any organization.
 
 Because it is the ordinary `user_has_cap` filter, every screen, nonce check and REST
 `permission_callback` can just ask `current_user_can()`.
+
+**Only the differences from the role are stored, so the member form has to ask which of the two it
+is being told.** Overrides are a diff, and a diff is meaningless without knowing what it is against:
+the form used to derive one from checkboxes drawn for the role the member held *before* the
+submission, so promoting an employee to admin stored "everything off" as six overrides against the
+admin defaults and produced an organization admin who could manage nothing. The form now asks
+outright — *whatever the role allows*, or *choose them one by one* — and the first answer stores no
+overrides at all. `AccountHandlersTest::testPromotingToAdminGrantsTheAdminDefaults` is that bug.
 
 ### Checkout
 
@@ -394,6 +426,16 @@ organization cannot buy anything, so offering to create one would only produce a
 check out. Accounts arrive through the `[woap_organization_registration]` shortcode — on a page
 created at activation — or through an invitation. Both flows share that one shortcode: it shows the
 join form instead of the registration form when the request carries a token.
+
+**Switching WooCommerce's registration off leaves the theme's links to it pointing at nothing, so
+`?action=register` is redirected rather than ignored.** `add_query_arg( 'action', 'register' )` is
+Woodmart's own signal for *show me the register side*: the header account dropdown's *Create an
+Account* link, the login page's *Create an Account* button and the theme's own register form all use
+it. With WooCommerce registration off, every one of them lands on a My Account page showing nothing
+but the login form — the visitor asked to sign up and the site answered by asking them to sign in.
+`Registration::redirect_register_action()` sends them to the registration page instead, and sends
+somebody already signed in to their account. GET only: a POST to that URL is a submission, and
+swallowing one in a redirect would lose what it carried.
 
 ## Working agreement
 

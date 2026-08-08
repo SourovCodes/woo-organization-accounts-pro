@@ -1,24 +1,27 @@
 /**
  * My Account: the organization screens.
  *
- * Deliberately small. These screens sit inside Woodmart's My Account layout, so
- * anything beyond layout and the states WooCommerce already styles would fight the
- * theme rather than help it.
+ * A small set of components — a page header, a panel, a status pill, a checklist, an
+ * empty state — reused by every screen, so five screens read as one product rather
+ * than five. Everything below is layout and the states WooCommerce does not already
+ * style; anything more would be fighting the theme rather than helping it.
  *
- * Every colour here is one of Woodmart's own custom properties, never a literal.
- * The theme redefines them per colour scheme, so a shop switched to the dark scheme
- * — or recoloured in Theme Settings — carries these screens with it instead of
- * leaving a patch of wp-admin grey behind. The literals in the var() fallbacks are
- * Woodmart's own defaults and only apply if the theme stops defining a token.
+ * Every colour here is one of Woodmart's own custom properties, never a literal. The
+ * theme redefines them per colour scheme, so a shop switched to the dark scheme — or
+ * recoloured in Theme Settings — carries these screens with it instead of leaving a
+ * patch of wp-admin grey behind. The literals in the var() fallbacks are Woodmart's
+ * own defaults and only apply if the theme stops defining a token.
  *
- * The one exception is the danger colour: Woodmart defines success and warning
- * notice colours in Theme Settings but no error colour, so the plugin declares one
- * token for it. A child theme can redefine it in the same place.
+ * The one exception is the danger colour: Woodmart defines success and warning notice
+ * colours in Theme Settings but no error colour, so the plugin declares one token for
+ * it. A child theme can redefine it in the same place.
  */
 
 body {
 	--woap-danger-color: #c1392b;
 }
+
+/* Page header ------------------------------------------------------------- */
 
 .woap-account__header {
 	display: flex;
@@ -34,10 +37,13 @@ body {
 	margin: 0;
 }
 
-.woap-account__note,
-.woap-account__empty {
+.woap-account__note {
 	color: var(--wd-text-color, #767676);
 	font-size: 0.95em;
+}
+
+.woap-account__info {
+	margin-bottom: 1.5em;
 }
 
 .woap-account__back {
@@ -50,6 +56,7 @@ body {
 	align-items: center;
 	gap: 1.5em;
 	margin-top: 1.5em;
+	margin-bottom: 0;
 }
 
 .woap-account__cancel {
@@ -57,13 +64,225 @@ body {
 	text-decoration: underline;
 }
 
-.woap-locations-table .woap-actions {
+/* What the record is ------------------------------------------------------ */
+
+.woap-identity {
+	margin-bottom: 1.5em;
+}
+
+.woap-identity__name {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.6em;
+	align-items: center;
+	margin-bottom: 0.4em;
+}
+
+.woap-meta {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.4em 2em;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.woap-meta__item {
+	display: flex;
+	flex-direction: column;
+	margin: 0;
+}
+
+.woap-meta__label {
+	color: var(--wd-text-color, #767676);
+	font-size: 0.8em;
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+}
+
+.woap-meta__value {
+	color: var(--wd-title-color, #242424);
+}
+
+/* Overview tiles ---------------------------------------------------------- */
+
+.woap-tiles {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(9em, 1fr));
+	gap: 10px;
+	margin: 0 0 2em;
+	padding: 0;
+	list-style: none;
+}
+
+.woap-tiles__tile {
+	margin: 0;
+}
+
+.woap-tiles__link {
+	display: flex;
+	flex-direction: column;
+	gap: 0.2em;
+	height: 100%;
+	padding: 1em;
+	border: 1px solid var(--brdcolor-gray-300, rgba(0, 0, 0, 0.105));
+	border-radius: var(--wd-brd-radius, 0);
+	color: var(--wd-text-color, #767676);
+}
+
+.woap-tiles__link:hover,
+.woap-tiles__link:focus {
+	border-color: var(--wd-primary-color, #83b735);
+}
+
+.woap-tiles__count {
+	color: var(--wd-title-color, #242424);
+	font-size: 1.6em;
+	font-weight: 600;
+	line-height: 1.2;
+}
+
+.woap-tiles__label {
+	font-size: 0.9em;
+}
+
+/* Panels ------------------------------------------------------------------ */
+
+.woap-panel {
+	margin: 0 0 1.5em;
+	padding: 1.5em;
+	border: 1px solid var(--brdcolor-gray-300, rgba(0, 0, 0, 0.105));
+	border-radius: var(--wd-brd-radius, 0);
+}
+
+.woap-panel__title {
+	display: block;
+	width: 100%;
+	margin-bottom: 1em;
+	padding: 0;
+	color: var(--wd-title-color, #242424);
+	font-size: 1.1em;
+}
+
+.woap-panel--danger {
+	border-color: color-mix(in srgb, var(--woap-danger-color) 35%, transparent);
+}
+
+.woap-panel--danger .woap-panel__title {
+	color: var(--woap-danger-color);
+}
+
+/* A panel that folds away, for a form the list above it is more important than. */
+
+.woap-disclosure__summary {
+	color: var(--wd-title-color, #242424);
+	font-size: 1.1em;
+	font-weight: 600;
+	cursor: pointer;
+}
+
+.woap-disclosure[open] .woap-disclosure__summary {
+	margin-bottom: 1.5em;
+}
+
+/* Choose one answer, then fill in what it needs ---------------------------- */
+
+.woap-choice__option {
+	display: flex;
+	gap: 0.6em;
+	align-items: baseline;
+	margin-bottom: 0.6em;
+}
+
+.woap-choice__detail {
+	margin-top: 1em;
+	padding-top: 1em;
+	border-top: 1px solid var(--brdcolor-gray-200, rgba(0, 0, 0, 0.08));
+}
+
+/*
+ * Still readable while it is not the answer: the permission list goes on saying what
+ * the chosen role allows even when the role is what decides. `hidden` has to win over
+ * the grid display below it, which is what the !important is for.
+ */
+.woap-choice__detail--disabled {
+	opacity: 0.6;
+}
+
+.woap-choice__detail[hidden] {
+	display: none !important;
+}
+
+.woap-checklist {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(15em, 1fr));
+	gap: 0.5em 1.5em;
+}
+
+.woap-checklist__item {
+	display: flex;
+	gap: 0.6em;
+	align-items: baseline;
+	margin: 0;
+}
+
+/* Nothing here yet -------------------------------------------------------- */
+
+.woap-empty {
+	padding: 2.5em 1.5em;
+	border: 1px dashed var(--brdcolor-gray-400, rgba(0, 0, 0, 0.16));
+	border-radius: var(--wd-brd-radius, 0);
+	text-align: center;
+}
+
+.woap-empty__title {
+	margin-bottom: 0.4em;
+	color: var(--wd-title-color, #242424);
+	font-size: 1.1em;
+	font-weight: 600;
+}
+
+.woap-empty > :last-child {
+	margin-bottom: 0;
+}
+
+/* Tables ------------------------------------------------------------------ */
+
+.woap-table__title {
+	display: block;
+	color: var(--wd-title-color, #242424);
+	font-weight: 600;
+}
+
+.woap-table__meta {
+	display: block;
+	color: var(--wd-text-color, #767676);
+	font-size: 0.85em;
+}
+
+.woap-address {
+	margin-bottom: 1em;
+	font-style: normal;
+}
+
+.woap-table .woap-actions {
 	white-space: nowrap;
 }
 
-.woap-locations-table .woap-actions form {
+.woap-table .woap-actions form {
 	display: inline;
 	margin: 0;
+}
+
+.woap-table .woap-actions > * + * {
+	margin-left: 0.9em;
+}
+
+.woap-pagination {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 1em;
+	align-items: center;
 }
 
 /*
@@ -111,26 +330,16 @@ button.woap-link-button--danger:focus {
 	color: var(--woap-danger-color);
 }
 
-.woap-member__summary {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 0.75em;
-	align-items: baseline;
-	cursor: pointer;
+/* Qualified with the element name for the same reason as the link button above. */
+button.woap-button--danger {
+	border-color: color-mix(in srgb, var(--woap-danger-color) 45%, transparent);
+	color: var(--woap-danger-color);
 }
 
-.woap-member__email,
-.woap-member__role {
-	color: var(--wd-text-color, #767676);
-	font-size: 0.9em;
-}
-
-.woap-member__permissions,
-.woap-member__locations {
-	margin: 1em 0;
-	padding: 1em;
-	border: 1px solid var(--brdcolor-gray-300, rgba(0, 0, 0, 0.105));
-	border-radius: var(--wd-brd-radius, 0);
+button.woap-button--danger:hover,
+button.woap-button--danger:focus {
+	border-color: var(--woap-danger-color);
+	color: var(--woap-danger-color);
 }
 
 /*
@@ -143,8 +352,10 @@ button.woap-link-button--danger:focus {
 	padding: 2px 8px;
 	border-radius: var(--wd-brd-radius, 9px);
 	font-size: 11px;
+	font-weight: 400;
 	line-height: 1.6;
 	white-space: nowrap;
+	vertical-align: middle;
 }
 
 .woap-status--pending {
@@ -162,7 +373,8 @@ button.woap-link-button--danger:focus {
 	color: color-mix(in srgb, var(--woap-danger-color) 78%, var(--wd-title-color, #242424));
 }
 
-.woap-status--rejected {
+.woap-status--rejected,
+.woap-status--neutral {
 	background: var(--bgcolor-gray-200, #f7f7f7);
 	color: var(--wd-text-color, #767676);
 }

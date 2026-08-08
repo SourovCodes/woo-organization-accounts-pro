@@ -79,6 +79,7 @@ class Registration {
 	 */
 	public function register() {
 		add_shortcode( self::SHORTCODE, array( $this, 'render' ) );
+		add_action( 'template_redirect', array( $this, 'redirect_register_action' ) );
 		add_action( 'template_redirect', array( $this, 'maybe_process' ) );
 
 		/*
@@ -114,7 +115,7 @@ class Registration {
 	 * @return string Layout to use.
 	 */
 	public function page_layout( $layout ) {
-		$page_id = absint( Settings::get( 'registration_page_id', 0 ) );
+		$page_id = self::page_id();
 
 		if ( 0 === $page_id || ! is_page( $page_id ) ) {
 			return $layout;
@@ -128,6 +129,79 @@ class Registration {
 	}
 
 	/**
+	 * The page the registration shortcode lives on.
+	 *
+	 * @return int Page ID, or 0 when the site has none.
+	 */
+	public static function page_id() {
+		return absint( Settings::get( 'registration_page_id', 0 ) );
+	}
+
+	/**
+	 * The URL of the registration page.
+	 *
+	 * @return string URL, or an empty string when there is no page to point at.
+	 */
+	public static function page_url() {
+		$page_id = self::page_id();
+
+		if ( 0 === $page_id ) {
+			return '';
+		}
+
+		return (string) get_permalink( $page_id );
+	}
+
+	/**
+	 * Send `?action=register` to the registration page.
+	 *
+	 * `?action=register` on My Account is Woodmart's own signal for "show me the
+	 * register side": the header dropdown's *Create an Account* link, the login page's
+	 * *Create an Account* button and the theme's register form all use it. WooCommerce's
+	 * registration is switched off while this plugin is active, so all of those now land
+	 * on a page showing nothing but the login form — the visitor asked to sign up and
+	 * the site answered by asking them to sign in.
+	 *
+	 * Redirecting rather than rendering the form here keeps one registration screen with
+	 * one URL, which is the one that has the billing address block, the honeypot and the
+	 * full-width layout on it.
+	 *
+	 * Only GET requests: a POST to that URL is a form submission, and swallowing one in
+	 * a redirect would lose whatever it carried.
+	 *
+	 * @return void
+	 */
+	public function redirect_register_action() {
+		if ( ! is_account_page() ) {
+			return;
+		}
+
+		if ( 'GET' !== strtoupper( isset( $_SERVER['REQUEST_METHOD'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_METHOD'] ) ) : 'GET' ) ) {
+			return;
+		}
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Reading a link's own argument to decide where it should have gone; nothing is written.
+		$requested = isset( $_GET['action'] ) ? sanitize_key( wp_unslash( $_GET['action'] ) ) : '';
+
+		if ( 'register' !== $requested ) {
+			return;
+		}
+
+		/*
+		 * Somebody already signed in has no use for a registration form, and the
+		 * argument would otherwise sit in the URL of their account dashboard.
+		 */
+		$destination = is_user_logged_in() ? (string) wc_get_page_permalink( 'myaccount' ) : self::page_url();
+
+		if ( '' === $destination ) {
+			return;
+		}
+
+		wp_safe_redirect( $destination );
+		exit;
+	}
+
+	/**
 	 * Load WooCommerce's country and address scripts on the registration page.
 	 *
 	 * Without them the state field never follows the country, and a customer in a
@@ -136,7 +210,7 @@ class Registration {
 	 * @return void
 	 */
 	public function enqueue_assets() {
-		$page_id = absint( Settings::get( 'registration_page_id', 0 ) );
+		$page_id = self::page_id();
 
 		if ( 0 === $page_id || ! is_page( $page_id ) ) {
 			return;
@@ -177,15 +251,9 @@ class Registration {
 	 * @return void
 	 */
 	public function render_registration_link() {
-		$page_id = absint( Settings::get( 'registration_page_id', 0 ) );
+		$permalink = self::page_url();
 
-		if ( 0 === $page_id ) {
-			return;
-		}
-
-		$permalink = get_permalink( $page_id );
-
-		if ( ! $permalink ) {
+		if ( '' === $permalink ) {
 			return;
 		}
 
