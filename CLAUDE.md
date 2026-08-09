@@ -384,6 +384,31 @@ admin defaults and produced an organization admin who could manage nothing. The 
 outright — *whatever the role allows*, or *choose them one by one* — and the first answer stores no
 overrides at all. `AccountHandlersTest::testPromotingToAdminGrantsTheAdminDefaults` is that bug.
 
+**Holding one of our capabilities and being able to reach what it describes are two facts, and only
+the first is ours to assert.** `woap_view_organization_orders` decides who sees the organization
+orders list; the page every row *links to* is WooCommerce's `view-order` endpoint, and
+`wc_customer_has_capability()` grants `view_order` only to the order's own customer. So an
+organization admin got a correct list of their organization's orders in which every row placed by
+an employee answered "Invalid order." Neither side was wrong — the list was right and the
+capability was right — and nothing asserted the two together.
+
+`Capabilities::resolve_view_order()` closes it, and three things about the shape are deliberate. It
+**only ever grants**, never denies, so WooCommerce's own rule still gives a member their own order
+and a plain customer elsewhere on the shop is untouched — a filter answering in both directions
+would make this plugin the arbiter of who may read every order on the site. It is **scoped to
+orders carrying `_woap_organization_id`**, because an order with no organization is not this
+plugin's business whoever is asking. And it grants **`view_order` only**, of the five capabilities
+WooCommerce keys on the order's customer: `pay_for_order`, `order_again` and `cancel_order` spend or
+change an order rather than read one, and belong to `woap_place_orders` and a decision nobody has
+asked for. Granting them because they sit in the same `switch` would be inventing policy.
+
+**The test that catches this class is an invariant over the screen, not a case.**
+`CapabilitiesTest::testEveryListedOrderIsOpenableByTheReader` asserts that every order the list
+returns can be opened by the member it was rendered for. A per-case test would have been written
+against the same assumption that produced the bug; the invariant fails for any future row this
+plugin lists and WooCommerce would refuse. Whenever a screen here links into a WooCommerce
+endpoint, that is the seam to test — our side alone always passes.
+
 ### Checkout
 
 `Context::can_purchase()` is the one expression of the purchase rule: logged in, an active member,

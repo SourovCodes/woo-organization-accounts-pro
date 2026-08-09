@@ -7,8 +7,10 @@
 
 namespace WooOrgAccounts\Tests;
 
+use WooOrgAccounts\Checkout\OrderMeta;
 use WooOrgAccounts\Data\Member;
 use WooOrgAccounts\Data\MemberRepository;
+use WooOrgAccounts\Frontend\MyAccount;
 use WooOrgAccounts\Guard;
 use WooOrgAccounts\Roles;
 
@@ -191,6 +193,159 @@ class CapabilitiesTest extends TestCase {
 				$this->assertArrayNotHasKey( $capability, $role->capabilities );
 			}
 		}
+	}
+
+	/**
+	 * An order placed by one member can be opened by an admin of the same organization.
+	 *
+	 * `woap_view_organization_orders` is answered by this plugin; the page the list links
+	 * to is WooCommerce's, and it asks `view_order`, which WooCommerce grants only to the
+	 * order's own customer. Holding the capability and being able to reach what it
+	 * describes are two facts, and this asserts the second.
+	 */
+	public function testAdminCanOpenAnotherMembersOrder() {
+		$organization = $this->make_organization();
+		$buyer        = $this->make_member( $organization );
+		$admin        = $this->make_member( $organization, Member::ROLE_ADMIN );
+
+		$order = $this->make_organization_order( $organization, $buyer );
+
+		$this->act_as( $admin );
+
+		$this->assertTrue( current_user_can( 'view_order', $order->get_id() ) );
+	}
+
+	/**
+	 * A member without the capability cannot open somebody else's order.
+	 */
+	public function testMemberCannotOpenAnotherMembersOrder() {
+		$organization = $this->make_organization();
+		$buyer        = $this->make_member( $organization );
+		$other        = $this->make_member( $organization );
+
+		$order = $this->make_organization_order( $organization, $buyer );
+
+		$this->act_as( $other );
+
+		$this->assertFalse( current_user_can( 'view_order', $order->get_id() ) );
+	}
+
+	/**
+	 * An admin of another organization cannot open it, capability or not.
+	 *
+	 * This is the cross-tenant question, and it is separate from the capability one:
+	 * they hold `woap_view_organization_orders` for their own organization.
+	 */
+	public function testAdminOfAnotherOrganizationCannotOpenTheOrder() {
+		$ours   = $this->make_organization();
+		$theirs = $this->make_organization( array( 'name' => 'Rival Ltd' ) );
+
+		$order = $this->make_organization_order( $ours, $this->make_member( $ours ) );
+
+		$this->act_as( $this->make_member( $theirs, Member::ROLE_ADMIN ) );
+
+		$this->assertTrue( current_user_can( Roles::VIEW_ORGANIZATION_ORDERS ) );
+		$this->assertFalse( current_user_can( 'view_order', $order->get_id() ) );
+	}
+
+	/**
+	 * A member can still open their own order.
+	 *
+	 * WooCommerce's own rule grants this, and the plugin's filter only ever adds to
+	 * `view_order`. A filter that answered in both directions would take this away from
+	 * every member who is not an admin.
+	 */
+	public function testMemberCanStillOpenTheirOwnOrder() {
+		$organization = $this->make_organization();
+		$buyer        = $this->make_member( $organization );
+
+		$order = $this->make_organization_order( $organization, $buyer );
+
+		$this->act_as( $buyer );
+
+		$this->assertFalse( current_user_can( Roles::VIEW_ORGANIZATION_ORDERS ) );
+		$this->assertTrue( current_user_can( 'view_order', $order->get_id() ) );
+	}
+
+	/**
+	 * An order belonging to no organization is left to WooCommerce entirely.
+	 */
+	public function testOrderWithoutAnOrganizationIsNotGranted() {
+		$organization = $this->make_organization();
+
+		$order = new \WC_Order();
+		$order->set_status( 'processing' );
+		$order->save();
+
+		$this->act_as( $this->make_member( $organization, Member::ROLE_ADMIN ) );
+
+		$this->assertFalse( current_user_can( 'view_order', $order->get_id() ) );
+	}
+
+	/**
+	 * A suspended admin cannot open the organization's orders.
+	 */
+	public function testInactiveAdminCannotOpenTheOrder() {
+		$organization = $this->make_organization();
+		$buyer        = $this->make_member( $organization );
+
+		$order = $this->make_organization_order( $organization, $buyer );
+
+		$this->act_as(
+			$this->make_member( $organization, Member::ROLE_ADMIN, array( 'status' => Member::STATUS_INACTIVE ) )
+		);
+
+		$this->assertFalse( current_user_can( 'view_order', $order->get_id() ) );
+	}
+
+	/**
+	 * Every order the organization orders screen links to can be opened by its reader.
+	 *
+	 * The bug this guards against was not a wrong answer from either side. The list was
+	 * right, the capability was right, and the screen still offered a link to a page
+	 * that answered "Invalid order" — because nothing asserted the two together. Written
+	 * as an invariant over the whole list rather than one order, so a future row type
+	 * that this plugin lists but WooCommerce would refuse fails here too.
+	 */
+	public function testEveryListedOrderIsOpenableByTheReader() {
+		$organization = $this->make_organization();
+		$admin        = $this->make_member( $organization, Member::ROLE_ADMIN );
+
+		$this->make_organization_order( $organization, $this->make_member( $organization ) );
+		$this->make_organization_order( $organization, $this->make_member( $organization ) );
+		$this->make_organization_order( $organization, $admin );
+
+		$this->act_as( $admin );
+
+		$listed = MyAccount::organization_orders( $organization->get_id() );
+
+		$this->assertCount( 3, $listed['orders'] );
+
+		foreach ( $listed['orders'] as $order ) {
+			$this->assertTrue(
+				current_user_can( 'view_order', $order->get_id() ),
+				sprintf( 'Order %d is listed and linked but cannot be opened.', $order->get_id() )
+			);
+		}
+	}
+
+	/**
+	 * Create an order stamped with an organization and the member who placed it.
+	 *
+	 * @param \WooOrgAccounts\Data\Organization $organization Organization the order belongs to.
+	 * @param Member                            $buyer        Member who placed it.
+	 * @return \WC_Order The saved order.
+	 */
+	private function make_organization_order( $organization, Member $buyer ) {
+		$order = new \WC_Order();
+
+		$order->set_customer_id( $buyer->get_user_id() );
+		$order->update_meta_data( OrderMeta::ORGANIZATION_ID, $organization->get_id() );
+		$order->update_meta_data( OrderMeta::MEMBER_USER_ID, $buyer->get_user_id() );
+		$order->set_status( 'processing' );
+		$order->save();
+
+		return $order;
 	}
 
 	/**

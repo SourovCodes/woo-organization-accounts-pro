@@ -75,6 +75,7 @@
 				<element value="manage_woocommerce"/>
 				<element value="view_woocommerce_reports"/>
 				<element value="edit_shop_orders"/>
+				<element value="view_order"/>
 				<element value="woap_manage_organization"/>
 				<element value="woap_manage_billing"/>
 				<element value="woap_manage_locations"/>
