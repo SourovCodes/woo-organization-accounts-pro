@@ -63,112 +63,145 @@ $woap_value = static function ( $key ) use ( $submitted ) {
 			<input type="text" id="<?php echo esc_attr( $honeypot ); ?>" name="<?php echo esc_attr( $honeypot ); ?>" value="" tabindex="-1" autocomplete="off">
 		</p>
 
-		<h2>
-			<?php
-			echo esc_html(
-				sprintf(
-					/* translators: %s: the organization noun for the site's mode, for example "Company". */
-					__( '%s details', 'woo-organization-accounts-pro' ),
-					Labels::organization()
-				)
-			);
-			?>
-		</h2>
+		<?php
+		/*
+		 * Three questions, three panels, and each panel lays its rows out on the two
+		 * column grid in assets/css/registration.css rather than on the theme's
+		 * floats. A heading alone did not group anything: it was one line of text in
+		 * a column of inputs three screens long, and the reader had no way of telling
+		 * whether the phone number being asked for was the company's or their own.
+		 */
+		?>
+		<section class="woap-registration__section">
 
-		<p class="woocommerce-form-row form-row-wide">
-			<label for="woap-organization-name">
+			<h2 class="woap-registration__title">
 				<?php
 				echo esc_html(
 					sprintf(
 						/* translators: %s: the organization noun for the site's mode, for example "Company". */
-						__( '%s name', 'woo-organization-accounts-pro' ),
+						__( '%s details', 'woo-organization-accounts-pro' ),
 						Labels::organization()
 					)
 				);
 				?>
-				<span class="required">*</span>
-			</label>
-			<input type="text" class="woocommerce-Input input-text" id="woap-organization-name" name="organization_name" required value="<?php echo esc_attr( $woap_value( 'organization_name' ) ); ?>">
-		</p>
+			</h2>
 
-		<p class="woocommerce-form-row form-row-first">
-			<label for="woap-organization-email"><?php esc_html_e( 'Email address', 'woo-organization-accounts-pro' ); ?> <span class="required">*</span></label>
-			<input type="email" class="woocommerce-Input input-text" id="woap-organization-email" name="organization_email" required value="<?php echo esc_attr( $woap_value( 'organization_email' ) ); ?>">
-		</p>
+			<div class="woap-form-grid">
 
-		<p class="woocommerce-form-row form-row-last">
-			<label for="woap-organization-phone"><?php esc_html_e( 'Phone', 'woo-organization-accounts-pro' ); ?></label>
-			<input type="tel" class="woocommerce-Input input-text" id="woap-organization-phone" name="organization_phone" value="<?php echo esc_attr( $woap_value( 'organization_phone' ) ); ?>">
-		</p>
+				<p class="woocommerce-form-row form-row-wide">
+					<label for="woap-organization-name">
+						<?php
+						echo esc_html(
+							sprintf(
+								/* translators: %s: the organization noun for the site's mode, for example "Company". */
+								__( '%s name', 'woo-organization-accounts-pro' ),
+								Labels::organization()
+							)
+						);
+						?>
+						<span class="required">*</span>
+					</label>
+					<input type="text" class="woocommerce-Input input-text" id="woap-organization-name" name="organization_name" required value="<?php echo esc_attr( $woap_value( 'organization_name' ) ); ?>">
+				</p>
 
-		<p class="woocommerce-form-row form-row-wide">
-			<label for="woap-tax-id"><?php esc_html_e( 'VAT number, tax ID or registration number', 'woo-organization-accounts-pro' ); ?></label>
-			<input type="text" class="woocommerce-Input input-text" id="woap-tax-id" name="tax_id" value="<?php echo esc_attr( $woap_value( 'tax_id' ) ); ?>">
-		</p>
+				<p class="woocommerce-form-row form-row-first">
+					<label for="woap-organization-email"><?php esc_html_e( 'Email address', 'woo-organization-accounts-pro' ); ?> <span class="required">*</span></label>
+					<input type="email" class="woocommerce-Input input-text" id="woap-organization-email" name="organization_email" required value="<?php echo esc_attr( $woap_value( 'organization_email' ) ); ?>">
+				</p>
 
-		<h2><?php esc_html_e( 'Billing address', 'woo-organization-accounts-pro' ); ?></h2>
-		<p class="woap-form-note">
+				<p class="woocommerce-form-row form-row-last">
+					<label for="woap-organization-phone"><?php esc_html_e( 'Phone', 'woo-organization-accounts-pro' ); ?></label>
+					<input type="tel" class="woocommerce-Input input-text" id="woap-organization-phone" name="organization_phone" value="<?php echo esc_attr( $woap_value( 'organization_phone' ) ); ?>">
+				</p>
+
+				<p class="woocommerce-form-row form-row-wide">
+					<label for="woap-tax-id"><?php esc_html_e( 'VAT number, tax ID or registration number', 'woo-organization-accounts-pro' ); ?></label>
+					<input type="text" class="woocommerce-Input input-text" id="woap-tax-id" name="tax_id" value="<?php echo esc_attr( $woap_value( 'tax_id' ) ); ?>">
+				</p>
+
+			</div>
+		</section>
+
+		<section class="woap-registration__section">
+
+			<h2 class="woap-registration__title"><?php esc_html_e( 'Billing address', 'woo-organization-accounts-pro' ); ?></h2>
+			<p class="woap-form-note">
+				<?php
+				echo esc_html(
+					sprintf(
+						/* translators: %s: the organization noun for the site's mode, for example "Company". */
+						__( 'Every order is billed to this address. It belongs to the %s, so individual members cannot change it at checkout.', 'woo-organization-accounts-pro' ),
+						Labels::organization()
+					)
+				);
+				?>
+			</p>
+
 			<?php
-			echo esc_html(
-				sprintf(
-					/* translators: %s: the organization noun for the site's mode, for example "Company". */
-					__( 'Every order is billed to this address. It belongs to the %s, so individual members cannot change it at checkout.', 'woo-organization-accounts-pro' ),
-					Labels::organization()
-				)
-			);
+			/*
+			 * WooCommerce's own billing fields for the chosen country. The registration form
+			 * has to collect exactly what the checkout will later require, or an organization
+			 * registers happily and then cannot buy anything.
+			 *
+			 * Which fields these are, and in what order, is the country's business rather
+			 * than this template's — so the wrapper is not given a row-by-row layout here.
+			 * The stylesheet grids `.woap-address-fields` instead and names only the few
+			 * fields that want the full width, which leaves the rest to tile whatever the
+			 * country asks for.
+			 */
+			AddressFields::render( AddressFields::BILLING, $billing );
 			?>
-		</p>
 
-		<?php
-		/*
-		 * WooCommerce's own billing fields for the chosen country. The registration form
-		 * has to collect exactly what the checkout will later require, or an organization
-		 * registers happily and then cannot buy anything.
-		 */
-		AddressFields::render( AddressFields::BILLING, $billing );
-		?>
+		</section>
 
-		<h2>
-			<?php
-			echo esc_html(
-				sprintf(
-					/* translators: %s: the organization admin noun for the site's mode, for example "Company Admin". */
-					__( 'Your account (%s)', 'woo-organization-accounts-pro' ),
-					Labels::organization_admin()
-				)
-			);
-			?>
-		</h2>
+		<section class="woap-registration__section">
 
-		<p class="woocommerce-form-row form-row-first">
-			<label for="woap-admin-first-name"><?php esc_html_e( 'First name', 'woo-organization-accounts-pro' ); ?> <span class="required">*</span></label>
-			<input type="text" class="woocommerce-Input input-text" id="woap-admin-first-name" name="admin_first_name" required value="<?php echo esc_attr( $woap_value( 'admin_first_name' ) ); ?>">
-		</p>
+			<h2 class="woap-registration__title">
+				<?php
+				echo esc_html(
+					sprintf(
+						/* translators: %s: the organization admin noun for the site's mode, for example "Company Admin". */
+						__( 'Your account (%s)', 'woo-organization-accounts-pro' ),
+						Labels::organization_admin()
+					)
+				);
+				?>
+			</h2>
 
-		<p class="woocommerce-form-row form-row-last">
-			<label for="woap-admin-last-name"><?php esc_html_e( 'Last name', 'woo-organization-accounts-pro' ); ?></label>
-			<input type="text" class="woocommerce-Input input-text" id="woap-admin-last-name" name="admin_last_name" value="<?php echo esc_attr( $woap_value( 'admin_last_name' ) ); ?>">
-		</p>
+			<div class="woap-form-grid">
 
-		<p class="woocommerce-form-row form-row-first">
-			<label for="woap-admin-email"><?php esc_html_e( 'Your email address', 'woo-organization-accounts-pro' ); ?> <span class="required">*</span></label>
-			<input type="email" class="woocommerce-Input input-text" id="woap-admin-email" name="admin_email" required autocomplete="username" value="<?php echo esc_attr( $woap_value( 'admin_email' ) ); ?>">
-		</p>
+				<p class="woocommerce-form-row form-row-first">
+					<label for="woap-admin-first-name"><?php esc_html_e( 'First name', 'woo-organization-accounts-pro' ); ?> <span class="required">*</span></label>
+					<input type="text" class="woocommerce-Input input-text" id="woap-admin-first-name" name="admin_first_name" required value="<?php echo esc_attr( $woap_value( 'admin_first_name' ) ); ?>">
+				</p>
 
-		<p class="woocommerce-form-row form-row-last">
-			<label for="woap-admin-phone"><?php esc_html_e( 'Your phone (optional)', 'woo-organization-accounts-pro' ); ?></label>
-			<input type="tel" class="woocommerce-Input input-text" id="woap-admin-phone" name="admin_phone" value="<?php echo esc_attr( $woap_value( 'admin_phone' ) ); ?>">
-		</p>
+				<p class="woocommerce-form-row form-row-last">
+					<label for="woap-admin-last-name"><?php esc_html_e( 'Last name', 'woo-organization-accounts-pro' ); ?></label>
+					<input type="text" class="woocommerce-Input input-text" id="woap-admin-last-name" name="admin_last_name" value="<?php echo esc_attr( $woap_value( 'admin_last_name' ) ); ?>">
+				</p>
 
-		<p class="woocommerce-form-row form-row-first">
-			<label for="woap-password"><?php esc_html_e( 'Password', 'woo-organization-accounts-pro' ); ?> <span class="required">*</span></label>
-			<input type="password" class="woocommerce-Input input-text" id="woap-password" name="password" required autocomplete="new-password" minlength="8">
-		</p>
+				<p class="woocommerce-form-row form-row-first">
+					<label for="woap-admin-email"><?php esc_html_e( 'Your email address', 'woo-organization-accounts-pro' ); ?> <span class="required">*</span></label>
+					<input type="email" class="woocommerce-Input input-text" id="woap-admin-email" name="admin_email" required autocomplete="username" value="<?php echo esc_attr( $woap_value( 'admin_email' ) ); ?>">
+				</p>
 
-		<p class="woocommerce-form-row form-row-last">
-			<label for="woap-password-confirm"><?php esc_html_e( 'Repeat password', 'woo-organization-accounts-pro' ); ?> <span class="required">*</span></label>
-			<input type="password" class="woocommerce-Input input-text" id="woap-password-confirm" name="password_confirm" required autocomplete="new-password" minlength="8">
-		</p>
+				<p class="woocommerce-form-row form-row-last">
+					<label for="woap-admin-phone"><?php esc_html_e( 'Your phone (optional)', 'woo-organization-accounts-pro' ); ?></label>
+					<input type="tel" class="woocommerce-Input input-text" id="woap-admin-phone" name="admin_phone" value="<?php echo esc_attr( $woap_value( 'admin_phone' ) ); ?>">
+				</p>
+
+				<p class="woocommerce-form-row form-row-first">
+					<label for="woap-password"><?php esc_html_e( 'Password', 'woo-organization-accounts-pro' ); ?> <span class="required">*</span></label>
+					<input type="password" class="woocommerce-Input input-text" id="woap-password" name="password" required autocomplete="new-password" minlength="8">
+				</p>
+
+				<p class="woocommerce-form-row form-row-last">
+					<label for="woap-password-confirm"><?php esc_html_e( 'Repeat password', 'woo-organization-accounts-pro' ); ?> <span class="required">*</span></label>
+					<input type="password" class="woocommerce-Input input-text" id="woap-password-confirm" name="password_confirm" required autocomplete="new-password" minlength="8">
+				</p>
+
+			</div>
+		</section>
 
 		<?php
 		/**
@@ -179,7 +212,7 @@ $woap_value = static function ( $key ) use ( $submitted ) {
 		do_action( 'woo_org_accounts_registration_form' );
 		?>
 
-		<p class="woocommerce-form-row form-row-wide">
+		<p class="woocommerce-form-row form-row-wide woap-registration__actions">
 			<button type="submit" class="woocommerce-Button button btn-color-primary">
 				<?php
 				echo esc_html(

@@ -16,3 +16,118 @@
 	color: var(--wd-text-color, #767676);
 	font-size: 0.95em;
 }
+
+/* The registration form's panels and their two-column grid ----------------- */
+
+/*
+ * Everything below is scoped to `.woap-registration-form`. The invitation form
+ * shares this stylesheet and is deliberately the narrow single-column screen its
+ * `wd-no-registration` container says it is — a name and a password do not want a
+ * grid.
+ *
+ * The registration form is the opposite problem. It asks for around twenty fields
+ * and every one of them was on its own line, so the page was a column of inputs
+ * several screens long with three headings lost somewhere inside it.
+ *
+ * Two separate reasons for that, and the layout below answers both.
+ *
+ * The template's own rows had asked to pair up since the first version — the email
+ * beside the phone, the password beside its repeat — and never did. The rules that
+ * would have paired them, `p:where(.form-row-first, .form-row-last) { width: 48% }`
+ * and its floats, live in Woodmart's `woo-mod-grid` part, and the theme enqueues
+ * that part on the checkout and the account pages only. This is neither: it is an
+ * ordinary WordPress page holding a shortcode, so the classes resolved to nothing.
+ * Widths are declared here now rather than borrowed, which is also what stops the
+ * form changing shape if the theme's list of pages ever changes.
+ *
+ * The billing address never asked at all. WooCommerce hands almost all of it over as
+ * `form-row-wide` — country, street, second street line, postcode, town, canton,
+ * phone and email — and full width is what that class means everywhere else.
+ */
+
+.woap-registration__section {
+	margin-bottom: 20px;
+	padding: 1.5em;
+	border: 1px solid var(--brdcolor-gray-300, rgba(0, 0, 0, 0.105));
+	border-radius: var(--wd-brd-radius, 0);
+}
+
+.woap-registration__title {
+	margin-bottom: 1em;
+	color: var(--wd-title-color, #242424);
+	font-size: 1.1em;
+}
+
+.woap-registration__actions {
+	margin-bottom: 0;
+}
+
+/*
+ * Two columns, and the address block is one of them rather than a special case:
+ * `.woap-address-fields` is the wrapper `AddressFields::render()` prints, so the
+ * fields WooCommerce chose for the customer's country are laid out by the same rules
+ * as the fields this plugin writes by hand.
+ *
+ * Grid rather than the theme's floats, and that is the point of the change. Floats
+ * can only pair rows that carry a `form-row-first` / `form-row-last` class, and the
+ * address rows are WooCommerce's — the plugin does not get to write their classes,
+ * and could not choose sensibly if it did, because which fields exist at all depends
+ * on the country. On a grid the stylesheet names the few fields that want the full
+ * width and every other one tiles itself, whatever the country turns out to ask for.
+ */
+.woap-registration-form .woap-form-grid,
+.woap-registration-form .woap-address-fields {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 20px 30px;
+}
+
+/*
+ * A grid item's margin does not collapse with anything, so the rows give their
+ * vertical spacing up to `gap` and the panel keeps the padding it was given.
+ *
+ * The float and the width are cleared for the case where `woo-mod-grid` is on the
+ * page after all — a theme update, a page builder, or somebody putting the shortcode
+ * on the account page. Its `p:where(…)` and `p.form-row-first` are both outranked by
+ * a class selector, and a float is inert on a grid item in any event.
+ */
+.woap-registration-form .woap-form-grid > *,
+.woap-registration-form .woap-address-fields > * {
+	float: none;
+	width: auto;
+	margin-bottom: 0;
+}
+
+/*
+ * `1 / -1` rather than `span 2`, because it still means "the whole row" once the
+ * media query below drops the grid to one column. `span 2` would conjure an implicit
+ * second column there and undo it.
+ */
+.woap-registration-form .woap-form-grid > .form-row-wide,
+.woap-registration-form .woap-address-fields > #billing_country_field,
+.woap-registration-form .woap-address-fields > #billing_address_1_field,
+.woap-registration-form .woap-address-fields > #billing_address_2_field,
+.woap-registration-form .woap-address-fields > #billing_email_field {
+	grid-column: 1 / -1;
+}
+
+/*
+ * The four above are the ones a half column would spoil, and the reasons differ.
+ * The country is the control every other field in the block follows, so it reads as
+ * the question it is when nothing sits beside it. The two street lines hold the
+ * longest values on the form. The second line is also the one field WooCommerce
+ * labels for screen readers only, so beside a labelled field its input would sit a
+ * line higher than its neighbour's. And the email is last, where a half-width field
+ * would leave a hole rather than a pair.
+ *
+ * Everything else — names, postcode, town, canton, phone — pairs up two across in
+ * whatever order the country puts them.
+ */
+
+@media (max-width: 767px) {
+
+	.woap-registration-form .woap-form-grid,
+	.woap-registration-form .woap-address-fields {
+		grid-template-columns: 1fr;
+	}
+}
