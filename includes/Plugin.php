@@ -126,6 +126,13 @@ final class Plugin {
 
 		( new Emails() )->register();
 
+		/*
+		 * Outside the is_admin() branch: it feeds an admin screen, but the sync it
+		 * takes part in runs from a meta write on a signed-in member's frontend
+		 * request.
+		 */
+		( new Analytics() )->register();
+
 		if ( is_admin() ) {
 			( new Settings() )->register();
 			( new Organizations() )->register();

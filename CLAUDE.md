@@ -411,6 +411,26 @@ no JSX, no bundler** — so the plugin still builds with nothing but Composer an
 `node --check assets/js` stays meaningful. Nothing in that script enforces anything; the server
 does.
 
+### Analytics knows nothing about a role it has not been told about
+
+WooCommerce → Customers reads `wc_customer_lookup`, not the users table, and a user only
+reaches that table if one of their roles is in a list WooCommerce defaults to `array( 'customer' )`.
+Every account here holds `woap_org_admin` or `woap_member` instead — a member is a customer of the
+shop but never WooCommerce's `customer` role, because that role carries the account screens this
+plugin replaces. On a shop whose customers are *all* organizations, the default empties the screen
+completely, and with it the Customers report, the customer filter on every other report and the
+customer CSV export, which all read that one table.
+
+`Analytics` filters **both** role lists, because a user is written into that table by two paths and
+each has its own: `woocommerce_analytics_import_customer_roles` is a `role__in` on the historical
+backfill, and `woocommerce_analytics_customer_roles` is the per-user check on the ongoing sync.
+Filtering one and not the other leaves either every existing account invisible or every future one.
+It is registered outside the `is_admin()` branch, because the ongoing path runs from the
+`wc_last_active` meta write on a signed-in member's *frontend* request — which is also why accounts
+that predate the fix reappear by themselves the next time their owner signs in. Only an account
+that never signs in again needs Analytics → Settings → *Import historical data*; there is no
+Status → Tools entry and no wp-cli command for it.
+
 ### Invitations
 
 Four properties have to hold together, and `InvitationTest` asserts each one:
