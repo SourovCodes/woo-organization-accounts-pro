@@ -18,6 +18,7 @@ use WooOrgAccounts\Checkout\ShippingSelector;
 use WooOrgAccounts\Emails\Emails;
 use WooOrgAccounts\Frontend\AccountHandlers;
 use WooOrgAccounts\Frontend\MyAccount;
+use WooOrgAccounts\Frontend\OrderDetails;
 use WooOrgAccounts\Frontend\Registration;
 
 defined( 'ABSPATH' ) || exit;
@@ -118,6 +119,7 @@ final class Plugin {
 		( new Registration() )->register();
 		( new MyAccount() )->register();
 		( new AccountHandlers() )->register();
+		( new OrderDetails() )->register();
 
 		( new Gate() )->register();
 		( new BillingLock() )->register();

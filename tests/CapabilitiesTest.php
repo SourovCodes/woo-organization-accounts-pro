@@ -12,6 +12,7 @@ use WooOrgAccounts\Checkout\OrderMeta;
 use WooOrgAccounts\Data\Member;
 use WooOrgAccounts\Data\MemberRepository;
 use WooOrgAccounts\Frontend\MyAccount;
+use WooOrgAccounts\Frontend\OrderDetails;
 use WooOrgAccounts\Guard;
 use WooOrgAccounts\Roles;
 
@@ -434,6 +435,86 @@ class CapabilitiesTest extends TestCase {
 	}
 
 	/**
+	 * An admin sees the addresses on an order somebody else placed.
+	 *
+	 * WooCommerce prints the billing and delivery addresses only when the order's
+	 * customer is the viewer, decided by a bare comparison inside `order-details.php`
+	 * with no filter on it. On an account whose whole point is that goods go to
+	 * organization locations, those were the two facts most worth checking and the two
+	 * that were missing.
+	 */
+	public function testAdminSeesTheAddressesOnAnotherMembersOrder() {
+		$organization = $this->make_organization();
+		$buyer        = $this->make_member( $organization );
+		$admin        = $this->make_member( $organization, Member::ROLE_ADMIN );
+
+		$order = $this->make_organization_order( $organization, $buyer );
+
+		$this->act_as( $admin );
+
+		$this->assertStringContainsString( 'woocommerce-column--billing-address', $this->customer_details_for( $order ) );
+	}
+
+	/**
+	 * The block is not printed twice on the viewer's own order.
+	 *
+	 * WooCommerce renders it itself in that case, so this must stand down or every
+	 * address appears twice.
+	 */
+	public function testTheAddressesAreNotDuplicatedOnAnOwnOrder() {
+		$organization = $this->make_organization();
+		$buyer        = $this->make_member( $organization );
+
+		$order = $this->make_organization_order( $organization, $buyer );
+
+		$this->act_as( $buyer );
+
+		$this->assertSame( '', $this->customer_details_for( $order ) );
+	}
+
+	/**
+	 * An admin of another organization is shown nothing.
+	 */
+	public function testAddressesAreNotShownAcrossOrganizations() {
+		$ours   = $this->make_organization();
+		$theirs = $this->make_organization( array( 'name' => 'Rival Ltd' ) );
+
+		$order = $this->make_organization_order( $ours, $this->make_member( $ours ) );
+
+		$this->act_as( $this->make_member( $theirs, Member::ROLE_ADMIN ) );
+
+		$this->assertSame( '', $this->customer_details_for( $order ) );
+	}
+
+	/**
+	 * An order belonging to no organization is left to WooCommerce.
+	 */
+	public function testAddressesAreNotAddedToANonOrganizationOrder() {
+		$organization = $this->make_organization();
+
+		$order = new \WC_Order();
+		$order->set_status( 'processing' );
+		$order->save();
+
+		$this->act_as( $this->make_member( $organization, Member::ROLE_ADMIN ) );
+
+		$this->assertSame( '', $this->customer_details_for( $order ) );
+	}
+
+	/**
+	 * What the plugin adds to the foot of an order for the current user.
+	 *
+	 * @param \WC_Order $order Order being shown.
+	 * @return string Rendered markup, empty when the plugin adds nothing.
+	 */
+	private function customer_details_for( \WC_Order $order ) {
+		ob_start();
+		( new OrderDetails() )->render_customer_details( $order );
+
+		return (string) ob_get_clean();
+	}
+
+	/**
 	 * Create an order stamped with an organization and the member who placed it.
 	 *
 	 * @param \WooOrgAccounts\Data\Organization $organization Organization the order belongs to.
@@ -446,6 +527,53 @@ class CapabilitiesTest extends TestCase {
 		$order->set_customer_id( $buyer->get_user_id() );
 		$order->update_meta_data( OrderMeta::ORGANIZATION_ID, $organization->get_id() );
 		$order->update_meta_data( OrderMeta::MEMBER_USER_ID, $buyer->get_user_id() );
+
+		/*
+		 * A shipping line, because WooCommerce shows the address columns only when
+		 * `needs_shipping_address()` is true — and that reads the order's shipping
+		 * methods, not its products. An order without one falls back to printing the
+		 * billing email alone.
+		 */
+		$shipping = new \WC_Order_Item_Shipping();
+		$shipping->set_method_title( 'Flat rate' );
+		$shipping->set_method_id( 'flat_rate' );
+		$shipping->set_total( '5' );
+
+		$order->add_item( $shipping );
+
+		/*
+		 * A real organization order carries the organization's billing address and a
+		 * location's delivery address, written by BillingLock and ShippingSelector.
+		 * Without them WooCommerce's customer-details block prints an email and no
+		 * address columns, and a test asserting the addresses appear would be asserting
+		 * against a shape no order on a live site has.
+		 */
+		$order->set_address(
+			array(
+				'first_name' => 'Ada',
+				'last_name'  => 'Byron',
+				'company'    => $organization->get_name(),
+				'address_1'  => '1 Rechnungsweg',
+				'city'       => 'Berlin',
+				'postcode'   => '10115',
+				'country'    => 'DE',
+			),
+			'billing'
+		);
+
+		$order->set_address(
+			array(
+				'first_name' => 'Grace',
+				'last_name'  => 'Hopper',
+				'company'    => $organization->get_name(),
+				'address_1'  => '9 Lagerweg',
+				'city'       => 'Hamburg',
+				'postcode'   => '20095',
+				'country'    => 'DE',
+			),
+			'shipping'
+		);
+
 		$order->set_status( 'processing' );
 		$order->save();
 

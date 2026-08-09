@@ -444,6 +444,26 @@ order can see them. **The downloads *list* at `/my-account/downloads/` is still 
 `wc_get_customer_available_downloads()` queries by user ID; an admin reaches an employee's file from
 the order, not from that screen.
 
+**Capabilities were only half of it: WooCommerce also decides what an order *page* shows.**
+`Frontend\OrderDetails` supplies the billing and delivery addresses at the foot of an order the
+viewer did not place. Both `order/order-details.php` and its fulfillments variant decide with the
+same bare line — `$show_customer_details = $order->get_user_id() === get_current_user_id();` — so an
+admin who could now open an employee's order got the items and the totals and no addresses, which
+on an account whose whole point is that goods go to organization locations were the two facts most
+worth checking.
+
+**There is no filter for it**, so the choice is to override the template or print the block
+ourselves. Overriding would freeze a WooCommerce template that still changes between releases —
+the fulfillments variant is recent — against a plugin that carries no compatibility shims. Instead
+this hooks `woocommerce_after_order_details`, which both templates fire on the line immediately
+before the block they are about to skip, and renders WooCommerce's own
+`order/order-details-customer.php` into the position it would have occupied. It stands down when
+WooCommerce is going to render the block itself, or every address would appear twice.
+
+Worth knowing when writing fixtures for this: WooCommerce shows the address *columns* only when
+`needs_shipping_address()` is true, and that reads the order's **shipping methods**, not its
+products. An order without a shipping line falls back to printing the billing email alone.
+
 **The test that catches this class is an invariant over the screen, not a case.**
 `CapabilitiesTest::testEveryListedOrderIsOpenableByTheReader` asserts that every order the list
 returns can be opened by the member it was rendered for. A per-case test would have been written
