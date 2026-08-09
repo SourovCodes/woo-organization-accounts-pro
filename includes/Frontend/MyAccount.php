@@ -118,6 +118,13 @@ class MyAccount {
 		add_action( 'init', array( __CLASS__, 'add_endpoints' ) );
 		add_filter( 'woocommerce_get_query_vars', array( $this, 'add_query_vars' ) );
 		add_filter( 'woocommerce_account_menu_items', array( $this, 'add_menu_items' ) );
+
+		/*
+		 * Before WC_Form_Handler::save_address(), which is on the same action at the
+		 * default priority. Refusing after it would mean refusing the screen and
+		 * keeping what it submitted.
+		 */
+		add_action( 'template_redirect', array( $this, 'refuse_address_endpoint' ), 5 );
 		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 		add_action( 'woocommerce_account_content', array( $this, 'enqueue_theme_parts' ), 5 );
 
@@ -229,6 +236,75 @@ class MyAccount {
 			$ours,
 			array_slice( $items, $position, null, true )
 		);
+	}
+
+	/**
+	 * Refuse WooCommerce's own address screen to anybody in an organization.
+	 *
+	 * A member has no billing address and no shipping address of their own. Billing is
+	 * the organization's, written onto every order by `Checkout\BillingLock`; shipping
+	 * is a location, resolved by `Checkout\ShippingSelector`. Both discard whatever is
+	 * stored against the WordPress user, so WooCommerce's `edit-address` screen accepted
+	 * a twelve-field address, reported "Address changed successfully" and changed
+	 * nothing that would ever appear on an order.
+	 *
+	 * **Unsetting the menu item was never enough.** `add_menu_items()` removes
+	 * `edit-address` from one array, which decides what the account sidebar prints and
+	 * nothing else: the endpoint is a rewrite rule WooCommerce registers at `init`, and
+	 * the URL still routed, still rendered and still saved. WooCommerce's own
+	 * `dashboard.php` also prints a live link to it in its opening sentence, so the
+	 * screen was reachable from the first page a member lands on without going near the
+	 * menu.
+	 *
+	 * Refused at request time rather than by blanking the endpoint's slug option, which
+	 * is how the plugin switches off registration. An endpoint slug is baked into the
+	 * site's rewrite rules, and those are shared and cached: making one conditional on
+	 * who is asking would leave the rules dependent on whoever happened to flush them.
+	 *
+	 * Non-members are left alone. An administrator, an author or a plain customer on a
+	 * shop that also sells to individuals still has an address of their own.
+	 *
+	 * @return void
+	 */
+	public function refuse_address_endpoint() {
+		if ( ! function_exists( 'is_wc_endpoint_url' ) || ! is_wc_endpoint_url( 'edit-address' ) ) {
+			return;
+		}
+
+		if ( null === Context::member() ) {
+			return;
+		}
+
+		if ( current_user_can( Roles::MANAGE_BILLING ) ) {
+			$destination = wc_get_account_endpoint_url( self::ENDPOINT_PROFILE );
+
+			wc_add_notice(
+				sprintf(
+					/* translators: %s: the organization noun for the site's mode, for example "Company". */
+					esc_html__( 'Addresses belong to your %s rather than to your own account, and are managed here.', 'woo-organization-accounts-pro' ),
+					esc_html( Labels::organization() )
+				),
+				'notice'
+			);
+		} else {
+			$destination = wc_get_page_permalink( 'myaccount' );
+
+			wc_add_notice(
+				sprintf(
+					/* translators: %s: the organization noun for the site's mode, for example "Company". */
+					esc_html__( 'Addresses belong to your %s rather than to your own account.', 'woo-organization-accounts-pro' ),
+					esc_html( Labels::organization() )
+				),
+				'notice'
+			);
+		}
+
+		if ( ! is_string( $destination ) || '' === $destination ) {
+			return;
+		}
+
+		wp_safe_redirect( $destination );
+		exit;
 	}
 
 	/**

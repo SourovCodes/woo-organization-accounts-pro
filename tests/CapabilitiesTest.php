@@ -7,6 +7,7 @@
 
 namespace WooOrgAccounts\Tests;
 
+use WooOrgAccounts\Capabilities;
 use WooOrgAccounts\Checkout\OrderMeta;
 use WooOrgAccounts\Data\Member;
 use WooOrgAccounts\Data\MemberRepository;
@@ -327,6 +328,109 @@ class CapabilitiesTest extends TestCase {
 				sprintf( 'Order %d is listed and linked but cannot be opened.', $order->get_id() )
 			);
 		}
+	}
+
+	/**
+	 * An admin has the same control over an employee's order as over their own.
+	 *
+	 * The whole set, not only `view_order`: an order belongs to the organization, and
+	 * which employee happened to place it is a detail of how it got there.
+	 */
+	public function testAdminHasFullControlOfAnotherMembersOrder() {
+		$organization = $this->make_organization();
+		$buyer        = $this->make_member( $organization );
+		$admin        = $this->make_member( $organization, Member::ROLE_ADMIN );
+
+		$order = $this->make_organization_order( $organization, $buyer );
+
+		$this->act_as( $admin );
+
+		foreach ( array( 'view_order', 'order_again', 'cancel_order', 'pay_for_order' ) as $capability ) {
+			$this->assertTrue(
+				current_user_can( $capability, $order->get_id() ),
+				$capability . ' should be granted over an organization order.'
+			);
+		}
+	}
+
+	/**
+	 * Paying additionally needs the right to buy.
+	 *
+	 * Paying is spending, and `woap_place_orders` is this plugin's expression of who may
+	 * spend. Without this, revoking somebody's right to buy would still leave them able
+	 * to settle the organization's unpaid orders — and the checkout gate would not catch
+	 * it, because the pay flow validates the order key rather than running the cart
+	 * hooks the gate is attached to.
+	 */
+	public function testPayingNeedsThePlaceOrdersCapability() {
+		$organization = $this->make_organization();
+		$buyer        = $this->make_member( $organization );
+		$admin        = $this->make_member( $organization, Member::ROLE_ADMIN );
+
+		$admin->set_capabilities( array( Roles::PLACE_ORDERS => false ) );
+		MemberRepository::save( $admin );
+
+		$order = $this->make_organization_order( $organization, $buyer );
+
+		$this->act_as( $admin );
+
+		$this->assertFalse( current_user_can( 'pay_for_order', $order->get_id() ) );
+		$this->assertTrue( current_user_can( 'view_order', $order->get_id() ) );
+		$this->assertTrue( current_user_can( 'cancel_order', $order->get_id() ) );
+	}
+
+	/**
+	 * None of the order capabilities cross an organization.
+	 *
+	 * `download_file` is checked with a download rather than an order ID, because that
+	 * is what WooCommerce hands its own rule — passing an ID makes WooCommerce itself
+	 * fatal on `$download->get_user_id()`, long before this plugin is consulted.
+	 */
+	public function testNoOrderCapabilityCrossesAnOrganization() {
+		$ours   = $this->make_organization();
+		$theirs = $this->make_organization( array( 'name' => 'Rival Ltd' ) );
+
+		$buyer = $this->make_member( $ours );
+		$order = $this->make_organization_order( $ours, $buyer );
+
+		$download = new \WC_Customer_Download();
+		$download->set_user_id( $buyer->get_user_id() );
+		$download->set_order_id( $order->get_id() );
+
+		$this->act_as( $this->make_member( $theirs, Member::ROLE_ADMIN ) );
+
+		foreach ( Capabilities::order_capabilities() as $capability ) {
+			$subject = ( 'download_file' === $capability ) ? $download : $order->get_id();
+
+			$this->assertFalse(
+				current_user_can( $capability, $subject ),
+				$capability . ' must not cross an organization.'
+			);
+		}
+	}
+
+	/**
+	 * A downloadable file bought by one member can be fetched by an admin.
+	 *
+	 * `download_file` is handed a download rather than an order, so the order has to be
+	 * reached through it. The order page renders a download button per item, so an admin
+	 * who can open the order can see the button — which is what makes this reachable
+	 * rather than a capability nobody can use.
+	 */
+	public function testAdminCanDownloadAnotherMembersFile() {
+		$organization = $this->make_organization();
+		$buyer        = $this->make_member( $organization );
+		$admin        = $this->make_member( $organization, Member::ROLE_ADMIN );
+
+		$order = $this->make_organization_order( $organization, $buyer );
+
+		$download = new \WC_Customer_Download();
+		$download->set_user_id( $buyer->get_user_id() );
+		$download->set_order_id( $order->get_id() );
+
+		$this->act_as( $admin );
+
+		$this->assertTrue( current_user_can( 'download_file', $download ) );
 	}
 
 	/**

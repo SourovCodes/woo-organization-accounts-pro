@@ -76,6 +76,10 @@
 				<element value="view_woocommerce_reports"/>
 				<element value="edit_shop_orders"/>
 				<element value="view_order"/>
+				<element value="order_again"/>
+				<element value="cancel_order"/>
+				<element value="pay_for_order"/>
+				<element value="download_file"/>
 				<element value="woap_manage_organization"/>
 				<element value="woap_manage_billing"/>
 				<element value="woap_manage_locations"/>

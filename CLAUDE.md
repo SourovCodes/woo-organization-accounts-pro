@@ -287,6 +287,29 @@ a table the whole site shares — with no way to make the uniqueness above a con
 
 ### Address fields
 
+**A member has no address of their own, and WooCommerce's own address screen is refused.** Billing
+is the organization's, written onto every order by `Checkout\BillingLock`; shipping is a location,
+resolved by `Checkout\ShippingSelector`. Both discard whatever is stored against the WordPress user,
+so `edit-address` accepted a twelve-field address, reported "Address changed successfully" and
+changed nothing that would ever reach an order.
+
+**Unsetting the menu item was never enough**, and that is why this survived a release.
+`MyAccount::add_menu_items()` removes `edit-address` from one array, which decides what the account
+sidebar prints and nothing else: the endpoint is a rewrite rule WooCommerce registers at `init`, so
+the URL still routed, still rendered and still saved. WooCommerce's own `dashboard.php` prints a
+live link to it in its opening sentence too, so the screen was reachable from the first page a
+member lands on without going near the menu. The plugin's own five endpoints do not have this
+problem because every `render_*()` calls `guarded_organization()` — the menu is decoration and the
+check happens at render.
+
+`MyAccount::refuse_address_endpoint()` is the refusal, on `template_redirect` at **priority 5**,
+because `WC_Form_Handler::save_address()` is on the same action at the default priority and
+refusing after it would refuse the screen while keeping what it submitted. It is a request-time
+refusal rather than a blanked endpoint slug — the way registration is switched off — because an
+endpoint slug is baked into the site's shared, cached rewrite rules, and making one conditional on
+who is asking would leave those rules dependent on whoever happened to flush them. **Non-members are
+left alone**: an administrator, an author or a plain customer still has an address of their own.
+
 `Frontend\AddressFields` is the only place the plugin builds an address form, and it builds none
 of it itself: the fields, their labels, their order, which are required and how each is validated
 all come from `WC()->countries->get_address_fields()` and mirror
@@ -392,15 +415,34 @@ organization admin got a correct list of their organization's orders in which ev
 an employee answered "Invalid order." Neither side was wrong — the list was right and the
 capability was right — and nothing asserted the two together.
 
-`Capabilities::resolve_view_order()` closes it, and three things about the shape are deliberate. It
-**only ever grants**, never denies, so WooCommerce's own rule still gives a member their own order
-and a plain customer elsewhere on the shop is untouched — a filter answering in both directions
-would make this plugin the arbiter of who may read every order on the site. It is **scoped to
-orders carrying `_woap_organization_id`**, because an order with no organization is not this
-plugin's business whoever is asking. And it grants **`view_order` only**, of the five capabilities
-WooCommerce keys on the order's customer: `pay_for_order`, `order_again` and `cancel_order` spend or
-change an order rather than read one, and belong to `woap_place_orders` and a decision nobody has
-asked for. Granting them because they sit in the same `switch` would be inventing policy.
+`Capabilities::resolve_order_capabilities()` closes it, for **all five** capabilities WooCommerce
+keys on the order's customer — `view_order`, `order_again`, `cancel_order`, `pay_for_order` and
+`download_file`. An order belongs to the organization, and which employee happened to place it is a
+detail of how it got there, so somebody who may see the organization's orders has the same control
+over them as over their own.
+
+`pay_for_order` **additionally requires `woap_place_orders`**. Paying is spending, and that
+capability is the plugin's whole expression of who may spend; an admin holds it by default, so the
+extra condition only bites where somebody has been explicitly refused it. Without it, revoking a
+member's right to buy would leave them able to settle the organization's unpaid orders instead —
+and `Checkout\Gate` would not catch that, because `WC_Form_Handler::pay_action()` validates the
+order key rather than running the cart and checkout hooks the gate is attached to.
+
+Three properties of the shape are deliberate. It **only ever grants**, never denies, so WooCommerce's
+own rule still gives a member their own order and a plain customer elsewhere on the shop is
+untouched — a filter answering in both directions would make this plugin the arbiter of who may read
+every order on the site. It is **scoped to orders carrying `_woap_organization_id`**, because an
+order with no organization is not this plugin's business whoever is asking. And it is **scoped to
+the asker's own organization**, which is the cross-tenant question and separate from the capability
+one.
+
+`download_file` is handed a `WC_Customer_Download` rather than an order, so the order is reached
+through it — and checking that capability with an order ID makes WooCommerce itself fatal on
+`$download->get_user_id()`, long before this plugin is consulted. It is granted because it is
+reachable: `order-details.php` renders a download button per item, so an admin who can open the
+order can see them. **The downloads *list* at `/my-account/downloads/` is still per-user**, because
+`wc_get_customer_available_downloads()` queries by user ID; an admin reaches an employee's file from
+the order, not from that screen.
 
 **The test that catches this class is an invariant over the screen, not a case.**
 `CapabilitiesTest::testEveryListedOrderIsOpenableByTheReader` asserts that every order the list

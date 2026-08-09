@@ -610,7 +610,7 @@ msgstr "Rechnungsadresse gespeichert."
 #: includes/Frontend/AccountHandlers.php:260
 #: includes/Frontend/AccountHandlers.php:344
 #: includes/Frontend/AccountHandlers.php:370
-#: includes/Frontend/MyAccount.php:554
+#: includes/Frontend/MyAccount.php:630
 msgid "That entry no longer exists."
 msgstr "Diesen Eintrag gibt es nicht mehr."
 
@@ -654,7 +654,7 @@ msgstr "Einladung erneut versendet."
 
 #: includes/Frontend/AccountHandlers.php:477
 #: includes/Frontend/AccountHandlers.php:564
-#: includes/Frontend/MyAccount.php:465
+#: includes/Frontend/MyAccount.php:541
 msgid "That member no longer exists."
 msgstr "Dieses Mitglied gibt es nicht mehr."
 
@@ -744,12 +744,12 @@ msgid "%s orders"
 msgstr "Bestellungen der %s"
 
 #. translators: %s: the organization noun for the site's mode, for example "Company".
-#: includes/Frontend/MyAccount.php:745
+#: includes/Frontend/MyAccount.php:821
 #, php-format
 msgid "Your account is not linked to a %s."
 msgstr "Dein Konto ist keiner %s zugeordnet."
 
-#: includes/Frontend/MyAccount.php:755
+#: includes/Frontend/MyAccount.php:831
 msgid "You do not have permission to view this."
 msgstr "Du hast keine Berechtigung, das anzusehen."
 
@@ -1473,11 +1473,11 @@ msgstr "„%s“ ist jetzt die Standardauswahl an der Kasse."
 msgid "Choose at least one %s, or give access to all of them."
 msgstr "Wähle mindestens eine %s aus oder gib Zugriff auf alle."
 
-#: includes/Frontend/MyAccount.php:406
+#: includes/Frontend/MyAccount.php:482
 msgid "Invitations waiting"
 msgstr "Offene Einladungen"
 
-#: includes/Frontend/MyAccount.php:414
+#: includes/Frontend/MyAccount.php:490
 msgid "Orders"
 msgstr "Bestellungen"
 
@@ -1714,3 +1714,15 @@ msgstr "Weiter zum Shop"
 #: templates/registration/pending-approval.php:57
 msgid "Go to sign in"
 msgstr "Zur Anmeldung"
+
+#. translators: %s: the organization noun for the site's mode, for example "Company".
+#: includes/Frontend/MyAccount.php:284
+#, php-format
+msgid "Addresses belong to your %s rather than to your own account, and are managed here."
+msgstr "Adressen gehören deiner %s und nicht deinem eigenen Konto und werden hier verwaltet."
+
+#. translators: %s: the organization noun for the site's mode, for example "Company".
+#: includes/Frontend/MyAccount.php:295
+#, php-format
+msgid "Addresses belong to your %s rather than to your own account."
+msgstr "Adressen gehören deiner %s und nicht deinem eigenen Konto."

@@ -572,6 +572,100 @@ class AccountTest extends TestCase {
 	}
 
 	/**
+	 * A member is sent away from WooCommerce's own address screen.
+	 *
+	 * An organization member has no address of their own: billing is written from the
+	 * organization row and shipping from a location, so that screen saved a full address
+	 * and reported success while changing nothing an order would ever carry.
+	 */
+	public function testMemberIsRefusedTheAddressEndpoint() {
+		$organization = $this->make_organization();
+		$this->act_as( $this->make_member( $organization, Member::ROLE_ADMIN ) );
+
+		$destination = $this->address_endpoint_redirect();
+
+		$this->assertNotSame( '', $destination );
+		$this->assertStringContainsString( MyAccount::ENDPOINT_PROFILE, $destination );
+	}
+
+	/**
+	 * A member who cannot manage billing is sent to their account instead.
+	 *
+	 * Sending them to a screen they are about to be refused would be a second dead end.
+	 */
+	public function testMemberWithoutBillingRightsGoesToTheAccountPage() {
+		$organization = $this->make_organization();
+		$this->act_as( $this->make_member( $organization ) );
+
+		$destination = $this->address_endpoint_redirect();
+
+		$this->assertNotSame( '', $destination );
+		$this->assertStringNotContainsString( MyAccount::ENDPOINT_PROFILE, $destination );
+	}
+
+	/**
+	 * Somebody with no membership keeps their own address screen.
+	 *
+	 * An administrator, an author, or a plain customer on a shop that also sells to
+	 * individuals has an address of their own and must not be redirected off it.
+	 */
+	public function testNonMemberKeepsTheAddressEndpoint() {
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'subscriber' ) ) );
+
+		$this->assertSame( '', $this->address_endpoint_redirect() );
+	}
+
+	/**
+	 * The refusal runs before WooCommerce saves the address.
+	 *
+	 * `WC_Form_Handler::save_address()` is on the same action at the default priority.
+	 * Refusing after it would refuse the screen and keep what it submitted, which is the
+	 * bug wearing a redirect.
+	 */
+	public function testTheRefusalRunsBeforeWooCommerceSaves() {
+		$myaccount = new MyAccount();
+		$myaccount->register();
+
+		$priority = has_action( 'template_redirect', array( $myaccount, 'refuse_address_endpoint' ) );
+
+		$this->assertNotFalse( $priority );
+		$this->assertLessThan( 10, $priority );
+	}
+
+	/**
+	 * Where a request for the address endpoint is sent, if anywhere.
+	 *
+	 * `is_wc_endpoint_url()` reads the endpoint out of the main query's variables, which
+	 * a unit test has no routed request to supply, so the query var is set directly.
+	 *
+	 * @return string Redirect target, or an empty string when the request was left alone.
+	 */
+	private function address_endpoint_redirect() {
+		global $wp;
+
+		$catch = static function ( $location ) {
+			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Carried to an assertion in a test, never rendered.
+			throw new RedirectException( $location );
+		};
+
+		$restore                        = $wp->query_vars;
+		$wp->query_vars['edit-address'] = 'billing';
+
+		add_filter( 'wp_redirect', $catch );
+
+		try {
+			( new MyAccount() )->refuse_address_endpoint();
+		} catch ( RedirectException $redirect ) {
+			return $redirect->location;
+		} finally {
+			remove_filter( 'wp_redirect', $catch );
+			$wp->query_vars = $restore;
+		}
+
+		return '';
+	}
+
+	/**
 	 * Where an account-page request is sent, if anywhere.
 	 *
 	 * `is_account_page()` asks the main query a question a unit test has no page to
