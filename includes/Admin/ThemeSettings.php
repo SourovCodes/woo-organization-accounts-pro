@@ -8,6 +8,7 @@
 namespace WooOrgAccounts\Admin;
 
 use WooOrgAccounts\Labels;
+use WooOrgAccounts\LoginGate;
 use XTS\Admin\Modules\Options;
 
 defined( 'ABSPATH' ) || exit;
@@ -100,6 +101,13 @@ class ThemeSettings {
 			__( 'Approval', 'woo-organization-accounts-pro' ) => Settings::get( 'require_approval', true )
 				? __( 'New registrations wait for an administrator', 'woo-organization-accounts-pro' )
 				: __( 'New registrations are active immediately', 'woo-organization-accounts-pro' ),
+			__( 'Signing in', 'woo-organization-accounts-pro' ) => LoginGate::is_enabled()
+				? sprintf(
+					/* translators: %s: the plural organization noun for the site's mode. */
+					__( 'Only members of approved %s may sign in', 'woo-organization-accounts-pro' ),
+					Labels::organizations()
+				)
+				: __( 'Anybody with an account may sign in', 'woo-organization-accounts-pro' ),
 			__( 'Registration page', 'woo-organization-accounts-pro' ) => self::registration_page_label(),
 		);
 

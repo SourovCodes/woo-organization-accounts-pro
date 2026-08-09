@@ -15,6 +15,7 @@ use WooOrgAccounts\Data\MemberRepository;
 use WooOrgAccounts\Data\Organization;
 use WooOrgAccounts\Data\OrganizationRepository;
 use WooOrgAccounts\Labels;
+use WooOrgAccounts\LoginGate;
 use WooOrgAccounts\Members\Invitations;
 use WooOrgAccounts\Roles;
 
@@ -53,6 +54,11 @@ class Registration {
 	 * Field a bot fills in and a person never sees.
 	 */
 	const HONEYPOT_FIELD = 'woap_website';
+
+	/**
+	 * Query argument asking the page to report an account that is awaiting approval.
+	 */
+	const PENDING_VAR = 'woap_pending';
 
 	/**
 	 * Errors raised while processing a submission.
@@ -284,6 +290,20 @@ class Registration {
 		 */
 		Templates::enqueue_theme_parts( 'woo-mod-login-form', 'woo-page-login-register', 'mod-notices-general' );
 
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Reading an argument this page put in its own redirect, to decide which message to print; nothing is written.
+		$pending = isset( $_GET[ self::PENDING_VAR ] ) ? sanitize_key( wp_unslash( $_GET[ self::PENDING_VAR ] ) ) : '';
+
+		if ( '' !== LoginGate::message( $pending ) ) {
+			return Templates::get(
+				'registration/pending-approval.php',
+				array(
+					'message'     => LoginGate::message( $pending ),
+					'account_url' => wc_get_page_permalink( 'myaccount' ),
+					'shop_url'    => wc_get_page_permalink( 'shop' ),
+				)
+			);
+		}
+
 		$token = self::token_from_request();
 
 		if ( '' !== $token ) {
@@ -415,11 +435,42 @@ class Registration {
 			return;
 		}
 
+		/*
+		 * The cookie is set here rather than through wp_authenticate(), so the login gate
+		 * has to be asked directly — signing the new admin in and logging them out again
+		 * on their next request would be a worse way of saying "we are reviewing this".
+		 */
+		$reason = LoginGate::reason_for_status( $result['status'] );
+
+		if ( '' !== $reason ) {
+			wp_safe_redirect( self::pending_url( $reason ) );
+			exit;
+		}
+
 		wp_set_current_user( $result['user_id'] );
 		wp_set_auth_cookie( $result['user_id'], true );
 
 		wp_safe_redirect( wc_get_page_permalink( 'myaccount' ) );
 		exit;
+	}
+
+	/**
+	 * The registration page, asking it to report that an account is awaiting approval.
+	 *
+	 * A redirect rather than rendering the message straight from the submission, so a
+	 * refresh cannot re-post a registration that has already been accepted.
+	 *
+	 * @param string $reason One of the LoginGate REASON_* codes.
+	 * @return string URL.
+	 */
+	private static function pending_url( $reason ) {
+		$page = self::page_url();
+
+		if ( '' === $page ) {
+			$page = home_url( '/' );
+		}
+
+		return add_query_arg( self::PENDING_VAR, $reason, $page );
 	}
 
 	/**
@@ -476,6 +527,24 @@ class Registration {
 		if ( is_wp_error( $accepted ) ) {
 			self::$errors = $accepted;
 			return;
+		}
+
+		/*
+		 * An invitation can be sent by an organization that is itself still waiting for
+		 * approval, so the same gate applies here. Somebody who was already signed in is
+		 * signed out again rather than left holding a session the rule has just closed —
+		 * LoginGate would end it on their next request anyway, and doing it here is what
+		 * lets the screen explain why.
+		 */
+		$reason = LoginGate::reason( $user->ID );
+
+		if ( '' !== $reason ) {
+			if ( is_user_logged_in() ) {
+				wp_logout();
+			}
+
+			wp_safe_redirect( self::pending_url( $reason ) );
+			exit;
 		}
 
 		if ( ! is_user_logged_in() ) {
@@ -831,6 +900,7 @@ class Registration {
 		return array(
 			'user_id'         => $user_id,
 			'organization_id' => $organization_id,
+			'status'          => $organization->get_status(),
 		);
 	}
 

@@ -108,6 +108,13 @@ final class Plugin {
 		 */
 		( new Capabilities() )->register();
 
+		/*
+		 * Registered outside the is_admin() branch and before everything else: the rule
+		 * it enforces is answered on `authenticate`, which is reached from wp-login.php
+		 * and the Store API as readily as from the My Account form.
+		 */
+		( new LoginGate() )->register();
+
 		( new Registration() )->register();
 		( new MyAccount() )->register();
 		( new AccountHandlers() )->register();

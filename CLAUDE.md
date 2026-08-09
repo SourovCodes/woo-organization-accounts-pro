@@ -447,6 +447,39 @@ but the login form — the visitor asked to sign up and the site answered by ask
 somebody already signed in to their account. GET only: a POST to that URL is a submission, and
 swallowing one in a redirect would lose what it carried.
 
+### Approval gates two different things, and they are two settings
+
+`require_approval` decides whether a new registration may **order**; `require_approval_to_sign_in`
+decides whether its members may **sign in at all**. The second is off by default — letting a pending
+customer sign in and look around while they wait is a perfectly reasonable shop — and it is
+deliberately not conditional on the first, because an organization also becomes unapproved by being
+suspended or rejected, which is worth locking out on a shop that approves nothing.
+
+`LoginGate` is the whole of the second rule, and it takes three hooks rather than one, because a
+sign-in happens in three different places:
+
+- **`authenticate`, at priority 100.** Last, so nothing can answer after it — core resolves the
+  credentials between 20 and 30, and `wp_authenticate_cookie()` at 30 could otherwise overrule a
+  refusal. Being on that filter covers My Account, wp-login.php, XML-RPC and application passwords
+  at once. A `WP_Error` already on its way out is passed straight through, so a wrong password still
+  reports a wrong password.
+- **`init`, per request.** An organization stops being approved by being suspended, long after
+  anybody signed in; a rule applied only at sign-in would leave whoever was already in exactly where
+  they were. The session is ended and the redirect carries the reason, so the login screen can say
+  what happened rather than appearing for no visible cause.
+- **`Registration`, directly.** Registration sets the auth cookie itself and never passes through
+  `authenticate`, so it asks `LoginGate::reason_for_status()` and renders
+  `registration/pending-approval.php` instead of signing the new admin in. Signing them in and
+  logging them out again on their next request would be a worse way of saying *we are reviewing
+  this*. The invitation flow asks the same question, because an organization that is itself pending
+  can still have sent an invitation.
+
+**Two people are never refused.** Anybody holding `manage_woocommerce`, because an administrator who
+joined an organization to see what a customer sees must not be able to lock themselves out by
+suspending it — the screen that would let them back in is behind the door that just shut. And anybody
+with no membership at all: an author, a subscriber, the site owner. They have no organization to
+approve, and refusing everybody without one would close the site to its own staff.
+
 ## Working agreement
 
 - Run `composer lint` before calling any change done. The hook covers files you edit; the full run

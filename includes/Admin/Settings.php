@@ -59,6 +59,7 @@ class Settings {
 		return array(
 			'organization_mode'             => Labels::MODE_BUSINESS,
 			'require_approval'              => true,
+			'require_approval_to_sign_in'   => false,
 			'invitation_expiry_days'        => 7,
 			'registration_page_id'          => 0,
 			'default_allow_custom_shipping' => true,
@@ -265,6 +266,7 @@ class Settings {
 		$clean['organization_mode'] = array_key_exists( $mode, Labels::modes() ) ? $mode : $defaults['organization_mode'];
 
 		$clean['require_approval']              = ! empty( $input['require_approval'] );
+		$clean['require_approval_to_sign_in']   = ! empty( $input['require_approval_to_sign_in'] );
 		$clean['default_allow_custom_shipping'] = ! empty( $input['default_allow_custom_shipping'] );
 		$clean['remove_data_on_uninstall']      = ! empty( $input['remove_data_on_uninstall'] );
 
@@ -347,12 +349,25 @@ class Settings {
 	}
 
 	/**
-	 * The approval requirement checkbox.
+	 * The approval requirement checkboxes.
+	 *
+	 * Two separate questions, because approval gates two different things. The first
+	 * decides whether a new registration may *order*; the second decides whether its
+	 * members may *sign in* at all. They are deliberately not folded into one: a shop
+	 * that lets a pending organization sign in and browse is a different shop from one
+	 * that holds the account shut until somebody has looked at it, and both are asked
+	 * for.
+	 *
+	 * The second one is not conditional on the first, either. An organization reaches a
+	 * status other than active by being suspended or rejected as well as by waiting for
+	 * approval, and those are worth locking out on a shop that approves nothing.
 	 *
 	 * @return void
 	 */
 	public function render_require_approval_field() {
 		$settings = self::get_settings();
+
+		echo '<fieldset>';
 
 		printf(
 			'<label><input type="checkbox" name="%1$s[require_approval]" value="1"%2$s> %3$s</label>',
@@ -371,6 +386,32 @@ class Settings {
 			'<p class="description">%s</p>',
 			esc_html__( 'With this off, a new registration is active immediately.', 'woo-organization-accounts-pro' )
 		);
+
+		printf(
+			'<br><label><input type="checkbox" name="%1$s[require_approval_to_sign_in]" value="1"%2$s> %3$s</label>',
+			esc_attr( self::OPTION_KEY ),
+			checked( $settings['require_approval_to_sign_in'], true, false ),
+			esc_html(
+				sprintf(
+					/* translators: %s: the plural organization noun for the site's mode. */
+					__( 'Only members of approved %s may sign in', 'woo-organization-accounts-pro' ),
+					Labels::organizations()
+				)
+			)
+		);
+
+		printf(
+			'<p class="description">%s</p>',
+			esc_html(
+				sprintf(
+					/* translators: %s: the organization noun for the site's mode. */
+					__( 'With this on, a new registration is not signed in afterwards: it is told the %s is being reviewed, and can sign in once it has been approved. Shop staff are never locked out.', 'woo-organization-accounts-pro' ),
+					Labels::organization()
+				)
+			)
+		);
+
+		echo '</fieldset>';
 	}
 
 	/**

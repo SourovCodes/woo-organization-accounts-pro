@@ -23,6 +23,7 @@ class SettingsTest extends TestCase {
 
 		$this->assertSame( Labels::MODE_BUSINESS, $defaults['organization_mode'] );
 		$this->assertTrue( $defaults['require_approval'] );
+		$this->assertFalse( $defaults['require_approval_to_sign_in'] );
 		$this->assertSame( 7, $defaults['invitation_expiry_days'] );
 		$this->assertTrue( $defaults['default_allow_custom_shipping'] );
 		$this->assertFalse( $defaults['remove_data_on_uninstall'] );
@@ -56,6 +57,7 @@ class SettingsTest extends TestCase {
 		$clean = ( new Settings() )->sanitize( array( 'organization_mode' => Labels::MODE_BUSINESS ) );
 
 		$this->assertFalse( $clean['require_approval'] );
+		$this->assertFalse( $clean['require_approval_to_sign_in'] );
 		$this->assertFalse( $clean['default_allow_custom_shipping'] );
 		$this->assertFalse( $clean['remove_data_on_uninstall'] );
 
@@ -67,6 +69,25 @@ class SettingsTest extends TestCase {
 		);
 
 		$this->assertTrue( $ticked['require_approval'] );
+	}
+
+	/**
+	 * The two approval settings are separate answers to separate questions.
+	 *
+	 * Approval gates ordering; the sign-in setting gates the account itself. A shop
+	 * that approves nothing may still want a suspended account locked out, so the
+	 * second is not folded into the first and is not conditional on it either.
+	 */
+	public function testTheSignInGateIsIndependentOfTheOrderingGate() {
+		$clean = ( new Settings() )->sanitize(
+			array(
+				'organization_mode'           => Labels::MODE_BUSINESS,
+				'require_approval_to_sign_in' => '1',
+			)
+		);
+
+		$this->assertFalse( $clean['require_approval'] );
+		$this->assertTrue( $clean['require_approval_to_sign_in'] );
 	}
 
 	/**
