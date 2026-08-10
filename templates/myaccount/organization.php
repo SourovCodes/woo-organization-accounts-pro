@@ -26,11 +26,38 @@ defined( 'ABSPATH' ) || exit;
 $woap_post_url = esc_url( wc_get_account_endpoint_url( MyAccount::ENDPOINT_PROFILE ) );
 $woap_billing  = $organization->get_billing_address();
 
+$woap_details = array(
+	'name'   => $organization->get_name(),
+	'email'  => (string) $organization->get( 'email' ),
+	'phone'  => (string) $organization->get( 'phone' ),
+	'tax_id' => (string) $organization->get( 'tax_id' ),
+);
+
+// A rejected submission is handed straight back, so the form shows what was typed.
 if ( AccountHandlers::has_submission() ) {
 	foreach ( array_keys( $woap_billing ) as $woap_field ) {
 		$woap_billing[ $woap_field ] = AccountHandlers::value( 'billing_' . $woap_field, $woap_billing[ $woap_field ] );
 	}
+
+	foreach ( array_keys( $woap_details ) as $woap_field ) {
+		$woap_details[ $woap_field ] = AccountHandlers::value( 'woap_' . $woap_field, $woap_details[ $woap_field ] );
+	}
 }
+
+$woap_errors = AccountHandlers::errors();
+
+/**
+ * The message rejecting one detail field, or an empty string.
+ *
+ * A notice at the top says something is wrong without saying where, which on a form
+ * this long is most of the problem — so each field carries its own reason too.
+ *
+ * @param string $woap_field Field name, without its prefix.
+ * @return string Message, or an empty string when the field was accepted.
+ */
+$woap_detail_error = static function ( $woap_field ) use ( $woap_errors ) {
+	return $woap_errors instanceof WP_Error ? $woap_errors->get_error_message( 'woap_' . $woap_field ) : '';
+};
 
 ?>
 <div class="woap-account woap-account--organization">
@@ -108,24 +135,36 @@ if ( AccountHandlers::has_submission() ) {
 			?>
 		</h4>
 
-		<p class="woocommerce-form-row form-row-wide">
-			<label for="woap-name"><?php esc_html_e( 'Name', 'woo-organization-accounts-pro' ); ?></label>
-			<input type="text" class="woocommerce-Input input-text" id="woap-name" name="woap_name" required value="<?php echo esc_attr( $organization->get_name() ); ?>">
+		<?php $woap_bad = $woap_detail_error( 'name' ); ?>
+		<p class="woocommerce-form-row form-row-wide validate-required<?php echo '' !== $woap_bad ? ' woocommerce-invalid woocommerce-invalid-required-field' : ''; ?>">
+			<label for="woap-name" class="required_field"><?php esc_html_e( 'Name', 'woo-organization-accounts-pro' ); ?></label>
+			<input type="text" class="woocommerce-Input input-text" id="woap-name" name="woap_name" required aria-required="true" value="<?php echo esc_attr( $woap_details['name'] ); ?>">
+			<?php if ( '' !== $woap_bad ) : ?>
+				<span class="description"><?php echo esc_html( wp_strip_all_tags( $woap_bad ) ); ?></span>
+			<?php endif; ?>
 		</p>
 
-		<p class="woocommerce-form-row form-row-first">
+		<?php $woap_bad = $woap_detail_error( 'email' ); ?>
+		<p class="woocommerce-form-row form-row-first<?php echo '' !== $woap_bad ? ' woocommerce-invalid' : ''; ?>">
 			<label for="woap-email"><?php esc_html_e( 'Email address', 'woo-organization-accounts-pro' ); ?></label>
-			<input type="email" class="woocommerce-Input input-text" id="woap-email" name="woap_email" value="<?php echo esc_attr( (string) $organization->get( 'email' ) ); ?>">
+			<input type="email" class="woocommerce-Input input-text" id="woap-email" name="woap_email" value="<?php echo esc_attr( $woap_details['email'] ); ?>">
+			<?php if ( '' !== $woap_bad ) : ?>
+				<span class="description"><?php echo esc_html( wp_strip_all_tags( $woap_bad ) ); ?></span>
+			<?php endif; ?>
 		</p>
 
-		<p class="woocommerce-form-row form-row-last">
+		<?php $woap_bad = $woap_detail_error( 'phone' ); ?>
+		<p class="woocommerce-form-row form-row-last<?php echo '' !== $woap_bad ? ' woocommerce-invalid' : ''; ?>">
 			<label for="woap-phone"><?php esc_html_e( 'Phone', 'woo-organization-accounts-pro' ); ?></label>
-			<input type="tel" class="woocommerce-Input input-text" id="woap-phone" name="woap_phone" value="<?php echo esc_attr( (string) $organization->get( 'phone' ) ); ?>">
+			<input type="tel" class="woocommerce-Input input-text" id="woap-phone" name="woap_phone" value="<?php echo esc_attr( $woap_details['phone'] ); ?>">
+			<?php if ( '' !== $woap_bad ) : ?>
+				<span class="description"><?php echo esc_html( wp_strip_all_tags( $woap_bad ) ); ?></span>
+			<?php endif; ?>
 		</p>
 
 		<p class="woocommerce-form-row form-row-wide">
 			<label for="woap-tax-id"><?php esc_html_e( 'VAT number, tax ID or registration number', 'woo-organization-accounts-pro' ); ?></label>
-			<input type="text" class="woocommerce-Input input-text" id="woap-tax-id" name="woap_tax_id" value="<?php echo esc_attr( (string) $organization->get( 'tax_id' ) ); ?>">
+			<input type="text" class="woocommerce-Input input-text" id="woap-tax-id" name="woap_tax_id" value="<?php echo esc_attr( $woap_details['tax_id'] ); ?>">
 		</p>
 
 		<p class="woocommerce-form-row form-row-wide">

@@ -52,3 +52,17 @@
 .woap-detail-columns > * {
 	flex: 1 1 320px;
 }
+
+/*
+ * A rejected field, marked where it went wrong rather than only in the notice at the
+ * top of the screen. wp-admin's own colours, since this screen is wp-admin's and not
+ * Woodmart's — the theme's tokens do not exist here.
+ */
+.woap-row--invalid input[type="text"] {
+	border-color: #d63638;
+}
+
+.woap-field-error {
+	color: #d63638;
+	margin: 4px 0 0;
+}

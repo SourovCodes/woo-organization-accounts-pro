@@ -13,6 +13,7 @@ use WooOrgAccounts\Data\Location;
 use WooOrgAccounts\Data\LocationRepository;
 use WooOrgAccounts\Data\Member;
 use WooOrgAccounts\Data\MemberRepository;
+use WooOrgAccounts\Data\Organization;
 use WooOrgAccounts\Data\OrganizationRepository;
 use WooOrgAccounts\Guard;
 use WooOrgAccounts\Labels;
@@ -109,6 +110,16 @@ class AccountHandlers {
 	}
 
 	/**
+	 * Re-key the organization's own details by the names the form posts them under.
+	 *
+	 * @param array $values Details keyed without their prefix.
+	 * @return array Values keyed with it.
+	 */
+	private static function prefixed_details( array $values ) {
+		return self::prefixed( 'woap', $values );
+	}
+
+	/**
 	 * Re-key an address by its prefixed field names, as the form posts them.
 	 *
 	 * @param string $type   AddressFields::BILLING or AddressFields::SHIPPING.
@@ -196,13 +207,38 @@ class AccountHandlers {
 	public function save_organization() {
 		$organization = Guard::check_request( 'woap_save_organization', Roles::MANAGE_ORGANIZATION );
 
+		/*
+		 * Read as text rather than through sanitize_email(), which strips a mistyped
+		 * address down to an empty string — so the screen answered a typo by quietly
+		 * deleting the address it already had. Validation is what judges it, and it is
+		 * the same judgement the admin screen makes.
+		 */
+		$details = array(
+			'name'   => self::posted( 'woap_name' ),
+			'email'  => self::posted( 'woap_email' ),
+			'phone'  => self::posted( 'woap_phone' ),
+			'tax_id' => self::posted( 'woap_tax_id' ),
+		);
+
+		$errors = new \WP_Error();
+
+		Organization::validate_details( $details, $errors );
+
+		/*
+		 * `required` on the input is the browser's opinion and nothing more: anything
+		 * that posts the form directly reaches this with an empty name, and before this
+		 * check the empty name was stored and reported as saved.
+		 */
+		if ( $errors->has_errors() ) {
+			self::hold( $errors, self::prefixed_details( $details ) );
+
+			return;
+		}
+
 		$organization->set_props(
-			array(
-				'name'                  => self::posted( 'woap_name' ),
-				'email'                 => self::posted_email( 'woap_email' ),
-				'phone'                 => self::posted( 'woap_phone' ),
-				'tax_id'                => self::posted( 'woap_tax_id' ),
-				'allow_custom_shipping' => self::posted_checkbox( 'woap_allow_custom_shipping' ),
+			array_merge(
+				$details,
+				array( 'allow_custom_shipping' => self::posted_checkbox( 'woap_allow_custom_shipping' ) )
 			)
 		);
 

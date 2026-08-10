@@ -57,7 +57,6 @@ class Organizations {
 		add_action( 'admin_menu', array( $this, 'register_menu' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 		add_action( 'admin_post_woap_admin_set_status', array( $this, 'handle_set_status' ) );
-		add_action( 'admin_post_woap_admin_bulk_status', array( $this, 'handle_bulk_status' ) );
 		add_action( 'admin_post_woap_admin_delete', array( $this, 'handle_delete' ) );
 		add_action( 'admin_post_woap_admin_save', array( $this, 'handle_save' ) );
 	}
@@ -65,10 +64,20 @@ class Organizations {
 	/**
 	 * Add the screen under the WooCommerce menu.
 	 *
+	 * The bulk actions are handled on the screen's own `load-` hook rather than through
+	 * `admin-post.php`, because `WP_List_Table` owns the two fields such a round trip
+	 * would need. Its bulk select is named `action`, which is the field `admin-post.php`
+	 * routes on, and it prints its own `bulk-organizations` nonce — both after anything
+	 * the form printed first, so PHP kept the table's copy of each and the request
+	 * arrived asking for `admin_post_approve` with a nonce for something else. Nothing
+	 * was hooked to that, so every bulk approve, suspend and reject did nothing at all.
+	 * Handling it here is what wp-admin's own list screens do, and it leaves one field
+	 * named `action` and one nonce.
+	 *
 	 * @return void
 	 */
 	public function register_menu() {
-		add_submenu_page(
+		$hook = add_submenu_page(
 			'woocommerce',
 			Labels::organizations(),
 			Labels::organizations(),
@@ -76,6 +85,10 @@ class Organizations {
 			self::PAGE_SLUG,
 			array( $this, 'render' )
 		);
+
+		if ( is_string( $hook ) && '' !== $hook ) {
+			add_action( 'load-' . $hook, array( $this, 'handle_bulk_status' ) );
+		}
 	}
 
 	/**
@@ -98,6 +111,43 @@ class Organizations {
 		 * change shape, leaving the server-rendered control in place.
 		 */
 		AddressFields::enqueue();
+	}
+
+	/**
+	 * The URL of the list, keeping whichever status filter and search it is showing.
+	 *
+	 * @return string URL.
+	 */
+	public static function list_url() {
+		$args = array( 'page' => self::PAGE_SLUG );
+
+		$status = self::filter_value( 'status' );
+		$search = self::filter_value( 's' );
+
+		if ( '' !== $status ) {
+			$args['status'] = sanitize_key( $status );
+		}
+
+		if ( '' !== $search ) {
+			$args['s'] = $search;
+		}
+
+		return add_query_arg( $args, admin_url( 'admin.php' ) );
+	}
+
+	/**
+	 * Read one of the list's filters.
+	 *
+	 * Only the URL, because only the URL is where the list's filters live — see the GET
+	 * form in `render_list()`. Read by name rather than through `$_REQUEST`, which the
+	 * plugin never touches.
+	 *
+	 * @param string $key Filter name.
+	 * @return string Sanitised value, or an empty string.
+	 */
+	private static function filter_value( $key ) {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Choosing which read-only view of the list to show.
+		return isset( $_GET[ $key ] ) ? sanitize_text_field( wp_unslash( $_GET[ $key ] ) ) : '';
 	}
 
 	/**
@@ -192,13 +242,29 @@ class Organizations {
 
 		$table->views();
 
+		/*
+		 * A GET form back to this same screen, which is the shape wp-admin's own list
+		 * screens use and the only one where the parts compose. Everything that decides
+		 * what the list shows — the search term, the status filter, the sort column and
+		 * the page number — has to be in the URL, because `WP_List_Table` builds its
+		 * paging and sortable headers out of the current URL and reads the search back
+		 * from the query string. Submitted by POST, a search returned page one of an
+		 * unfiltered list and page two of a search was not a search.
+		 *
+		 * It carries nothing the table prints for itself: `action` and the nonce are
+		 * both its, and a second field of either name would be the one PHP discarded.
+		 */
 		printf(
-			'<form method="post" action="%s">',
-			esc_url( admin_url( 'admin-post.php' ) )
+			'<form method="get" action="%s">',
+			esc_url( admin_url( 'admin.php' ) )
 		);
-		echo '<input type="hidden" name="action" value="woap_admin_bulk_status">';
 		echo '<input type="hidden" name="page" value="' . esc_attr( self::PAGE_SLUG ) . '">';
-		wp_nonce_field( 'woap_admin_bulk_status' );
+
+		$status = self::filter_value( 'status' );
+
+		if ( '' !== $status ) {
+			echo '<input type="hidden" name="status" value="' . esc_attr( sanitize_key( $status ) ) . '">';
+		}
 
 		$table->search_box( __( 'Search', 'woo-organization-accounts-pro' ), 'woap-search' );
 		$table->display();
@@ -282,11 +348,29 @@ class Organizations {
 
 		echo '<div class="woap-detail-columns">';
 
+		$details = array(
+			'name'   => $organization->get_name(),
+			'email'  => (string) $organization->get( 'email' ),
+			'phone'  => (string) $organization->get( 'phone' ),
+			'tax_id' => (string) $organization->get( 'tax_id' ),
+			'status' => $organization->get_status(),
+		);
+
+		/*
+		 * What a rejected save tried to store wins over what is stored, for the same
+		 * reason the address does: correcting one field must not mean retyping the rest.
+		 */
+		foreach ( array_keys( $details ) as $field ) {
+			if ( array_key_exists( 'woap_' . $field, $submitted ) ) {
+				$details[ $field ] = $submitted[ 'woap_' . $field ];
+			}
+		}
+
 		echo '<div><h2>' . esc_html__( 'Details', 'woo-organization-accounts-pro' ) . '</h2><table class="form-table"><tbody>';
-		self::text_row( 'name', __( 'Name', 'woo-organization-accounts-pro' ), $organization->get_name() );
-		self::text_row( 'email', __( 'Email address', 'woo-organization-accounts-pro' ), (string) $organization->get( 'email' ) );
-		self::text_row( 'phone', __( 'Phone', 'woo-organization-accounts-pro' ), (string) $organization->get( 'phone' ) );
-		self::text_row( 'tax_id', __( 'VAT / tax ID', 'woo-organization-accounts-pro' ), (string) $organization->get( 'tax_id' ) );
+		self::text_row( 'name', __( 'Name', 'woo-organization-accounts-pro' ), $details['name'], $rejected );
+		self::text_row( 'email', __( 'Email address', 'woo-organization-accounts-pro' ), $details['email'], $rejected );
+		self::text_row( 'phone', __( 'Phone', 'woo-organization-accounts-pro' ), $details['phone'], $rejected );
+		self::text_row( 'tax_id', __( 'VAT / tax ID', 'woo-organization-accounts-pro' ), $details['tax_id'], $rejected );
 
 		echo '<tr><th scope="row"><label for="woap-status">' . esc_html__( 'Status', 'woo-organization-accounts-pro' ) . '</label></th><td><select id="woap-status" name="woap_status">';
 
@@ -294,7 +378,7 @@ class Organizations {
 			printf(
 				'<option value="%1$s"%2$s>%3$s</option>',
 				esc_attr( $status ),
-				selected( $organization->get_status(), $status, false ),
+				selected( $details['status'], $status, false ),
 				esc_html( $label )
 			);
 		}
@@ -499,10 +583,22 @@ class Organizations {
 	/**
 	 * Change the status of everything ticked in the list.
 	 *
+	 * Runs on the screen's `load-` hook, so it fires on every view of the list and has
+	 * to decide for itself whether this request is a submission. That is the same
+	 * question wp-admin's own list screens answer with `current_action()`, and the nonce
+	 * is checked the moment the answer is yes — never before, or an ordinary visit to
+	 * the screen would be refused for carrying no nonce.
+	 *
 	 * @return void
 	 */
 	public function handle_bulk_status() {
-		check_admin_referer( 'woap_admin_bulk_status' );
+		$action = self::bulk_action();
+
+		if ( '' === $action ) {
+			return;
+		}
+
+		check_admin_referer( 'bulk-' . OrganizationsListTable::PLURAL );
 		self::require_capability();
 
 		$map = array(
@@ -511,20 +607,24 @@ class Organizations {
 			'reject'  => Organization::STATUS_REJECTED,
 		);
 
-		$action = self::bulk_action();
-
 		if ( ! isset( $map[ $action ] ) ) {
-			self::go_back( 0 );
+			return;
 		}
 
-		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Verified by check_admin_referer() above.
-		$ids = isset( $_POST['organization_ids'] ) ? array_map( 'absint', (array) wp_unslash( $_POST['organization_ids'] ) ) : array();
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Verified by check_admin_referer() above.
+		$ids = isset( $_GET['organization_ids'] ) ? array_map( 'absint', (array) wp_unslash( $_GET['organization_ids'] ) ) : array();
 
 		foreach ( $ids as $organization_id ) {
 			OrganizationRepository::set_status( $organization_id, $map[ $action ] );
 		}
 
-		self::go_back( 0 );
+		/*
+		 * Back to the list as a GET, so a refresh does not re-apply the action — and
+		 * back to the *filtered* list, because acting on everything pending and landing
+		 * on all organizations loses the place the work was being done from.
+		 */
+		wp_safe_redirect( self::list_url() );
+		exit;
 	}
 
 	/**
@@ -545,23 +645,25 @@ class Organizations {
 			self::go_back( 0 );
 		}
 
-		$status   = self::posted( 'woap_status' );
 		$previous = $organization->get_status();
 
-		$organization->set_props(
-			array(
-				'name'                  => self::posted( 'woap_name' ),
-				'email'                 => self::posted( 'woap_email' ),
-				'phone'                 => self::posted( 'woap_phone' ),
-				'tax_id'                => self::posted( 'woap_tax_id' ),
-				// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Verified by check_admin_referer() above.
-				'allow_custom_shipping' => ! empty( $_POST['woap_allow_custom_shipping'] ),
-			)
+		$details = array(
+			'name'   => self::posted( 'woap_name' ),
+			'email'  => self::posted( 'woap_email' ),
+			'phone'  => self::posted( 'woap_phone' ),
+			'tax_id' => self::posted( 'woap_tax_id' ),
+			'status' => self::posted( 'woap_status' ),
 		);
 
 		$errors  = new \WP_Error();
 		$address = AddressFields::posted( AddressFields::BILLING );
 
+		/*
+		 * Both halves are checked before either is written, and the whole submission is
+		 * handed back if either fails. Validating only the address let an empty name and
+		 * an unusable email address through the same screen that refused a bad postcode.
+		 */
+		Organization::validate_details( $details, $errors );
 		AddressFields::validate( AddressFields::BILLING, $address, $errors );
 
 		if ( $errors->has_errors() ) {
@@ -571,6 +673,10 @@ class Organizations {
 			 * loses a fourteen-field address to one mistyped postcode.
 			 */
 			$parked = array();
+
+			foreach ( $details as $field => $value ) {
+				$parked[ 'woap_' . $field ] = $value;
+			}
 
 			foreach ( $address as $field => $value ) {
 				$parked[ AddressFields::BILLING . '_' . $field ] = $value;
@@ -587,6 +693,17 @@ class Organizations {
 
 			self::go_back( $organization_id );
 		}
+
+		$status = $details['status'];
+		unset( $details['status'] );
+
+		$organization->set_props(
+			array_merge(
+				$details,
+				// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Verified by check_admin_referer() above.
+				array( 'allow_custom_shipping' => ! empty( $_POST['woap_allow_custom_shipping'] ) )
+			)
+		);
 
 		$organization->set_billing_address( $address );
 		OrganizationRepository::save( $organization );
@@ -637,22 +754,26 @@ class Organizations {
 	/**
 	 * The bulk action the list submitted, from either select.
 	 *
+	 * Read before any nonce check, because it is what decides whether this request is a
+	 * submission at all — so it names an action and nothing more. Nothing acts on the
+	 * answer until `check_admin_referer()` has run.
+	 *
 	 * @return string Action name, or an empty string.
 	 */
 	private static function bulk_action() {
-		// phpcs:disable WordPress.Security.NonceVerification.Missing -- Verified by check_admin_referer() in the caller.
+		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- Only decides whether a nonce is required; the caller verifies one before acting.
 		foreach ( array( 'action', 'action2' ) as $field ) {
-			if ( ! isset( $_POST[ $field ] ) ) {
+			if ( ! isset( $_GET[ $field ] ) ) {
 				continue;
 			}
 
-			$value = sanitize_key( wp_unslash( $_POST[ $field ] ) );
+			$value = sanitize_key( wp_unslash( $_GET[ $field ] ) );
 
-			if ( '' !== $value && '-1' !== $value && 'woap_admin_bulk_status' !== $value ) {
+			if ( '' !== $value && '-1' !== $value ) {
 				return $value;
 			}
 		}
-		// phpcs:enable WordPress.Security.NonceVerification.Missing
+		// phpcs:enable WordPress.Security.NonceVerification.Recommended
 
 		return '';
 	}
@@ -694,7 +815,7 @@ class Organizations {
 	private static function go_back( $organization_id ) {
 		$url = $organization_id > 0
 			? self::edit_url( $organization_id )
-			: admin_url( 'admin.php?page=' . self::PAGE_SLUG );
+			: self::list_url();
 
 		wp_safe_redirect( $url );
 		exit;
@@ -737,17 +858,29 @@ class Organizations {
 	/**
 	 * Print one text row of the detail form.
 	 *
-	 * @param string $name  Field name.
-	 * @param string $label Field label.
-	 * @param string $value Current value.
+	 * The field is posted under its `woap_` prefix, because that is what `handle_save()`
+	 * reads and because every field this plugin defines is prefixed. Emitting the bare
+	 * column name here left the save reading four fields nothing had submitted, so every
+	 * save wrote an empty name, email, phone and tax ID over whatever was stored.
+	 *
+	 * @param string         $name     Column name, without its prefix.
+	 * @param string         $label    Field label.
+	 * @param string         $value    Current value.
+	 * @param \WP_Error|null $rejected Errors from a rejected save, if any.
 	 * @return void
 	 */
-	private static function text_row( $name, $label, $value ) {
+	private static function text_row( $name, $label, $value, $rejected = null ) {
+		$message = $rejected instanceof \WP_Error ? $rejected->get_error_message( 'woap_' . $name ) : '';
+
 		printf(
-			'<tr><th scope="row"><label for="woap-%1$s">%2$s</label></th><td><input type="text" class="regular-text" id="woap-%1$s" name="%1$s" value="%3$s"></td></tr>',
+			'<tr class="%4$s"><th scope="row"><label for="woap-%1$s">%2$s</label></th><td><input type="text" class="regular-text" id="woap-%1$s" name="woap_%1$s" value="%3$s">%5$s</td></tr>',
 			esc_attr( $name ),
 			esc_html( $label ),
-			esc_attr( $value )
+			esc_attr( $value ),
+			esc_attr( '' !== $message ? 'woap-row--invalid' : '' ),
+			'' !== $message
+				? '<p class="woap-field-error">' . wp_kses_post( $message ) . '</p>'
+				: ''
 		);
 	}
 }

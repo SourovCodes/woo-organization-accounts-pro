@@ -209,4 +209,86 @@ class Organization extends Entity {
 	public function get_formatted_billing_address() {
 		return WC()->countries->get_formatted_address( $this->get_billing_address() );
 	}
+
+	/**
+	 * Check the organization's own details the way the address is checked.
+	 *
+	 * The billing address has been validated against WooCommerce's per-country rules
+	 * since the first release, and these four fields were not validated at all: both
+	 * screens read them, wrote them and reported success, so an empty name replaced a
+	 * real one and an unusable email address was stored without comment. The name is
+	 * what every order, every screen and every parcel label calls this account, so an
+	 * empty one is not a smaller problem than an empty postcode.
+	 *
+	 * Deliberately the same shape as `AddressFields::validate()` — values in by
+	 * reference so they come back normalised, errors keyed by the field name the form
+	 * posts — so one screen can validate both halves and mark up whatever either
+	 * rejects. `status` is only checked when it was submitted, because only the admin
+	 * screen offers it.
+	 *
+	 * @param array     $values Details keyed without their prefix; normalised in place.
+	 * @param \WP_Error $errors Errors to add to, keyed by prefixed field name.
+	 * @return void
+	 */
+	public static function validate_details( array &$values, \WP_Error $errors ) {
+		$labels = array(
+			'name'  => __( 'Name', 'woo-organization-accounts-pro' ),
+			'email' => __( 'Email address', 'woo-organization-accounts-pro' ),
+			'phone' => __( 'Phone', 'woo-organization-accounts-pro' ),
+		);
+
+		foreach ( $labels as $field => $label ) {
+			if ( array_key_exists( $field, $values ) ) {
+				$values[ $field ] = trim( (string) $values[ $field ] );
+			}
+		}
+
+		if ( array_key_exists( 'name', $values ) && '' === $values['name'] ) {
+			$errors->add(
+				'woap_name',
+				sprintf(
+					/* translators: %s: name of the field, in bold. */
+					__( '%s is a required field.', 'woo-organization-accounts-pro' ),
+					'<strong>' . esc_html( $labels['name'] ) . '</strong>'
+				)
+			);
+		}
+
+		if ( ! empty( $values['email'] ) && ! is_email( $values['email'] ) ) {
+			$errors->add(
+				'woap_email',
+				sprintf(
+					/* translators: %s: name of the field, in bold. */
+					__( '%s is not a valid email address.', 'woo-organization-accounts-pro' ),
+					'<strong>' . esc_html( $labels['email'] ) . '</strong>'
+				)
+			);
+		}
+
+		if ( ! empty( $values['phone'] ) ) {
+			$values['phone'] = wc_remove_non_displayable_chars( $values['phone'] );
+
+			if ( ! \WC_Validation::is_phone( $values['phone'] ) ) {
+				$errors->add(
+					'woap_phone',
+					sprintf(
+						/* translators: %s: name of the field, in bold. */
+						__( '%s is not a valid phone number.', 'woo-organization-accounts-pro' ),
+						'<strong>' . esc_html( $labels['phone'] ) . '</strong>'
+					)
+				);
+			}
+		}
+
+		if ( array_key_exists( 'status', $values ) && ! array_key_exists( $values['status'], self::statuses() ) ) {
+			$errors->add(
+				'woap_status',
+				sprintf(
+					/* translators: %s: the status that was submitted. */
+					__( '"%s" is not a status we recognise.', 'woo-organization-accounts-pro' ),
+					$values['status']
+				)
+			);
+		}
+	}
 }

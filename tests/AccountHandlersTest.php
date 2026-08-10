@@ -293,6 +293,84 @@ class AccountHandlersTest extends TestCase {
 	}
 
 	/**
+	 * An organization cannot be saved without a name.
+	 *
+	 * `required` on the input is the browser's opinion. Anything posting the form
+	 * directly reached this with an empty name, and the empty name was stored and
+	 * reported as saved — leaving an account nothing on the site could name.
+	 */
+	public function testAnOrganizationCannotBeLeftUnnamed() {
+		$organization = $this->make_organization( array( 'name' => 'Acme Holdings AG' ) );
+		$this->act_as( $this->make_member( $organization, Member::ROLE_ADMIN ) );
+
+		$this->submit_expecting_the_form_back(
+			'save_organization',
+			array(
+				'woap_name'  => '   ',
+				'woap_email' => 'hello@acme.test',
+			),
+			'woap_save_organization'
+		);
+
+		$this->assertSame(
+			'Acme Holdings AG',
+			OrganizationRepository::find( $organization->get_id() )->get_name(),
+			'A refused save must leave the stored name alone.'
+		);
+
+		$errors = AccountHandlers::errors();
+
+		$this->assertInstanceOf( \WP_Error::class, $errors );
+		$this->assertNotSame( '', $errors->get_error_message( 'woap_name' ) );
+
+		wc_clear_notices();
+	}
+
+	/**
+	 * An email address that is not one is refused here too.
+	 */
+	public function testAnUnusableOrganizationEmailIsRefused() {
+		$organization = $this->make_organization( array( 'email' => 'buy@acme.test' ) );
+		$this->act_as( $this->make_member( $organization, Member::ROLE_ADMIN ) );
+
+		$this->submit_expecting_the_form_back(
+			'save_organization',
+			array(
+				'woap_name'  => 'Acme Holdings AG',
+				'woap_email' => 'not-an-address',
+			),
+			'woap_save_organization'
+		);
+
+		$this->assertSame( 'buy@acme.test', OrganizationRepository::find( $organization->get_id() )->get( 'email' ) );
+
+		wc_clear_notices();
+	}
+
+	/**
+	 * A refused save hands back everything that was typed.
+	 */
+	public function testARefusedOrganizationSaveKeepsWhatWasTyped() {
+		$organization = $this->make_organization();
+		$this->act_as( $this->make_member( $organization, Member::ROLE_ADMIN ) );
+
+		$this->submit_expecting_the_form_back(
+			'save_organization',
+			array(
+				'woap_name'   => '',
+				'woap_email'  => 'hello@acme.test',
+				'woap_tax_id' => 'DE999',
+			),
+			'woap_save_organization'
+		);
+
+		$this->assertSame( 'hello@acme.test', AccountHandlers::value( 'woap_email' ) );
+		$this->assertSame( 'DE999', AccountHandlers::value( 'woap_tax_id' ) );
+
+		wc_clear_notices();
+	}
+
+	/**
 	 * Saving the billing address stores it.
 	 */
 	public function testSaveBilling() {

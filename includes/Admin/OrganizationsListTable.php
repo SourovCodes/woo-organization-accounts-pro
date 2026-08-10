@@ -34,13 +34,22 @@ class OrganizationsListTable extends \WP_List_Table {
 	const PER_PAGE = 20;
 
 	/**
+	 * The plural name WP_List_Table builds its own markup from.
+	 *
+	 * A constant because the bulk nonce this table prints is `bulk-` followed by it, and
+	 * `Organizations::handle_bulk_status()` is what checks that nonce. Spelling it out in
+	 * both places is how the screen ends up verifying a nonce nothing issued.
+	 */
+	const PLURAL = 'organizations';
+
+	/**
 	 * Set the screen up.
 	 */
 	public function __construct() {
 		parent::__construct(
 			array(
 				'singular' => 'organization',
-				'plural'   => 'organizations',
+				'plural'   => self::PLURAL,
 				'ajax'     => false,
 			)
 		);
