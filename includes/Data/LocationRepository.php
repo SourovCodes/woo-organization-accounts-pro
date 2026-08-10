@@ -80,6 +80,42 @@ class LocationRepository extends Repository {
 	}
 
 	/**
+	 * Every location belonging to each of several organizations.
+	 *
+	 * The batched form of for_organization(), for a caller holding a whole page of
+	 * organizations. Every organization asked about is present in the result, with an
+	 * empty array when it has no locations — which is the state that stops its members
+	 * checking out, so it is worth reporting rather than omitting.
+	 *
+	 * @param int[] $organization_ids Organization IDs.
+	 * @return array Map of organization ID to Location[], the default first and then alphabetically.
+	 */
+	public static function for_organizations( array $organization_ids ) {
+		global $wpdb;
+
+		$organization_ids = self::clean_ids( $organization_ids );
+		$locations        = array_fill_keys( $organization_ids, array() );
+
+		if ( empty( $organization_ids ) ) {
+			return $locations;
+		}
+
+		$table        = static::table();
+		$placeholders = implode( ', ', array_fill( 0, count( $organization_ids ), '%d' ) );
+		$query        = "SELECT * FROM {$table} WHERE organization_id IN ({$placeholders}) ORDER BY organization_id ASC, is_default DESC, name ASC";
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- $query is a class constant table name and an IN list of %d placeholders, one per ID, bound here.
+		$sql = $wpdb->prepare( $query, $organization_ids );
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- Prepared immediately above.
+		foreach ( static::hydrate_all( $wpdb->get_results( $sql, ARRAY_A ) ) as $location ) {
+			$locations[ $location->get_organization_id() ][] = $location;
+		}
+
+		return $locations;
+	}
+
+	/**
 	 * One location, but only if it belongs to the given organization.
 	 *
 	 * This is the only way the checkout resolves a submitted location ID. A location

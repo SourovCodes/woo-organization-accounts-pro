@@ -107,6 +107,19 @@ abstract class Repository {
 	}
 
 	/**
+	 * Reduce a list of IDs to the unique, positive integers in it.
+	 *
+	 * Every batched read builds its `IN` list from this, so an empty or hand-supplied
+	 * list cannot reach the query as a zero, a string or a duplicate.
+	 *
+	 * @param int[] $ids IDs.
+	 * @return int[] Unique positive IDs, renumbered from zero.
+	 */
+	protected static function clean_ids( array $ids ) {
+		return array_values( array_unique( array_filter( array_map( 'absint', $ids ) ) ) );
+	}
+
+	/**
 	 * Fetch one row by primary key.
 	 *
 	 * @param int $id Row ID.

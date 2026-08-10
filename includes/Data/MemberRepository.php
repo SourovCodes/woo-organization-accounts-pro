@@ -152,6 +152,44 @@ class MemberRepository extends Repository {
 	}
 
 	/**
+	 * Every membership belonging to each of several organizations.
+	 *
+	 * The batched form of for_organization(), for the one caller that needs a whole
+	 * page of organizations at once: asking per organization turns a hundred-row page
+	 * into a hundred queries. Every organization asked about is present in the result,
+	 * with an empty array when it has no members, so a caller never has to test for a
+	 * missing key.
+	 *
+	 * @param int[] $organization_ids Organization IDs.
+	 * @return array Map of organization ID to Member[], admins first and then by join date.
+	 */
+	public static function for_organizations( array $organization_ids ) {
+		global $wpdb;
+
+		$organization_ids = self::clean_ids( $organization_ids );
+		$members          = array_fill_keys( $organization_ids, array() );
+
+		if ( empty( $organization_ids ) ) {
+			return $members;
+		}
+
+		$table        = static::table();
+		$placeholders = implode( ', ', array_fill( 0, count( $organization_ids ), '%d' ) );
+
+		$query = "SELECT * FROM {$table} WHERE organization_id IN ({$placeholders}) ORDER BY organization_id ASC, role ASC, date_created ASC";
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- $query is a class constant table name and an IN list of %d placeholders, one per ID, bound here.
+		$sql = $wpdb->prepare( $query, $organization_ids );
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- Prepared immediately above.
+		foreach ( static::hydrate_all( $wpdb->get_results( $sql, ARRAY_A ) ) as $member ) {
+			$members[ $member->get_organization_id() ][] = $member;
+		}
+
+		return $members;
+	}
+
+	/**
 	 * How many members an organization has.
 	 *
 	 * @param int $organization_id Organization ID.
@@ -267,6 +305,42 @@ class MemberRepository extends Repository {
 		$ids = $wpdb->get_col( $wpdb->prepare( "SELECT location_id FROM {$table} WHERE member_id = %d", $member_id ) );
 
 		return array_map( 'absint', (array) $ids );
+	}
+
+	/**
+	 * The locations each of several members is restricted to.
+	 *
+	 * The batched form of location_ids(). An empty array against a member carries the
+	 * same meaning it does there — no restriction, so every location their organization
+	 * has — and a member with no rows is present in the result rather than missing from
+	 * it, because "not restricted" and "not asked about" must not look alike.
+	 *
+	 * @param int[] $member_ids Member IDs.
+	 * @return array Map of member ID to location ID list.
+	 */
+	public static function location_ids_for_members( array $member_ids ) {
+		global $wpdb;
+
+		$member_ids = self::clean_ids( $member_ids );
+		$access     = array_fill_keys( $member_ids, array() );
+
+		if ( empty( $member_ids ) ) {
+			return $access;
+		}
+
+		$table        = Install::table( Install::MEMBER_LOCATIONS );
+		$placeholders = implode( ', ', array_fill( 0, count( $member_ids ), '%d' ) );
+		$query        = "SELECT member_id, location_id FROM {$table} WHERE member_id IN ({$placeholders})";
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- $query is a class constant table name and an IN list of %d placeholders, one per ID, bound here.
+		$sql = $wpdb->prepare( $query, $member_ids );
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- Prepared immediately above.
+		foreach ( (array) $wpdb->get_results( $sql, ARRAY_A ) as $row ) {
+			$access[ absint( $row['member_id'] ) ][] = absint( $row['location_id'] );
+		}
+
+		return $access;
 	}
 
 	/**

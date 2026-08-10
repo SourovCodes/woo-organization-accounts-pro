@@ -498,6 +498,50 @@ no JSX, no bundler** — so the plugin still builds with nothing but Composer an
 `node --check assets/js` stays meaningful. Nothing in that script enforces anything; the server
 does.
 
+### The snapshot a till reads
+
+`Rest\OrganizationsController` serves `GET /wp-json/wc-woap/v1/organizations` — every
+organization with its members and its locations embedded, for a point-of-sale device that syncs on
+an interval and then sells offline. It is read-only, and the only route this plugin registers of its
+own: anything WooCommerce already models is extended on its own route instead, so there is one code
+path per thing. An order is the case that matters, and `/wc/v3/orders` is a third order-creation
+surface that `Checkout\Gate`, `BillingLock` and `ShippingSelector` do **not** cover.
+
+- **The `wc-` prefix on the namespace is what makes a consumer key work.**
+  `WC_REST_Authentication` reads a key and secret only after `is_request_to_rest_api()` finds `wc/`
+  or `wc-` in the request URI, and core's own comment beside that line offers the second prefix to
+  third-party plugins. A namespace of `woap/v1` registers, routes and answers every till with a 401,
+  because the credentials they hold are never read. Nothing else in the suite would catch it — the
+  tests sign a user in directly, which is not how a till arrives — so
+  `RestApiTest::testTheNamespaceKeepsWooCommercesAuthenticationPrefix` asserts the prefix.
+- **It is a full snapshot, and the schema is why.** Only `woap_organizations` carries a
+  `date_modified`; members and locations record `date_created` and nothing else, and every delete is
+  a hard delete with no tombstone. A `modified_after` parameter could be offered but never honoured:
+  a device asking for yesterday's changes would not be told that an employee left or that a location
+  was deleted, and would go on offering an address the organization has abandoned. A snapshot
+  answers deletions by omission, which is the one thing this schema can say truthfully. An ETag and
+  `If-None-Match` make an unchanged page a 304, so polling costs a hash rather than a payload.
+- **Members and locations are embedded, not paged separately**, so a page cannot be torn by a write
+  landing between two requests — and the page is ordered by **ID**, because ordering by name lets a
+  rename between page one and page two drop an organization out of the sync entirely.
+- **Answers are sent, not inputs.** `can_place_orders` is `Context::can_purchase()` resolved
+  per member, and location access is `"all"` or a list of IDs. A device deriving either for itself
+  would be a second expression of rules this plugin states once — and the two stored forms are
+  actively misleading read raw: an empty `woap_member_locations` means *every* location, and the
+  `capabilities` column is a diff against role defaults, so an empty one means "whatever the role
+  allows" rather than "nothing". Neither is sent.
+- **Permission is `manage_woocommerce`, deliberately not one of this plugin's own capabilities.**
+  Those are granted from a membership and answer what somebody may do to *their* organization; the
+  answer to that is never "read every organization on the site".
+- Every read is batched — `MemberRepository::for_organizations()`,
+  `LocationRepository::for_organizations()`, `MemberRepository::location_ids_for_members()` and one
+  `cache_users()` — because per-organization reads turn a hundred-row page into several hundred
+  queries, which is the first thing an interval sync would hit. Each returns an entry for every
+  organization asked about, so "has no members" and "not asked about" cannot look alike.
+- **The tax ID is not in the payload.** All of this lands on a device that can be left on a counter
+  or lost, and it is the one regulated identifier in the table. A shop whose till prints invoices
+  can add it.
+
 ### Analytics knows nothing about a role it has not been told about
 
 WooCommerce → Customers reads `wc_customer_lookup`, not the users table, and a user only

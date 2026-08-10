@@ -20,6 +20,7 @@ use WooOrgAccounts\Frontend\AccountHandlers;
 use WooOrgAccounts\Frontend\MyAccount;
 use WooOrgAccounts\Frontend\OrderDetails;
 use WooOrgAccounts\Frontend\Registration;
+use WooOrgAccounts\Rest\RestApi;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -125,6 +126,12 @@ final class Plugin {
 		( new BillingLock() )->register();
 		( new ShippingSelector() )->register();
 		( new CheckoutIntegration() )->register();
+
+		/*
+		 * Not gated on is_admin(): a REST request is neither an admin request nor a
+		 * frontend one, and this is the only thing here a till ever talks to.
+		 */
+		( new RestApi() )->register();
 
 		( new Emails() )->register();
 

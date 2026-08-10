@@ -90,14 +90,14 @@ msgstr "Name"
 #: templates/myaccount/member-form.php:86
 #: templates/myaccount/organization.php:49
 #: templates/myaccount/organization.php:117
-#: templates/registration/organization-form.php:95
+#: templates/registration/organization-form.php:108
 msgid "Email address"
 msgstr "E-Mail-Adresse"
 
 #: includes/Admin/Organizations.php:288
 #: templates/myaccount/organization.php:55
 #: templates/myaccount/organization.php:122
-#: templates/registration/organization-form.php:100
+#: templates/registration/organization-form.php:113
 msgid "Phone"
 msgstr "Telefon"
 
@@ -129,7 +129,7 @@ msgstr "Einmalige Lieferadressen an der Kasse erlauben"
 #: includes/Admin/Organizations.php:313
 #: templates/myaccount/organization.php:156
 #: templates/myaccount/organization.php:167
-#: templates/registration/organization-form.php:109
+#: templates/registration/organization-form.php:127
 msgid "Billing address"
 msgstr "Rechnungsadresse"
 
@@ -1280,13 +1280,13 @@ msgstr "Diese %s wartet auf Freigabe. Sobald sie freigegeben ist, kann bestellt 
 
 #. translators: %s: the organization noun for the site's mode, for example "Company".
 #: templates/myaccount/organization.php:104
-#: templates/registration/organization-form.php:71
+#: templates/registration/organization-form.php:82
 #, php-format
 msgid "%s details"
 msgstr "Angaben zur %s"
 
 #: templates/myaccount/organization.php:127
-#: templates/registration/organization-form.php:105
+#: templates/registration/organization-form.php:118
 msgid "VAT number, tax ID or registration number"
 msgstr "USt-IdNr., Steuernummer oder Handelsregisternummer"
 
@@ -1351,12 +1351,12 @@ msgid "Leave this field empty"
 msgstr "Dieses Feld leer lassen"
 
 #: templates/registration/invitation-form.php:102
-#: templates/registration/organization-form.php:144
+#: templates/registration/organization-form.php:174
 msgid "First name"
 msgstr "Vorname"
 
 #: templates/registration/invitation-form.php:107
-#: templates/registration/organization-form.php:149
+#: templates/registration/organization-form.php:179
 msgid "Last name"
 msgstr "Nachname"
 
@@ -1365,42 +1365,42 @@ msgid "Choose a password"
 msgstr "Passwort wählen"
 
 #: templates/registration/invitation-form.php:117
-#: templates/registration/organization-form.php:169
+#: templates/registration/organization-form.php:199
 msgid "Repeat password"
 msgstr "Passwort wiederholen"
 
 #. translators: %s: the organization noun for the site's mode, for example "Company".
-#: templates/registration/organization-form.php:84
+#: templates/registration/organization-form.php:97
 #, php-format
 msgid "%s name"
 msgstr "Name der %s"
 
 #. translators: %s: the organization noun for the site's mode, for example "Company".
-#: templates/registration/organization-form.php:115
+#: templates/registration/organization-form.php:133
 #, php-format
 msgid "Every order is billed to this address. It belongs to the %s, so individual members cannot change it at checkout."
 msgstr "Jede Bestellung wird an diese Adresse fakturiert. Sie gehört der %s, einzelne Mitglieder können sie an der Kasse also nicht ändern."
 
 #. translators: %s: the organization admin noun for the site's mode, for example "Company Admin".
-#: templates/registration/organization-form.php:136
+#: templates/registration/organization-form.php:164
 #, php-format
 msgid "Your account (%s)"
 msgstr "Dein Konto (%s)"
 
-#: templates/registration/organization-form.php:154
+#: templates/registration/organization-form.php:184
 msgid "Your email address"
 msgstr "Deine E-Mail-Adresse"
 
-#: templates/registration/organization-form.php:159
+#: templates/registration/organization-form.php:189
 msgid "Your phone (optional)"
 msgstr "Deine Telefonnummer (optional)"
 
-#: templates/registration/organization-form.php:164
+#: templates/registration/organization-form.php:194
 msgid "Password"
 msgstr "Passwort"
 
 #. translators: %s: the organization noun for the site's mode, for example "Company".
-#: templates/registration/organization-form.php:188
+#: templates/registration/organization-form.php:221
 #, php-format
 msgid "Register %s"
 msgstr "%s registrieren"
@@ -1726,3 +1726,99 @@ msgstr "Adressen gehören deiner %s und nicht deinem eigenen Konto und werden hi
 #, php-format
 msgid "Addresses belong to your %s rather than to your own account."
 msgstr "Adressen gehören deiner %s und nicht deinem eigenen Konto."
+
+#: includes/Rest/OrganizationsController.php:107
+msgid "You are not allowed to list organizations."
+msgstr "Du darfst Organisationen nicht auflisten."
+
+#: includes/Rest/OrganizationsController.php:129
+msgid "The requested page does not exist."
+msgstr "Die angeforderte Seite gibt es nicht."
+
+#: includes/Rest/OrganizationsController.php:355
+msgid "Current page of the collection."
+msgstr "Aktuelle Seite der Sammlung."
+
+#: includes/Rest/OrganizationsController.php:363
+msgid "Organizations per page."
+msgstr "Organisationen pro Seite."
+
+#: includes/Rest/OrganizationsController.php:372
+msgid "Return only organizations with this status. Omit for all of them."
+msgstr "Nur Organisationen mit diesem Status zurückgeben. Ohne Angabe kommen alle."
+
+#: includes/Rest/OrganizationsController.php:394
+msgid "Unique identifier for the organization."
+msgstr "Eindeutige Kennung der Organisation."
+
+#: includes/Rest/OrganizationsController.php:399
+msgid "The organization name."
+msgstr "Der Name der Organisation."
+
+#: includes/Rest/OrganizationsController.php:404
+msgid "The organization status."
+msgstr "Der Status der Organisation."
+
+#: includes/Rest/OrganizationsController.php:410
+msgid "Whether members may ship to a one-off address instead of a location."
+msgstr "Ob Mitglieder an eine einmalige Adresse statt an einen Standort liefern lassen dürfen."
+
+#: includes/Rest/OrganizationsController.php:415
+msgid "The centralised billing address every order for this organization is billed to."
+msgstr "Die zentrale Rechnungsadresse, an die jede Bestellung dieser Organisation fakturiert wird."
+
+#: includes/Rest/OrganizationsController.php:421
+msgid "The people who may order for this organization."
+msgstr "Die Personen, die für diese Organisation bestellen dürfen."
+
+#: includes/Rest/OrganizationsController.php:428
+msgid "Unique identifier for the membership."
+msgstr "Eindeutige Kennung der Mitgliedschaft."
+
+#: includes/Rest/OrganizationsController.php:432
+msgid "The WordPress user this membership belongs to. Use it as the order customer."
+msgstr "Der WordPress-Benutzer, zu dem diese Mitgliedschaft gehört. Als Kunde der Bestellung verwenden."
+
+#: includes/Rest/OrganizationsController.php:436
+msgid "The member display name."
+msgstr "Der Anzeigename des Mitglieds."
+
+#: includes/Rest/OrganizationsController.php:440
+msgid "The member email address."
+msgstr "Die E-Mail-Adresse des Mitglieds."
+
+#: includes/Rest/OrganizationsController.php:444
+msgid "The member role within the organization."
+msgstr "Die Rolle des Mitglieds in der Organisation."
+
+#: includes/Rest/OrganizationsController.php:449
+msgid "Whether the membership is in force."
+msgstr "Ob die Mitgliedschaft in Kraft ist."
+
+#: includes/Rest/OrganizationsController.php:454
+msgid "Whether this member may order right now, decided by the shop rather than by the device."
+msgstr "Ob dieses Mitglied gerade bestellen darf – entschieden vom Shop, nicht vom Gerät."
+
+#: includes/Rest/OrganizationsController.php:458
+msgid "The locations this member may ship to: the string \"all\", or a list of location IDs."
+msgstr "Die Standorte, an die dieses Mitglied liefern lassen darf: die Zeichenkette „all“ oder eine Liste von Standort-IDs."
+
+#: includes/Rest/OrganizationsController.php:474
+msgid "The addresses this organization has goods delivered to."
+msgstr "Die Adressen, an die sich diese Organisation Waren liefern lässt."
+
+#: includes/Rest/OrganizationsController.php:482
+msgid "Unique identifier for the location."
+msgstr "Eindeutige Kennung des Standorts."
+
+#: includes/Rest/OrganizationsController.php:486
+msgid "The label this location is chosen by."
+msgstr "Die Bezeichnung, unter der dieser Standort ausgewählt wird."
+
+#: includes/Rest/OrganizationsController.php:490
+msgid "Whether this is the organization default location."
+msgstr "Ob dies der Standardstandort der Organisation ist."
+
+#: includes/Rest/OrganizationsController.php:499
+msgid "When the organization record last changed, in GMT. Its members and locations carry no such date, which is why this route serves whole snapshots."
+msgstr "Wann sich der Datensatz der Organisation zuletzt geändert hat, in GMT. Ihre Mitglieder und Standorte führen kein solches Datum, weshalb diese Route vollständige Momentaufnahmen liefert."
