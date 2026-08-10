@@ -30,23 +30,6 @@ class RestApiTest extends TestCase {
 	const ROUTE = '/' . RestApi::REST_NAMESPACE . '/' . OrganizationsController::ROUTE;
 
 	/**
-	 * Sign in as somebody who may manage the shop, as a till's key does.
-	 *
-	 * @return int User ID.
-	 */
-	private function act_as_shop_manager() {
-		$user_id = self::factory()->user->create( array( 'role' => 'administrator' ) );
-
-		$user = new \WP_User( $user_id );
-		$user->add_cap( 'manage_woocommerce' );
-
-		wp_set_current_user( $user_id );
-		Context::flush();
-
-		return $user_id;
-	}
-
-	/**
 	 * Fetch one page of the snapshot.
 	 *
 	 * @param array $params Query parameters.
@@ -408,6 +391,86 @@ class RestApiTest extends TestCase {
 
 		$this->assertSame( array(), MemberRepository::for_organizations( array() ) );
 		$this->assertSame( array(), LocationRepository::for_organizations( array() ) );
+	}
+
+	/**
+	 * The status filter narrows the snapshot without changing its shape.
+	 */
+	public function testTheStatusFilterLimitsTheSnapshot() {
+		$this->make_organization( array( 'name' => 'Active GmbH' ) );
+		$this->make_organization(
+			array(
+				'name'   => 'Pending GmbH',
+				'status' => Organization::STATUS_PENDING,
+			)
+		);
+
+		$this->act_as_shop_manager();
+
+		$response = $this->fetch( array( 'status' => Organization::STATUS_PENDING ) );
+		$data     = $response->get_data();
+
+		$this->assertSame( '1', $response->get_headers()['X-WP-Total'] );
+		$this->assertCount( 1, $data );
+		$this->assertSame( 'Pending GmbH', $data[0]['name'] );
+	}
+
+	/**
+	 * A made-up status is refused rather than silently answered with everything.
+	 */
+	public function testAnUnknownStatusIsRefused() {
+		$this->make_organization();
+		$this->act_as_shop_manager();
+
+		$this->assertSame( 400, $this->fetch( array( 'status' => 'imaginary' ) )->get_status() );
+	}
+
+	/**
+	 * A page size beyond the cap is refused, not silently clamped.
+	 *
+	 * A device that asks for 10,000 and is quietly handed 200 believes its sync is
+	 * complete when it holds a fraction of the data; a 400 is a bug it will notice.
+	 */
+	public function testAPageSizeBeyondTheCapIsRefused() {
+		$this->make_organization();
+		$this->act_as_shop_manager();
+
+		$response = $this->fetch( array( 'per_page' => OrganizationsController::MAX_PER_PAGE + 1 ) );
+
+		$this->assertSame( 400, $response->get_status() );
+	}
+
+	/**
+	 * The billing block carries every WooCommerce billing field, present or empty.
+	 *
+	 * The device maps this straight onto an order's billing address, so a key that
+	 * disappears when its value is empty would make the mapping conditional.
+	 */
+	public function testTheBillingBlockCarriesEveryWooCommerceBillingField() {
+		$this->make_organization();
+		$this->act_as_shop_manager();
+
+		$billing = $this->fetch()->get_data()[0]['billing'];
+
+		foreach ( Organization::BILLING_FIELDS as $field ) {
+			$this->assertArrayHasKey( $field, $billing );
+		}
+	}
+
+	/**
+	 * The route describes itself, so a client can be written against the schema.
+	 *
+	 * Asked the way an OPTIONS request is answered — through the route's registered
+	 * options in help context — so this fails if the schema callback ever falls off
+	 * the route registration, not merely if the method stops returning an array.
+	 */
+	public function testTheRouteDescribesItsSchema() {
+		$server = rest_get_server();
+		$data   = $server->get_data_for_route( self::ROUTE, $server->get_routes()[ self::ROUTE ], 'help' );
+
+		$this->assertSame( 'woap_organization', $data['schema']['title'] );
+		$this->assertArrayHasKey( 'members', $data['schema']['properties'] );
+		$this->assertArrayHasKey( 'locations', $data['schema']['properties'] );
 	}
 
 	/**

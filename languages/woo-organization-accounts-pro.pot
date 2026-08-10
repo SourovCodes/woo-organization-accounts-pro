@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-08-10T14:42:23+00:00\n"
+"POT-Creation-Date: 2026-08-10T15:00:07+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: woo-organization-accounts-pro\n"
@@ -519,25 +519,25 @@ msgid "The organization location this order is being delivered to."
 msgstr ""
 
 #. translators: 1: plural location noun, 2: the organization admin noun.
-#: includes/Checkout/ShippingSelector.php:372
+#: includes/Checkout/ShippingSelector.php:402
 #, php-format
 msgid "No %1$s have been set up to deliver to, and one-off addresses are not allowed. Ask your %2$s to add one."
 msgstr ""
 
 #. translators: %s: the singular location noun, for example "Branch".
-#: includes/Checkout/ShippingSelector.php:380
+#: includes/Checkout/ShippingSelector.php:410
 #, php-format
 msgid "Please choose the %s this order is going to."
 msgstr ""
 
 #. translators: %s: the singular location noun, for example "Branch".
-#: includes/Checkout/ShippingSelector.php:390
+#: includes/Checkout/ShippingSelector.php:420
 #, php-format
 msgid "Please choose a %s you have access to."
 msgstr ""
 
 #. translators: 1: the location's name, 2: comma-separated list of the missing fields, 3: the organization admin noun.
-#: includes/Checkout/ShippingSelector.php:407
+#: includes/Checkout/ShippingSelector.php:437
 #, php-format
 msgid "“%1$s” is missing %2$s, so it cannot be delivered to. Ask your %3$s to complete it, or choose somewhere else."
 msgstr ""
@@ -1053,6 +1053,42 @@ msgstr ""
 
 #: includes/Membership/Context.php:213
 msgid "You do not have permission to place orders."
+msgstr ""
+
+#. translators: 1: the organization noun for the site's mode, for example "Company", 2: the singular location noun.
+#: includes/Rest/Orders.php:197
+#, php-format
+msgid "This order does not belong to a %1$s, so it cannot be delivered to a %2$s."
+msgstr ""
+
+#. translators: 1: the singular location noun, for example "Branch", 2: the organization noun.
+#: includes/Rest/Orders.php:212
+#, php-format
+msgid "That %1$s does not belong to this order’s %2$s."
+msgstr ""
+
+#: includes/Rest/Orders.php:287
+msgid "Limit the result to orders belonging to one organization."
+msgstr ""
+
+#: includes/Rest/Orders.php:310
+msgid "The organization this order belongs to. Zero when the order has none."
+msgstr ""
+
+#: includes/Rest/Orders.php:316
+msgid "The organization name as it was when the order was placed."
+msgstr ""
+
+#: includes/Rest/Orders.php:322
+msgid "The delivery location. Send it when creating an order for a member; zero means a one-off address was used."
+msgstr ""
+
+#: includes/Rest/Orders.php:328
+msgid "The location name as it was when the order was placed."
+msgstr ""
+
+#: includes/Rest/Orders.php:334
+msgid "The member this order was placed for."
 msgstr ""
 
 #: includes/Rest/OrganizationsController.php:107

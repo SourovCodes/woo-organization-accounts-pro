@@ -498,14 +498,15 @@ no JSX, no bundler** — so the plugin still builds with nothing but Composer an
 `node --check assets/js` stays meaningful. Nothing in that script enforces anything; the server
 does.
 
-### The snapshot a till reads
+### The REST surface a till talks to
 
-`Rest\OrganizationsController` serves `GET /wp-json/wc-woap/v1/organizations` — every
-organization with its members and its locations embedded, for a point-of-sale device that syncs on
-an interval and then sells offline. It is read-only, and the only route this plugin registers of its
-own: anything WooCommerce already models is extended on its own route instead, so there is one code
-path per thing. An order is the case that matters, and `/wc/v3/orders` is a third order-creation
-surface that `Checkout\Gate`, `BillingLock` and `ShippingSelector` do **not** cover.
+Two halves, split by whether WooCommerce already has the noun. `Rest\OrganizationsController`
+serves `GET /wp-json/wc-woap/v1/organizations` — every organization with its members and its
+locations embedded, for a point-of-sale device that syncs on an interval and then sells offline.
+It is read-only, and the only route this plugin registers of its own: anything WooCommerce already
+models is extended on its own route instead, so there is one code path per thing. An order is the
+case that matters — `/wc/v3/orders` is a third way an order comes into existence, beside the two
+checkouts, and `Rest\Orders` holds it to the same rules.
 
 - **The `wc-` prefix on the namespace is what makes a consumer key work.**
   `WC_REST_Authentication` reads a key and secret only after `is_request_to_rest_api()` finds `wc/`
@@ -541,6 +542,42 @@ surface that `Checkout\Gate`, `BillingLock` and `ShippingSelector` do **not** co
 - **The tax ID is not in the payload.** All of this lands on a device that can be left on a counter
   or lost, and it is the one regulated identifier in the table. A shop whose till prints invoices
   can add it.
+
+**`Rest\Orders` is the write side, on WooCommerce's own orders route.** Left alone, `/wc/v3/orders`
+was the documented way around everything this plugin enforces: an order created there carried
+whatever billing the device posted, no organization, no location and no `woap_place_orders` check —
+so it billed wrong and then appeared in no organization's order list at all. Everything lands on
+`woocommerce_rest_pre_insert_shop_order_object`, which fires after the request is written onto the
+order and before it is saved, so a refusal is a clean error and no order exists. Nothing uses a
+`register_rest_field` **update** callback: `WC_REST_CRUD_Controller` calls those *after* the order
+is saved and discards their return value, so a refusal from one arrives too late and is then thrown
+away. The `woap_*` fields on the order response are read-only `get_callback`s over `OrderMeta`.
+
+- **The rules are applied to the order's customer, never to the API user.** A till's key maps to a
+  user holding `manage_woocommerce`, and `Capabilities` grants that user everything for every
+  organization — a gate asked about the key is always open, and every happy-path test would still
+  pass. `Context::can_purchase()` and `purchase_blocked_reason()` take the customer's user ID;
+  `ShippingSelector` grew `destination_error_for()`, `resolve_location_for()` and
+  `order_shipping_address()` — the explicit-member forms of what the checkout does for the
+  signed-in user — so the till is refused exactly where the member would be, access list included.
+- **A customer with no membership is left alone** — same rule as the order capabilities: no
+  organization, no opinion. Staff placing a manual test order must not be refused by a gate about
+  organizations they do not belong to.
+- Billing is overwritten from the organization row and the posted address discarded; the delivery
+  location arrives as `woap_location_id` — the same field name the classic checkout posts — and an
+  order that `needs_shipping_address()` is held to the location-or-permitted-one-off rule. One that
+  needs no shipping needs no location: a walk-out sale at the counter has no parcel.
+- **Updates re-run nothing.** An update over this route is shop staff editing a record they own —
+  the same act as editing it in wp-admin, which this plugin also leaves alone — and re-running the
+  gate against an old order would refuse edits to history whenever a member has since left. The one
+  organization-shaped edit an update accepts is `woap_location_id`, resolved against the
+  *organization on the order* (the access list governs what a member may choose; this is the shop
+  redirecting a parcel it is fulfilling), cross-organization still refused.
+- `?woap_organization=<id>` on the orders collection scopes the list, through
+  `woocommerce_rest_orders_prepare_object_query` — the same indexed meta lookup the account's
+  organization-orders screen runs.
+- `RestOrdersTest` ends on the seam invariant: an organization admin can *open* a till-created
+  order, which asserts the stamp and WooCommerce's `view_order` answer together.
 
 ### Analytics knows nothing about a role it has not been told about
 

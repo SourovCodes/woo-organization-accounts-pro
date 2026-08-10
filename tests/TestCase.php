@@ -178,6 +178,28 @@ abstract class TestCase extends \WP_UnitTestCase {
 	}
 
 	/**
+	 * Sign in as somebody who may manage the shop, as a till's REST key does.
+	 *
+	 * An administrator rather than a bare `manage_woocommerce` grant, because
+	 * WooCommerce's own REST permission checks also ask for the shop-order post type
+	 * capabilities, which WC_Install gave the administrator role during the suite's
+	 * bootstrap.
+	 *
+	 * @return int The user ID.
+	 */
+	protected function act_as_shop_manager() {
+		$user_id = self::factory()->user->create( array( 'role' => 'administrator' ) );
+
+		$user = new \WP_User( $user_id );
+		$user->add_cap( 'manage_woocommerce' );
+
+		wp_set_current_user( $user_id );
+		Context::flush();
+
+		return $user_id;
+	}
+
+	/**
 	 * Replace one plugin setting for the duration of a test.
 	 *
 	 * @param string $key   Setting name.

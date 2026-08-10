@@ -474,25 +474,25 @@ msgid "The organization location this order is being delivered to."
 msgstr "Der Standort der Organisation, an den diese Bestellung geliefert wird."
 
 #. translators: 1: plural location noun, 2: the organization admin noun.
-#: includes/Checkout/ShippingSelector.php:372
+#: includes/Checkout/ShippingSelector.php:402
 #, php-format
 msgid "No %1$s have been set up to deliver to, and one-off addresses are not allowed. Ask your %2$s to add one."
 msgstr "Es sind keine %1$s als Lieferziel hinterlegt, und einmalige Adressen sind nicht erlaubt. Bitten Sie Ihren %2$s, eine anzulegen."
 
 #. translators: %s: the singular location noun, for example "Branch".
-#: includes/Checkout/ShippingSelector.php:380
+#: includes/Checkout/ShippingSelector.php:410
 #, php-format
 msgid "Please choose the %s this order is going to."
 msgstr "Bitte wählen Sie die %s, an die diese Bestellung geht."
 
 #. translators: %s: the singular location noun, for example "Branch".
-#: includes/Checkout/ShippingSelector.php:390
+#: includes/Checkout/ShippingSelector.php:420
 #, php-format
 msgid "Please choose a %s you have access to."
 msgstr "Bitte wählen Sie eine %s, auf die Sie Zugriff haben."
 
 #. translators: 1: the location's name, 2: comma-separated list of the missing fields, 3: the organization admin noun.
-#: includes/Checkout/ShippingSelector.php:407
+#: includes/Checkout/ShippingSelector.php:437
 #, php-format
 msgid "“%1$s” is missing %2$s, so it cannot be delivered to. Ask your %3$s to complete it, or choose somewhere else."
 msgstr "Bei „%1$s“ fehlt %2$s, deshalb ist dorthin keine Lieferung möglich. Bitten Sie Ihren %3$s, die Angaben zu vervollständigen, oder wählen Sie ein anderes Ziel."
@@ -1822,3 +1822,39 @@ msgstr "Ob dies der Standardstandort der Organisation ist."
 #: includes/Rest/OrganizationsController.php:499
 msgid "When the organization record last changed, in GMT. Its members and locations carry no such date, which is why this route serves whole snapshots."
 msgstr "Wann sich der Datensatz der Organisation zuletzt geändert hat, in GMT. Ihre Mitglieder und Standorte führen kein solches Datum, weshalb diese Route vollständige Momentaufnahmen liefert."
+
+#. translators: 1: the organization noun for the site's mode, for example "Company", 2: the singular location noun.
+#: includes/Rest/Orders.php:197
+#, php-format
+msgid "This order does not belong to a %1$s, so it cannot be delivered to a %2$s."
+msgstr "Diese Bestellung gehört zu keiner %1$s und kann daher nicht an eine %2$s geliefert werden."
+
+#. translators: 1: the singular location noun, for example "Branch", 2: the organization noun.
+#: includes/Rest/Orders.php:212
+#, php-format
+msgid "That %1$s does not belong to this order’s %2$s."
+msgstr "Diese %1$s gehört nicht zur %2$s dieser Bestellung."
+
+#: includes/Rest/Orders.php:287
+msgid "Limit the result to orders belonging to one organization."
+msgstr "Das Ergebnis auf Bestellungen einer Organisation eingrenzen."
+
+#: includes/Rest/Orders.php:310
+msgid "The organization this order belongs to. Zero when the order has none."
+msgstr "Die Organisation, zu der diese Bestellung gehört. Null, wenn sie keine hat."
+
+#: includes/Rest/Orders.php:316
+msgid "The organization name as it was when the order was placed."
+msgstr "Der Name der Organisation zum Zeitpunkt der Bestellung."
+
+#: includes/Rest/Orders.php:322
+msgid "The delivery location. Send it when creating an order for a member; zero means a one-off address was used."
+msgstr "Der Lieferstandort. Beim Anlegen einer Bestellung für ein Mitglied mitsenden; null bedeutet, dass eine einmalige Adresse verwendet wurde."
+
+#: includes/Rest/Orders.php:328
+msgid "The location name as it was when the order was placed."
+msgstr "Der Name des Standorts zum Zeitpunkt der Bestellung."
+
+#: includes/Rest/Orders.php:334
+msgid "The member this order was placed for."
+msgstr "Das Mitglied, für das diese Bestellung aufgegeben wurde."

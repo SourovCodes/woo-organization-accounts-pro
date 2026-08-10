@@ -10,17 +10,20 @@ namespace WooOrgAccounts\Rest;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Registers the routes that describe organizations to an outside system.
+ * Registers the plugin's REST surface.
  *
- * These exist because WooCommerce has no representation of the nouns this plugin
- * adds: `/wc/v3/customers` returns WordPress users, and there is nothing there that
- * answers "which organizations exist, who works for them, and where do their goods
- * go?". Anything WooCommerce *does* already model — an order above all — is extended
- * on its own route rather than duplicated here, so there is one code path per thing.
+ * Two halves, split by whether WooCommerce already has the noun. The plugin's own
+ * routes exist only for what WooCommerce cannot say: `/wc/v3/customers` returns
+ * WordPress users, and nothing there answers "which organizations exist, who works
+ * for them, and where do their goods go?". Anything WooCommerce *does* model — an
+ * order above all — is extended on its own route by `Orders` rather than duplicated
+ * here, so there is one code path per thing.
  *
- * Everything in this namespace is read-only. A till reads a snapshot of the
- * organizations to work from offline; it does not edit them, and a route that let it
- * would be a second way of writing records the account screens already own.
+ * Every route registered under this namespace is read-only. A till reads a snapshot
+ * of the organizations to work from offline; it does not edit them, and a route that
+ * let it would be a second way of writing records the account screens already own.
+ * The orders it creates go through `/wc/v3/orders`, where `Orders` holds them to the
+ * same rules as the checkouts.
  */
 final class RestApi {
 
@@ -54,6 +57,12 @@ final class RestApi {
 	 */
 	public function register() {
 		add_action( 'rest_api_init', array( $this, 'register_routes' ) );
+
+		/*
+		 * Not on rest_api_init: the order rules hang on WooCommerce filters that have
+		 * to be in place before the REST server dispatches anything.
+		 */
+		( new Orders() )->register();
 	}
 
 	/**

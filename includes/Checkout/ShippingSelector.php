@@ -9,6 +9,7 @@ namespace WooOrgAccounts\Checkout;
 
 use WooOrgAccounts\Data\Location;
 use WooOrgAccounts\Data\LocationRepository;
+use WooOrgAccounts\Data\Member;
 use WooOrgAccounts\Data\Organization;
 use WooOrgAccounts\Frontend\AddressFields;
 use WooOrgAccounts\Frontend\Templates;
@@ -327,22 +328,34 @@ class ShippingSelector {
 		}
 
 		if ( $location instanceof Location ) {
-			$address = $location->get_shipping_address();
-
-			/*
-			 * A parcel with no company on the label is one nobody at a loading bay
-			 * recognises. The location's own company wins when it has one — a branch may
-			 * trade under a different name — and the organization's name fills in when
-			 * it does not.
-			 */
-			if ( '' === trim( $address['company'] ) ) {
-				$address['company'] = $organization->get_name();
-			}
-
-			$order->set_address( $address, 'shipping' );
+			$order->set_address( self::order_shipping_address( $location, $organization ), 'shipping' );
 		}
 
 		OrderMeta::stamp( $order, $organization, $location, get_current_user_id() );
+	}
+
+	/**
+	 * A location's address as it should appear on an order.
+	 *
+	 * A parcel with no company on the label is one nobody at a loading bay recognises.
+	 * The location's own company wins when it has one — a branch may trade under a
+	 * different name — and the organization's name fills in when it does not.
+	 *
+	 * Shared by every surface that writes a location onto an order, so the fallback
+	 * cannot hold at the checkout and be missing from an order a till created.
+	 *
+	 * @param Location     $location     Location being delivered to.
+	 * @param Organization $organization Organization the order is for.
+	 * @return array Map of WooCommerce shipping field to value.
+	 */
+	public static function order_shipping_address( Location $location, Organization $organization ) {
+		$address = $location->get_shipping_address();
+
+		if ( '' === trim( $address['company'] ) ) {
+			$address['company'] = $organization->get_name();
+		}
+
+		return $address;
 	}
 
 	/**
@@ -359,6 +372,23 @@ class ShippingSelector {
 			return '';
 		}
 
+		return self::destination_error_for( $organization, $member, $selection );
+	}
+
+	/**
+	 * Why a destination cannot be used for a given member, if it cannot.
+	 *
+	 * The explicit-member form of destination_error(), for callers whose subject is
+	 * not the signed-in user: a till placing an order on a member's behalf is
+	 * authenticated as the shop, and the rules have to be applied to the member the
+	 * order is for, not to the API key asking.
+	 *
+	 * @param Organization $organization Organization the order is for.
+	 * @param Member       $member       Member the order is being placed for.
+	 * @param string       $selection    The submitted selection.
+	 * @return string Translated message, or an empty string when the destination is fine.
+	 */
+	public static function destination_error_for( Organization $organization, Member $member, $selection ) {
 		$locations = LocationRepository::for_member( $member );
 
 		if ( self::CUSTOM === $selection || '' === $selection ) {
@@ -382,7 +412,7 @@ class ShippingSelector {
 			);
 		}
 
-		$location = self::resolve_location( $selection );
+		$location = self::resolve_location_for( $member, $selection );
 
 		if ( null === $location ) {
 			return sprintf(
@@ -425,15 +455,31 @@ class ShippingSelector {
 	 * @return Location|null The location, or null for a one-off address or a refused ID.
 	 */
 	public static function resolve_location( $selection ) {
-		$location_id = absint( $selection );
-
-		if ( 0 === $location_id ) {
-			return null;
-		}
-
 		$member = Context::member();
 
 		if ( null === $member ) {
+			return null;
+		}
+
+		return self::resolve_location_for( $member, $selection );
+	}
+
+	/**
+	 * Turn a submitted selection into a location a given member may use.
+	 *
+	 * The explicit-member form of resolve_location(), for callers whose subject is not
+	 * the signed-in user. The scoping does not loosen with the caller: a till holding
+	 * the shop's key still resolves through the member's own list, because the till is
+	 * acting *for* the member and must be refused exactly where the member would be.
+	 *
+	 * @param Member $member    Member the location must belong to.
+	 * @param string $selection The submitted selection.
+	 * @return Location|null The location, or null for a one-off address or a refused ID.
+	 */
+	public static function resolve_location_for( Member $member, $selection ) {
+		$location_id = absint( $selection );
+
+		if ( 0 === $location_id ) {
 			return null;
 		}
 
