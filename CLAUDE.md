@@ -500,6 +500,10 @@ does.
 
 ### The REST surface a till talks to
 
+**`docs/rest-api.md` is the client-facing reference** — routes, parameters, payloads, error codes
+and the till's end-to-end flow. It is written for the developer of the consuming app, this section
+for the developer of the plugin; a change to either half of the surface updates both.
+
 Two halves, split by whether WooCommerce already has the noun. `Rest\OrganizationsController`
 serves `GET /wp-json/wc-woap/v1/organizations` — every organization with its members and its
 locations embedded, for a point-of-sale device that syncs on an interval and then sells offline.
