@@ -7,6 +7,7 @@ members' behalf. It has two halves, split by whether WooCommerce already has the
 | Surface | What it is | Route |
 |---|---|---|
 | Organization snapshot | **New route.** WooCommerce has no representation of organizations, members or locations — `/wc/v3/customers` returns WordPress users. | `GET /wp-json/wc-woap/v1/organizations` |
+| Address forms | **New route.** WooCommerce's per-country address field definitions, serialised so the app renders the same form the checkout would. | `GET /wp-json/wc-woap/v1/address-form` |
 | Orders | **WooCommerce's own route, extended.** Same line items, taxes, coupons and stock handling as any `/wc/v3` order — plus the organization rules, five extra read fields, one extra write field and one list filter. | `/wp-json/wc/v3/orders` |
 
 There is deliberately no `woap/v1` orders route. Recreating order creation would re-implement line
@@ -113,6 +114,7 @@ across the page boundary and drop it from the sync entirely.
       "email": "buy@acme.example",
       "phone": "+49 30 000000"
     },
+    "billing_formatted": "Acme GmbH\nAda Byron\n1 Hauptstrasse\n10115 Berlin",
     "members": [
       {
         "member_id": 7,
@@ -130,6 +132,7 @@ across the page boundary and drop it from the sync entirely.
         "id": 3,
         "name": "Warehouse North",
         "is_default": true,
+        "formatted": "Grace Hopper\n9 Lagerweg\n20095 Hamburg",
         "first_name": "Grace",
         "last_name": "Hopper",
         "company": "",
@@ -171,6 +174,10 @@ Field notes — the non-obvious ones:
 - **`locations[]`** are WooCommerce shipping addresses column for column, plus `name` (the label a
   location is chosen by) and `is_default`. A blank `company` is normal — the server fills in the
   organization's name when it lands on an order.
+- **`billing_formatted` and `locations[].formatted`** are the addresses as WooCommerce prints them
+  **for their country** — a German address puts the postcode before the city, an American one
+  after, and the formatter knows every variant. Newline-separated. Show these; do not assemble an
+  envelope layout from the fields yourself.
 - **`date_modified_gmt`** moves only when the organization *row* changes. Members and locations
   carry no such date — which is exactly why this route serves snapshots. Do not build a delta on
   it.
@@ -185,6 +192,66 @@ Field notes — the non-obvious ones:
 | 401 / 403 | `woap_rest_forbidden` | No credentials / credentials without `manage_woocommerce`. |
 | 400 | `woap_rest_invalid_page_number` | `page` beyond the last page. |
 | 400 | `rest_invalid_param` | Bad `status`, `per_page` out of range — WordPress's own validation. |
+
+---
+
+## The address forms
+
+```
+GET /wp-json/wc-woap/v1/address-form
+```
+
+WooCommerce handles addresses differently per country — which fields exist, which are required,
+what they are called, whether the state is a free text or a fixed list — and the app must not
+hand-write an address form, because a hand-written one is wrong in a different way in every
+country. This route serialises **WooCommerce's own shipping field definitions**, per country the
+shop ships to, with the shop's own checkout-field customisations already applied. Render from it
+and the till shows exactly the form the shop's checkout would.
+
+Only the shipping form is served, because a **one-off delivery address is the only address the
+till ever composes** — billing comes from the organization row and locations arrive pre-validated
+in the snapshot; the server writes both itself.
+
+Sync it like the snapshot: the whole set in one response, `ETag`/`If-None-Match` for cheap
+revalidation. It changes when WooCommerce or the shop's settings change, which is rarely.
+
+```json
+{
+  "default_country": "CH",
+  "countries": { "CH": "Switzerland", "LI": "Liechtenstein" },
+  "forms": {
+    "CH": [
+      { "name": "first_name", "label": "First name",       "required": true,  "hidden": false, "type": "text" },
+      { "name": "last_name",  "label": "Last name",        "required": true,  "hidden": false, "type": "text" },
+      { "name": "company",    "label": "Company name",     "required": false, "hidden": false, "type": "text" },
+      { "name": "country",    "label": "Country / Region", "required": true,  "hidden": false, "type": "country" },
+      { "name": "address_1",  "label": "Street address",   "required": true,  "hidden": false, "type": "text" },
+      { "name": "postcode",   "label": "Postcode",         "required": true,  "hidden": false, "type": "text" },
+      { "name": "city",       "label": "Town / City",      "required": true,  "hidden": false, "type": "text" },
+      { "name": "state",      "label": "Canton",           "required": false, "hidden": false, "type": "state",
+        "options": { "AG": "Aargau", "BE": "Bern", "…": "…" } },
+      { "name": "phone",      "label": "Phone",            "required": false, "hidden": false, "type": "tel" }
+    ],
+    "LI": [ "…" ]
+  }
+}
+```
+
+How to render it:
+
+- **Fields are in display order** — WooCommerce's order for that country, already sorted.
+- **`required`, `label` and `hidden` are per country.** The same field is "Canton" and a 26-entry
+  list in Switzerland, "State" and a 50-entry list in the US, and free text elsewhere. Skip
+  `hidden` fields entirely.
+- **`options` appears only on the `state` field and only where the country has a list.** Present:
+  render a picker and submit the *code* (the key). Absent: free text is correct — that is what the
+  checkout renders too.
+- **`countries` is the shop's ship-to list**, not all the world's countries. `default_country` is
+  the shop's base, for preselecting.
+- Submit the values under the same `name`s in the order request's `shipping` block.
+
+Do not duplicate the validation client-side beyond required-marking: the server validates every
+one-off address with the same rules anyway (below), and its answers are authoritative.
 
 ---
 
@@ -228,9 +295,15 @@ applied to the **customer**, never to the API key:
   `400 woap_rest_shipping_destination` — the resolution does not loosen because the caller holds
   the shop's key, because the till acts *for* the member and must be refused exactly where the
   member would be. A location with a blank `company` ships under the organization's name.
-- **A one-off address needs the organization's permission.** When `allow_custom_shipping` is true
-  in the snapshot, omit `woap_location_id` and post a `shipping` block; it is used as-is. When it
-  is false, an order that needs a shipping address must name a location.
+- **A one-off address needs the organization's permission — and is validated per country.** When
+  `allow_custom_shipping` is true in the snapshot, omit `woap_location_id` and post a `shipping`
+  block, built from [the address forms](#the-address-forms). It is then held to **the same rules
+  the checkout applies to a typed address**: the fields the country actually requires, a postcode
+  valid for that country, a state from the country's list. A refusal is
+  `400 woap_rest_shipping_address` and no order exists. Accepted values are normalised the way the
+  checkout normalises them — the postcode formatted, a state name like "California" stored as its
+  code — so what lands on the order is what WooCommerce would have stored. When
+  `allow_custom_shipping` is false, an order that needs a shipping address must name a location.
 - **An order with no shipping needs no location.** Whether an order "needs a shipping address" is
   WooCommerce's own answer and reads the **`shipping_lines`**, not the products — a walk-out sale
   posts no shipping lines and is billed and stamped like every other order, with `woap_location_id`
@@ -289,6 +362,7 @@ ordered it.
 |---|---|---|
 | 403 | `woap_rest_cannot_purchase` | Create: the customer may not buy — inactive membership, pending/suspended/rejected organization, or revoked `woap_place_orders`. `message` carries the reason a person can act on ("… is still awaiting approval …"). |
 | 400 | `woap_rest_shipping_destination` | Create: unknown location, wrong organization, outside the member's access list, an incomplete location address (named in the message), or no location where one is required. Update: location not this order's organization's. |
+| 400 | `woap_rest_shipping_address` | Create: a one-off address the shop's checkout would refuse — a required field for that country empty, an invalid postcode, a state not on the country's list. The message names each rejected field. |
 | 400 | `woap_rest_not_an_organization_order` | Update: `woap_location_id` sent for an order that belongs to no organization. |
 
 WooCommerce's own errors (`woocommerce_rest_invalid_customer_id`, product/stock errors, …) pass
@@ -299,11 +373,13 @@ through unchanged. On any error the order does not exist — the checks run befo
 ## A till's flow, end to end
 
 1. **Sync** — page through `GET /wc-woap/v1/organizations` with `If-None-Match` per page; replace
-   the local set wholesale. Repeat on an interval.
+   the local set wholesale. Fetch `GET /wc-woap/v1/address-form` the same way. Repeat on an
+   interval.
 2. **At the counter** — find the organization and member locally. Show `status` and
    `can_place_orders` so a refusal is explained before ringing anything up. Offer the member's
    locations: all of them when `location_access` is `"all"`, otherwise only the listed IDs; a
-   one-off address only when `allow_custom_shipping`.
+   one-off address only when `allow_custom_shipping`, entered through the country's own form from
+   the address-form sync.
 3. **Place** — `POST /wc/v3/orders` with `customer_id` = member's `user_id` and
    `woap_location_id`, or no location for a walk-out sale. Handle the two `woap_*` error codes;
    everything else is standard WooCommerce.

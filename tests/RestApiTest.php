@@ -458,6 +458,27 @@ class RestApiTest extends TestCase {
 	}
 
 	/**
+	 * Addresses arrive formatted for their country as well as as fields.
+	 *
+	 * WooCommerce's formatter puts the postcode before the city for a German address
+	 * and after it for an American one; serving its output means the device never
+	 * invents an envelope layout. Newlines, not the `<br/>` the web templates use —
+	 * the consumer is an app.
+	 */
+	public function testAddressesArriveFormattedForTheirCountry() {
+		$organization = $this->make_organization();
+
+		$this->make_location( $organization );
+		$this->act_as_shop_manager();
+
+		$data = $this->fetch()->get_data()[0];
+
+		$this->assertStringContainsString( '10115 Berlin', $data['billing_formatted'] );
+		$this->assertStringContainsString( '20095 Hamburg', $data['locations'][0]['formatted'] );
+		$this->assertStringNotContainsString( '<br', $data['billing_formatted'] );
+	}
+
+	/**
 	 * The route describes itself, so a client can be written against the schema.
 	 *
 	 * Asked the way an OPTIONS request is answered — through the route's registered

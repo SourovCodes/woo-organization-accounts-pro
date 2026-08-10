@@ -11,6 +11,7 @@ use WooOrgAccounts\Checkout\OrderMeta;
 use WooOrgAccounts\Checkout\ShippingSelector;
 use WooOrgAccounts\Data\Location;
 use WooOrgAccounts\Data\LocationRepository;
+use WooOrgAccounts\Frontend\AddressFields;
 use WooOrgAccounts\Labels;
 use WooOrgAccounts\Membership\Context;
 
@@ -157,11 +158,54 @@ final class Orders {
 			if ( '' !== $problem ) {
 				return new \WP_Error( 'woap_rest_shipping_destination', $problem, array( 'status' => 400 ) );
 			}
+
+			$invalid = $this->validate_one_off_address( $order );
+
+			if ( $invalid instanceof \WP_Error ) {
+				return $invalid;
+			}
 		}
 
 		OrderMeta::stamp( $order, $organization, null, $customer_id );
 
 		return $order;
+	}
+
+	/**
+	 * Hold a one-off shipping address to the checkout's own per-country rules.
+	 *
+	 * At the checkout, an address the customer types is validated by WooCommerce per
+	 * country — required fields the country actually has, postcode format, a state
+	 * from the country's list. `/wc/v3/orders` performs none of that, because staff
+	 * creating orders by hand are trusted with partial addresses; a till taking a
+	 * customer's delivery address at the counter is the checkout case, not the staff
+	 * case. `AddressFields::validate()` is deliberately the same rules in the same
+	 * order as `WC_Checkout::validate_posted_data()`, so an address accepted here is
+	 * one the shop's own checkout would have accepted — and it normalises in place,
+	 * so the order stores what WooCommerce would store: the postcode formatted, a
+	 * state name upper-cased to its code.
+	 *
+	 * @param \WC_Order $order Order carrying the posted one-off address.
+	 * @return \WP_Error|null A refusal, or null when the address is one the checkout would take.
+	 */
+	private function validate_one_off_address( \WC_Order $order ) {
+		$address = $order->get_address( 'shipping' );
+		$errors  = new \WP_Error();
+
+		AddressFields::validate( AddressFields::SHIPPING, $address, $errors );
+
+		if ( $errors->has_errors() ) {
+			return new \WP_Error(
+				'woap_rest_shipping_address',
+				// The messages carry <strong> markup for the web forms; a REST client wants text.
+				wp_strip_all_tags( implode( ' ', $errors->get_error_messages() ) ),
+				array( 'status' => 400 )
+			);
+		}
+
+		$order->set_address( $address, 'shipping' );
+
+		return null;
 	}
 
 	/**

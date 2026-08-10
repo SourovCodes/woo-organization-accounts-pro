@@ -72,5 +72,6 @@ final class RestApi {
 	 */
 	public function register_routes() {
 		( new OrganizationsController() )->register_routes();
+		( new AddressFormController() )->register_routes();
 	}
 }

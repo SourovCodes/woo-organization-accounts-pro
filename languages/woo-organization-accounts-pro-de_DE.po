@@ -1735,126 +1735,178 @@ msgstr "Du darfst Organisationen nicht auflisten."
 msgid "The requested page does not exist."
 msgstr "Die angeforderte Seite gibt es nicht."
 
-#: includes/Rest/OrganizationsController.php:355
+#: includes/Rest/OrganizationsController.php:331
 msgid "Current page of the collection."
 msgstr "Aktuelle Seite der Sammlung."
 
-#: includes/Rest/OrganizationsController.php:363
+#: includes/Rest/OrganizationsController.php:339
 msgid "Organizations per page."
 msgstr "Organisationen pro Seite."
 
-#: includes/Rest/OrganizationsController.php:372
+#: includes/Rest/OrganizationsController.php:348
 msgid "Return only organizations with this status. Omit for all of them."
 msgstr "Nur Organisationen mit diesem Status zurückgeben. Ohne Angabe kommen alle."
 
-#: includes/Rest/OrganizationsController.php:394
+#: includes/Rest/OrganizationsController.php:370
 msgid "Unique identifier for the organization."
 msgstr "Eindeutige Kennung der Organisation."
 
-#: includes/Rest/OrganizationsController.php:399
+#: includes/Rest/OrganizationsController.php:375
 msgid "The organization name."
 msgstr "Der Name der Organisation."
 
-#: includes/Rest/OrganizationsController.php:404
+#: includes/Rest/OrganizationsController.php:380
 msgid "The organization status."
 msgstr "Der Status der Organisation."
 
-#: includes/Rest/OrganizationsController.php:410
+#: includes/Rest/OrganizationsController.php:386
 msgid "Whether members may ship to a one-off address instead of a location."
 msgstr "Ob Mitglieder an eine einmalige Adresse statt an einen Standort liefern lassen dürfen."
 
-#: includes/Rest/OrganizationsController.php:415
+#: includes/Rest/OrganizationsController.php:391
 msgid "The centralised billing address every order for this organization is billed to."
 msgstr "Die zentrale Rechnungsadresse, an die jede Bestellung dieser Organisation fakturiert wird."
 
-#: includes/Rest/OrganizationsController.php:421
+#: includes/Rest/OrganizationsController.php:402
 msgid "The people who may order for this organization."
 msgstr "Die Personen, die für diese Organisation bestellen dürfen."
 
-#: includes/Rest/OrganizationsController.php:428
+#: includes/Rest/OrganizationsController.php:409
 msgid "Unique identifier for the membership."
 msgstr "Eindeutige Kennung der Mitgliedschaft."
 
-#: includes/Rest/OrganizationsController.php:432
+#: includes/Rest/OrganizationsController.php:413
 msgid "The WordPress user this membership belongs to. Use it as the order customer."
 msgstr "Der WordPress-Benutzer, zu dem diese Mitgliedschaft gehört. Als Kunde der Bestellung verwenden."
 
-#: includes/Rest/OrganizationsController.php:436
+#: includes/Rest/OrganizationsController.php:417
 msgid "The member display name."
 msgstr "Der Anzeigename des Mitglieds."
 
-#: includes/Rest/OrganizationsController.php:440
+#: includes/Rest/OrganizationsController.php:421
 msgid "The member email address."
 msgstr "Die E-Mail-Adresse des Mitglieds."
 
-#: includes/Rest/OrganizationsController.php:444
+#: includes/Rest/OrganizationsController.php:425
 msgid "The member role within the organization."
 msgstr "Die Rolle des Mitglieds in der Organisation."
 
-#: includes/Rest/OrganizationsController.php:449
+#: includes/Rest/OrganizationsController.php:430
 msgid "Whether the membership is in force."
 msgstr "Ob die Mitgliedschaft in Kraft ist."
 
-#: includes/Rest/OrganizationsController.php:454
+#: includes/Rest/OrganizationsController.php:435
 msgid "Whether this member may order right now, decided by the shop rather than by the device."
 msgstr "Ob dieses Mitglied gerade bestellen darf – entschieden vom Shop, nicht vom Gerät."
 
-#: includes/Rest/OrganizationsController.php:458
+#: includes/Rest/OrganizationsController.php:439
 msgid "The locations this member may ship to: the string \"all\", or a list of location IDs."
 msgstr "Die Standorte, an die dieses Mitglied liefern lassen darf: die Zeichenkette „all“ oder eine Liste von Standort-IDs."
 
-#: includes/Rest/OrganizationsController.php:474
+#: includes/Rest/OrganizationsController.php:455
 msgid "The addresses this organization has goods delivered to."
 msgstr "Die Adressen, an die sich diese Organisation Waren liefern lässt."
 
-#: includes/Rest/OrganizationsController.php:482
+#: includes/Rest/OrganizationsController.php:463
 msgid "Unique identifier for the location."
 msgstr "Eindeutige Kennung des Standorts."
 
-#: includes/Rest/OrganizationsController.php:486
+#: includes/Rest/OrganizationsController.php:467
 msgid "The label this location is chosen by."
 msgstr "Die Bezeichnung, unter der dieser Standort ausgewählt wird."
 
-#: includes/Rest/OrganizationsController.php:490
+#: includes/Rest/OrganizationsController.php:471
 msgid "Whether this is the organization default location."
 msgstr "Ob dies der Standardstandort der Organisation ist."
 
-#: includes/Rest/OrganizationsController.php:499
+#: includes/Rest/OrganizationsController.php:484
 msgid "When the organization record last changed, in GMT. Its members and locations carry no such date, which is why this route serves whole snapshots."
 msgstr "Wann sich der Datensatz der Organisation zuletzt geändert hat, in GMT. Ihre Mitglieder und Standorte führen kein solches Datum, weshalb diese Route vollständige Momentaufnahmen liefert."
 
 #. translators: 1: the organization noun for the site's mode, for example "Company", 2: the singular location noun.
-#: includes/Rest/Orders.php:197
+#: includes/Rest/Orders.php:241
 #, php-format
 msgid "This order does not belong to a %1$s, so it cannot be delivered to a %2$s."
 msgstr "Diese Bestellung gehört zu keiner %1$s und kann daher nicht an eine %2$s geliefert werden."
 
 #. translators: 1: the singular location noun, for example "Branch", 2: the organization noun.
-#: includes/Rest/Orders.php:212
+#: includes/Rest/Orders.php:256
 #, php-format
 msgid "That %1$s does not belong to this order’s %2$s."
 msgstr "Diese %1$s gehört nicht zur %2$s dieser Bestellung."
 
-#: includes/Rest/Orders.php:287
+#: includes/Rest/Orders.php:331
 msgid "Limit the result to orders belonging to one organization."
 msgstr "Das Ergebnis auf Bestellungen einer Organisation eingrenzen."
 
-#: includes/Rest/Orders.php:310
+#: includes/Rest/Orders.php:354
 msgid "The organization this order belongs to. Zero when the order has none."
 msgstr "Die Organisation, zu der diese Bestellung gehört. Null, wenn sie keine hat."
 
-#: includes/Rest/Orders.php:316
+#: includes/Rest/Orders.php:360
 msgid "The organization name as it was when the order was placed."
 msgstr "Der Name der Organisation zum Zeitpunkt der Bestellung."
 
-#: includes/Rest/Orders.php:322
+#: includes/Rest/Orders.php:366
 msgid "The delivery location. Send it when creating an order for a member; zero means a one-off address was used."
 msgstr "Der Lieferstandort. Beim Anlegen einer Bestellung für ein Mitglied mitsenden; null bedeutet, dass eine einmalige Adresse verwendet wurde."
 
-#: includes/Rest/Orders.php:328
+#: includes/Rest/Orders.php:372
 msgid "The location name as it was when the order was placed."
 msgstr "Der Name des Standorts zum Zeitpunkt der Bestellung."
 
-#: includes/Rest/Orders.php:334
+#: includes/Rest/Orders.php:378
 msgid "The member this order was placed for."
 msgstr "Das Mitglied, für das diese Bestellung aufgegeben wurde."
+
+#: includes/Rest/AddressFormController.php:79
+msgid "You are not allowed to read the address forms."
+msgstr "Du darfst die Adressformulare nicht lesen."
+
+#: includes/Rest/AddressFormController.php:164
+msgid "The shop base country, for preselecting."
+msgstr "Das Basisland des Shops, zum Vorauswählen."
+
+#: includes/Rest/AddressFormController.php:169
+msgid "The countries the shop ships to, code to name."
+msgstr "Die Länder, in die der Shop liefert, Code zu Name."
+
+#: includes/Rest/AddressFormController.php:174
+msgid "The shipping address form per country, fields in display order."
+msgstr "Das Lieferadressformular je Land, Felder in Anzeigereihenfolge."
+
+#: includes/Rest/AddressFormController.php:183
+msgid "The field name, as the order API expects it."
+msgstr "Der Feldname, wie ihn die Bestell-API erwartet."
+
+#: includes/Rest/AddressFormController.php:187
+msgid "The label, in the shop language and correct for the country."
+msgstr "Die Beschriftung, in der Shopsprache und passend zum Land."
+
+#: includes/Rest/AddressFormController.php:191
+msgid "Whether the country requires the field."
+msgstr "Ob das Land das Feld verlangt."
+
+#: includes/Rest/AddressFormController.php:195
+msgid "Whether the country hides the field entirely."
+msgstr "Ob das Land das Feld ganz ausblendet."
+
+#: includes/Rest/AddressFormController.php:199
+msgid "The control type WooCommerce renders for the field."
+msgstr "Der Steuerelementtyp, den WooCommerce für das Feld ausgibt."
+
+#: includes/Rest/AddressFormController.php:203
+msgid "Placeholder text, when the field has one."
+msgstr "Platzhaltertext, wenn das Feld einen hat."
+
+#: includes/Rest/AddressFormController.php:207
+msgid "For the state field: the values the country accepts, code to name. Absent means free text."
+msgstr "Für das Bundesland-Feld: die Werte, die das Land akzeptiert, Code zu Name. Fehlt es, ist Freitext richtig."
+
+#: includes/Rest/OrganizationsController.php:397
+msgid "The billing address formatted for its country, as lines of text."
+msgstr "Die Rechnungsadresse, formatiert für ihr Land, als Textzeilen."
+
+#: includes/Rest/OrganizationsController.php:475
+msgid "The address formatted for its country, as lines of text."
+msgstr "Die Adresse, formatiert für ihr Land, als Textzeilen."

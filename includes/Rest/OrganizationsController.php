@@ -141,55 +141,12 @@ final class OrganizationsController {
 			)
 		);
 
-		$data = $this->prepare_page( $organizations );
-		$etag = '"' . md5( (string) wp_json_encode( $data ) ) . '"';
+		$response = Etag::respond( $this->prepare_page( $organizations ), $request );
 
-		if ( $this->matches_etag( $request->get_header( 'if_none_match' ), $etag ) ) {
-			$response = new \WP_REST_Response( null, 304 );
-		} else {
-			$response = new \WP_REST_Response( $data, 200 );
-		}
-
-		$response->header( 'ETag', $etag );
 		$response->header( 'X-WP-Total', (string) $total );
 		$response->header( 'X-WP-TotalPages', (string) $pages );
 
 		return $response;
-	}
-
-	/**
-	 * Whether the client already holds this exact page.
-	 *
-	 * The header may carry several validators and may mark them weak. Weak and strong
-	 * are the same answer here — the payload either hashes to the same thing or it does
-	 * not — so the `W/` prefix is stripped rather than rejected.
-	 *
-	 * @param string|null $header The If-None-Match header, if any.
-	 * @param string      $etag   The ETag this page hashes to, quoted.
-	 * @return bool True when the client's copy is current.
-	 */
-	private function matches_etag( $header, $etag ) {
-		if ( empty( $header ) ) {
-			return false;
-		}
-
-		foreach ( explode( ',', (string) $header ) as $candidate ) {
-			$candidate = trim( $candidate );
-
-			if ( '*' === $candidate ) {
-				return true;
-			}
-
-			if ( 0 === stripos( $candidate, 'W/' ) ) {
-				$candidate = substr( $candidate, 2 );
-			}
-
-			if ( hash_equals( $etag, $candidate ) ) {
-				return true;
-			}
-		}
-
-		return false;
 	}
 
 	/**
@@ -283,10 +240,28 @@ final class OrganizationsController {
 			'status'                => $organization->get_status(),
 			'allow_custom_shipping' => $organization->allows_custom_shipping(),
 			'billing'               => $organization->get_billing_address(),
+			'billing_formatted'     => $this->format_address( $organization->get_billing_address() ),
 			'members'               => $prepared_members,
 			'locations'             => $prepared_locations,
 			'date_modified_gmt'     => (string) $organization->get( 'date_modified' ),
 		);
+	}
+
+	/**
+	 * An address as WooCommerce would print it for its country.
+	 *
+	 * Which line the postcode sits on, whether the city precedes it and where the
+	 * country goes all differ per country, and WooCommerce's formatter knows every
+	 * variant. Serving the formatted form beside the fields means the device never
+	 * invents an envelope layout of its own — the same reuse rule as everything else
+	 * here. Newline-separated rather than WooCommerce's default `<br/>`, because the
+	 * consumer is an app, not a page.
+	 *
+	 * @param array $address Address fields, unprefixed.
+	 * @return string The address as lines of text.
+	 */
+	private function format_address( array $address ) {
+		return (string) WC()->countries->get_formatted_address( $address, "\n" );
 	}
 
 	/**
@@ -339,6 +314,7 @@ final class OrganizationsController {
 				'id'         => $location->get_id(),
 				'name'       => $location->get_name(),
 				'is_default' => $location->is_default(),
+				'formatted'  => $this->format_address( $location->get_shipping_address() ),
 			),
 			$location->get_shipping_address()
 		);
@@ -417,6 +393,11 @@ final class OrganizationsController {
 					'properties'  => $this->address_schema( Organization::BILLING_FIELDS ),
 					'readonly'    => true,
 				),
+				'billing_formatted'     => array(
+					'description' => __( 'The billing address formatted for its country, as lines of text.', 'woo-organization-accounts-pro' ),
+					'type'        => 'string',
+					'readonly'    => true,
+				),
 				'members'               => array(
 					'description' => __( 'The people who may order for this organization.', 'woo-organization-accounts-pro' ),
 					'type'        => 'array',
@@ -489,6 +470,10 @@ final class OrganizationsController {
 								'is_default' => array(
 									'description' => __( 'Whether this is the organization default location.', 'woo-organization-accounts-pro' ),
 									'type'        => 'boolean',
+								),
+								'formatted'  => array(
+									'description' => __( 'The address formatted for its country, as lines of text.', 'woo-organization-accounts-pro' ),
+									'type'        => 'string',
 								),
 							),
 							$this->address_schema( Location::ADDRESS_FIELDS )

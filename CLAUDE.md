@@ -546,6 +546,19 @@ checkouts, and `Rest\Orders` holds it to the same rules.
 - **The tax ID is not in the payload.** All of this lands on a device that can be left on a counter
   or lost, and it is the one regulated identifier in the table. A shop whose till prints invoices
   can add it.
+- **Addresses are also served formatted for their country** (`billing_formatted`, `formatted`
+  per location, newline-separated), through `WC()->countries->get_formatted_address()` — postcode
+  before the city in Germany, after it in the US — so the device never invents an envelope layout.
+
+**`Rest\AddressFormController` serves `GET /wc-woap/v1/address-form`** — WooCommerce's shipping
+field definitions per ship-to country, serialised from the same `AddressFields::fields()` every
+web form here renders from, shop checkout customisations included (the
+`woo_org_accounts_address_fields` filter applies). It exists because a one-off delivery address is
+the one address a till composes, and a hand-written address form is wrong in a different way in
+every country — the founding lesson of `AddressFields`. Only the shipping form: billing comes from
+the organization row and locations arrive pre-validated in the snapshot. The state field carries
+its `options` where the country has a list; absence means free text, which is what the checkout
+renders too. ETag'd like the snapshot; `Rest\Etag` is the shared revalidation helper.
 
 **`Rest\Orders` is the write side, on WooCommerce's own orders route.** Left alone, `/wc/v3/orders`
 was the documented way around everything this plugin enforces: an order created there carried
@@ -571,6 +584,11 @@ away. The `woap_*` fields on the order response are read-only `get_callback`s ov
   location arrives as `woap_location_id` — the same field name the classic checkout posts — and an
   order that `needs_shipping_address()` is held to the location-or-permitted-one-off rule. One that
   needs no shipping needs no location: a walk-out sale at the counter has no parcel.
+- **A one-off address is validated with `AddressFields::validate()`** — the checkout's per-country
+  rules, because a till taking a customer's delivery address is the checkout case, not the
+  staff-typing-a-partial-record case `/wc/v3/orders` was built for. Same rules, same
+  normalisation (postcode formatted, state name to code), refusal `woap_rest_shipping_address`
+  with the field-naming messages stripped of their `<strong>` markup.
 - **Updates re-run nothing.** An update over this route is shop staff editing a record they own —
   the same act as editing it in wp-admin, which this plugin also leaves alone — and re-running the
   gate against an old order would refuse edits to history whenever a member has since left. The one

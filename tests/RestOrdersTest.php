@@ -346,6 +346,7 @@ class RestOrdersTest extends TestCase {
 			'city'       => 'Bremen',
 			'postcode'   => '28195',
 			'country'    => 'DE',
+			'phone'      => '+49 421 000000',
 		);
 
 		$allowed = $this->post_order(
@@ -362,6 +363,68 @@ class RestOrdersTest extends TestCase {
 		$this->assertSame( 'Bremen', $order->get_shipping_city() );
 		$this->assertSame( 0, OrderMeta::location_id( $order ) );
 		$this->assertSame( $organization->get_id(), OrderMeta::organization_id( $order ) );
+	}
+
+	/**
+	 * A one-off address is validated the way the checkout validates one.
+	 *
+	 * `/wc/v3/orders` itself accepts any partial address, because staff creating
+	 * orders by hand are trusted. A till taking a customer's delivery address at the
+	 * counter is the checkout case: the same per-country rules run, so an address
+	 * accepted here is one the shop's own checkout would have accepted.
+	 */
+	public function testAOneOffAddressIsValidatedPerCountry() {
+		$organization = $this->make_organization();
+		$member       = $this->make_member( $organization, Member::ROLE_MEMBER );
+
+		$response = $this->post_order(
+			array(
+				'customer_id' => $member->get_user_id(),
+				'shipping'    => array(
+					'first_name' => 'One',
+					'last_name'  => 'Off',
+					'address_1'  => '5 Somewhere Else',
+					'city'       => '',
+					'postcode'   => '28195',
+					'country'    => 'DE',
+				),
+			)
+		);
+
+		$this->assertSame( 400, $response->get_status() );
+		$this->assertSame( 'woap_rest_shipping_address', $response->get_data()['code'] );
+		$this->assertStringContainsString( 'required', $response->get_data()['message'] );
+		$this->assertSame( 0, $this->order_count() );
+	}
+
+	/**
+	 * A one-off address is normalised the way the checkout normalises one.
+	 *
+	 * A customer saying "California" has not made a mistake; the order stores the
+	 * code, exactly as `WC_Checkout::validate_posted_data()` would have stored it.
+	 */
+	public function testAOneOffAddressIsNormalisedLikeTheCheckout() {
+		$organization = $this->make_organization();
+		$member       = $this->make_member( $organization, Member::ROLE_MEMBER );
+
+		$response = $this->post_order(
+			array(
+				'customer_id' => $member->get_user_id(),
+				'shipping'    => array(
+					'first_name' => 'One',
+					'last_name'  => 'Off',
+					'address_1'  => '1 Sunset Blvd',
+					'city'       => 'Los Angeles',
+					'state'      => 'california',
+					'postcode'   => '90210',
+					'country'    => 'US',
+					'phone'      => '+1 310 000 0000',
+				),
+			)
+		);
+
+		$this->assertSame( 201, $response->get_status() );
+		$this->assertSame( 'CA', wc_get_order( $response->get_data()['id'] )->get_shipping_state() );
 	}
 
 	/**
