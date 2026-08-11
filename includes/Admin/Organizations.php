@@ -350,8 +350,6 @@ class Organizations {
 
 		$details = array(
 			'name'   => $organization->get_name(),
-			'email'  => (string) $organization->get( 'email' ),
-			'phone'  => (string) $organization->get( 'phone' ),
 			'tax_id' => (string) $organization->get( 'tax_id' ),
 			'status' => $organization->get_status(),
 		);
@@ -366,10 +364,13 @@ class Organizations {
 			}
 		}
 
+		/*
+		 * No email or phone row: an organization's contact details are its billing
+		 * email and billing phone, in the address column beside this one, which is the
+		 * pair that reaches an order.
+		 */
 		echo '<div><h2>' . esc_html__( 'Details', 'woo-organization-accounts-pro' ) . '</h2><table class="form-table"><tbody>';
 		self::text_row( 'name', __( 'Name', 'woo-organization-accounts-pro' ), $details['name'], $rejected );
-		self::text_row( 'email', __( 'Email address', 'woo-organization-accounts-pro' ), $details['email'], $rejected );
-		self::text_row( 'phone', __( 'Phone', 'woo-organization-accounts-pro' ), $details['phone'], $rejected );
 		self::text_row( 'tax_id', __( 'VAT / tax ID', 'woo-organization-accounts-pro' ), $details['tax_id'], $rejected );
 
 		echo '<tr><th scope="row"><label for="woap-status">' . esc_html__( 'Status', 'woo-organization-accounts-pro' ) . '</label></th><td><select id="woap-status" name="woap_status">';
@@ -649,8 +650,6 @@ class Organizations {
 
 		$details = array(
 			'name'   => self::posted( 'woap_name' ),
-			'email'  => self::posted( 'woap_email' ),
-			'phone'  => self::posted( 'woap_phone' ),
 			'tax_id' => self::posted( 'woap_tax_id' ),
 			'status' => self::posted( 'woap_status' ),
 		);
@@ -660,8 +659,8 @@ class Organizations {
 
 		/*
 		 * Both halves are checked before either is written, and the whole submission is
-		 * handed back if either fails. Validating only the address let an empty name and
-		 * an unusable email address through the same screen that refused a bad postcode.
+		 * handed back if either fails. Validating only the address let an empty name
+		 * through the same screen that refused a bad postcode.
 		 */
 		Organization::validate_details( $details, $errors );
 		AddressFields::validate( AddressFields::BILLING, $address, $errors );

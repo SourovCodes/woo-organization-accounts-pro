@@ -69,7 +69,6 @@ abstract class TestCase extends \WP_UnitTestCase {
 			array_merge(
 				array(
 					'name'   => 'Acme GmbH',
-					'email'  => 'buy@acme.test',
 					'status' => Organization::STATUS_ACTIVE,
 				),
 				$props

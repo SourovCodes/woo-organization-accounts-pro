@@ -103,6 +103,11 @@ class RestAddressFormTest extends TestCase {
 	 * Asserted against WooCommerce's own field definitions for the same shop rather
 	 * than against hard-coded expectations, so a WooCommerce release that changes a
 	 * country's rules changes both sides of this assertion together.
+	 *
+	 * `last_name` and `phone` are the two fields that are deliberately not WooCommerce's
+	 * answer, and they are named here rather than skipped quietly: the till has to be
+	 * told about both, or it will refuse an address the shop's own location form
+	 * accepts. See `AddressFields::delivery_fields()` for why each is relaxed.
 	 */
 	public function testRequirementsMatchWooCommercesOwnDefinitions() {
 		$this->act_as_shop_manager();
@@ -117,9 +122,31 @@ class RestAddressFormTest extends TestCase {
 				$name = substr( $key, strlen( 'shipping_' ) );
 
 				$this->assertArrayHasKey( $name, $form, $country . ' is missing ' . $name );
+
+				if ( in_array( $name, array( 'last_name', 'phone' ), true ) ) {
+					$this->assertFalse( $form[ $name ]['required'], $country . ' requires ' . $name . ' on a delivery address.' );
+					continue;
+				}
+
 				$this->assertSame( ! empty( $field['required'] ), $form[ $name ]['required'], $country . ' disagrees on ' . $name );
 			}
 		}
+	}
+
+	/**
+	 * The till is served the delivery phone the web form collects.
+	 *
+	 * A one-off delivery address is the one address a till composes itself, so a field
+	 * the shop's own location form has and the served form does not would be a till
+	 * quietly unable to record a number the courier will ask for.
+	 */
+	public function testTheServedFormOffersADeliveryPhone() {
+		$this->act_as_shop_manager();
+
+		$form = $this->form( $this->fetch()->get_data(), 'DE' );
+
+		$this->assertArrayHasKey( 'phone', $form );
+		$this->assertFalse( $form['phone']['required'] );
 	}
 
 	/**

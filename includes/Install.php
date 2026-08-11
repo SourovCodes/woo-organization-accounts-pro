@@ -98,6 +98,8 @@ final class Install {
 		}
 
 		self::migrate_location_contacts();
+		self::migrate_organization_contacts();
+		self::drop_retired_columns();
 
 		update_option( self::VERSION_OPTION, WOAP_DB_VERSION, false );
 	}
@@ -158,6 +160,82 @@ final class Install {
 
 			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- A column name cannot be a placeholder; this one came from SHOW COLUMNS and is stripped to [a-z_].
 			$wpdb->query( "ALTER TABLE {$table} DROP COLUMN {$column}" );
+		}
+	}
+
+	/**
+	 * Move the organization's own email and phone onto its billing address.
+	 *
+	 * Schema 1.1.0 and earlier gave an organization an `email` and a `phone` of its
+	 * own, beside the `billing_email` and `billing_phone` of its billing address. Only
+	 * the billing pair ever did anything: they are what `Checkout\BillingLock` copies
+	 * onto every order, and so what every WooCommerce order email is addressed to. The
+	 * other pair was read by four display templates and the admin search and by nothing
+	 * else — an address the shop could see and could not write to.
+	 *
+	 * Two answers to "how do we contact this account" is one too many, so the columns
+	 * are gone. They are not simply dropped, because on a live site they hold the
+	 * address somebody typed in: each is copied onto its billing counterpart first, and
+	 * only where that counterpart is empty, so a real billing address is never
+	 * overwritten by the weaker copy.
+	 *
+	 * @return void
+	 */
+	private static function migrate_organization_contacts() {
+		global $wpdb;
+
+		$table = self::table( self::ORGANIZATIONS );
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name from a class constant; SHOW COLUMNS takes no placeholders.
+		$legacy = $wpdb->get_col( "SHOW COLUMNS FROM {$table} WHERE Field IN ( 'email', 'phone' )" );
+
+		foreach ( array( 'email', 'phone' ) as $column ) {
+			if ( ! in_array( $column, (array) $legacy, true ) ) {
+				continue;
+			}
+
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Both column names are literals from the array above.
+			$wpdb->query( "UPDATE {$table} SET billing_{$column} = {$column} WHERE billing_{$column} = '' AND {$column} != ''" );
+		}
+	}
+
+	/**
+	 * Drop the columns the plugin no longer stores anything in.
+	 *
+	 * WordPress adds and widens columns through dbDelta() but never removes one, so a
+	 * column dropped from `schema()` would otherwise sit in the table of every existing
+	 * site for good — still NOT NULL, still holding whatever it last held, and still
+	 * the sort of thing somebody finds in six months and writes a report against.
+	 *
+	 * Everything listed here was write-only by the time it was retired, except the
+	 * organization contact pair, which `migrate_organization_contacts()` copies onto
+	 * the billing address before this runs.
+	 *
+	 * @return void
+	 */
+	private static function drop_retired_columns() {
+		global $wpdb;
+
+		$retired = array(
+			self::ORGANIZATIONS => array( 'email', 'phone' ),
+			self::LOCATIONS     => array( 'date_created' ),
+			self::INVITATIONS   => array( 'date_accepted' ),
+		);
+
+		foreach ( $retired as $table => $columns ) {
+			$name = self::table( $table );
+
+			foreach ( $columns as $column ) {
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name from a class constant, column name a literal from the array above.
+				$exists = $wpdb->get_col( "SHOW COLUMNS FROM {$name} WHERE Field = '{$column}'" );
+
+				if ( empty( $exists ) ) {
+					continue;
+				}
+
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- As above; a column name cannot be a placeholder.
+				$wpdb->query( "ALTER TABLE {$name} DROP COLUMN {$column}" );
+			}
 		}
 	}
 
@@ -247,12 +325,15 @@ final class Install {
 		 * The billing address lives here and only here. It is the organization's, not
 		 * any one member's, and the copy that ends up on an order is WooCommerce's own
 		 * order billing snapshot, so a later edit here never rewrites history.
+		 *
+		 * There is no `email` or `phone` beside the billing pair, and there was: two
+		 * addresses for one account is two answers to the same question, and only the
+		 * billing one reached an order or an email. See
+		 * migrate_organization_contacts().
 		 */
 		$schema[] = "CREATE TABLE {$organizations} (
 			id bigint(20) unsigned NOT NULL auto_increment,
 			name varchar(200) NOT NULL default '',
-			email varchar(100) NOT NULL default '',
-			phone varchar(50) NOT NULL default '',
 			tax_id varchar(100) NOT NULL default '',
 			status varchar(20) NOT NULL default 'pending',
 			allow_custom_shipping tinyint(1) NOT NULL default 1,
@@ -300,6 +381,7 @@ final class Install {
 		 * anything being reshaped on the way. The earlier schema had a single
 		 * `contact_name` that had to be split into a first and last name at checkout,
 		 * which produced an empty last name for every one-word contact.
+		 *
 		 */
 		$schema[] = "CREATE TABLE {$locations} (
 			id bigint(20) unsigned NOT NULL auto_increment,
@@ -316,7 +398,6 @@ final class Install {
 			country varchar(2) NOT NULL default '',
 			phone varchar(50) NOT NULL default '',
 			is_default tinyint(1) NOT NULL default 0,
-			date_created datetime NULL default null,
 			PRIMARY KEY  (id),
 			KEY organization_id (organization_id)
 		) {$collate};";
@@ -348,7 +429,6 @@ final class Install {
 			expires_at datetime NULL default null,
 			invited_by bigint(20) unsigned NOT NULL default 0,
 			date_created datetime NULL default null,
-			date_accepted datetime NULL default null,
 			PRIMARY KEY  (id),
 			UNIQUE KEY token_hash (token_hash),
 			KEY organization_id (organization_id),

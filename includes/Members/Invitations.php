@@ -213,7 +213,6 @@ final class Invitations {
 		$user->set_role( Roles::wordpress_role( $invitation->get_role() ) );
 
 		$invitation->set( 'status', Invitation::STATUS_ACCEPTED );
-		$invitation->set( 'date_accepted', current_time( 'mysql', true ) );
 		InvitationRepository::save( $invitation );
 
 		/**

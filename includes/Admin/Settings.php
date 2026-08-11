@@ -60,6 +60,7 @@ class Settings {
 			'organization_mode'             => Labels::MODE_BUSINESS,
 			'require_approval'              => true,
 			'require_approval_to_sign_in'   => false,
+			'require_tax_id'                => false,
 			'invitation_expiry_days'        => 7,
 			'registration_page_id'          => 0,
 			'default_allow_custom_shipping' => true,
@@ -173,6 +174,14 @@ class Settings {
 		);
 
 		add_settings_field(
+			'require_tax_id',
+			__( 'VAT / tax ID', 'woo-organization-accounts-pro' ),
+			array( $this, 'render_require_tax_id_field' ),
+			self::PAGE_SLUG,
+			'woap_registration'
+		);
+
+		add_settings_field(
 			'invitation_expiry_days',
 			__( 'Invitations expire after', 'woo-organization-accounts-pro' ),
 			array( $this, 'render_invitation_expiry_field' ),
@@ -267,6 +276,7 @@ class Settings {
 
 		$clean['require_approval']              = ! empty( $input['require_approval'] );
 		$clean['require_approval_to_sign_in']   = ! empty( $input['require_approval_to_sign_in'] );
+		$clean['require_tax_id']                = ! empty( $input['require_tax_id'] );
 		$clean['default_allow_custom_shipping'] = ! empty( $input['default_allow_custom_shipping'] );
 		$clean['remove_data_on_uninstall']      = ! empty( $input['remove_data_on_uninstall'] );
 
@@ -450,6 +460,36 @@ class Settings {
 					__( 'The page containing the %s shortcode. One was created for you on activation.', 'woo-organization-accounts-pro' ),
 					'[' . Registration::SHORTCODE . ']'
 				)
+			)
+		);
+	}
+
+	/**
+	 * The tax ID requirement checkbox.
+	 *
+	 * @return void
+	 */
+	public function render_require_tax_id_field() {
+		$settings = self::get_settings();
+
+		printf(
+			'<label><input type="checkbox" name="%1$s[require_tax_id]" value="1"%2$s> %3$s</label>',
+			esc_attr( self::OPTION_KEY ),
+			checked( $settings['require_tax_id'], true, false ),
+			esc_html(
+				sprintf(
+					/* translators: %s: the plural organization noun for the site's mode. */
+					__( '%s must supply a VAT number, tax ID or registration number', 'woo-organization-accounts-pro' ),
+					Labels::organizations()
+				)
+			)
+		);
+
+		printf(
+			'<p class="description">%s</p>',
+			esc_html__(
+				'Applied on registration and on both edit screens. The number is stored and shown as it was typed; no format is checked, because a VAT number, a company registration number and a US EIN look nothing alike.',
+				'woo-organization-accounts-pro'
 			)
 		);
 	}

@@ -70,8 +70,6 @@ class Organization extends Entity {
 	public static function defaults() {
 		return array(
 			'name'                  => '',
-			'email'                 => '',
-			'phone'                 => '',
 			'tax_id'                => '',
 			'status'                => self::STATUS_PENDING,
 			'allow_custom_shipping' => true,
@@ -211,14 +209,33 @@ class Organization extends Entity {
 	}
 
 	/**
+	 * Whether a tax ID has to be supplied before an organization can be saved.
+	 *
+	 * One answer for the three screens that collect one — registration, the account
+	 * profile and wp-admin — because a field that registration insists on and the
+	 * profile screen lets you blank again is not a required field, it is a nuisance.
+	 * That is exactly what the organization's email address used to be.
+	 *
+	 * The format is never checked. A VAT number, a company registration number and a
+	 * US EIN look nothing alike, the rules change with the country and with the year,
+	 * and a pattern that rejects a valid identifier is worse than no pattern at all —
+	 * the shop can see what was typed, and this plugin cannot see whether it is real.
+	 *
+	 * @return bool True when the site requires one.
+	 */
+	public static function tax_id_required() {
+		return (bool) \WooOrgAccounts\Admin\Settings::get( 'require_tax_id', false );
+	}
+
+	/**
 	 * Check the organization's own details the way the address is checked.
 	 *
 	 * The billing address has been validated against WooCommerce's per-country rules
-	 * since the first release, and these four fields were not validated at all: both
-	 * screens read them, wrote them and reported success, so an empty name replaced a
-	 * real one and an unusable email address was stored without comment. The name is
-	 * what every order, every screen and every parcel label calls this account, so an
-	 * empty one is not a smaller problem than an empty postcode.
+	 * since the first release, and these fields were not validated at all: both screens
+	 * read them, wrote them and reported success, so an empty name replaced a real one
+	 * without comment. The name is what every order, every screen and every parcel
+	 * label calls this account, so an empty one is not a smaller problem than an empty
+	 * postcode.
 	 *
 	 * Deliberately the same shape as `AddressFields::validate()` — values in by
 	 * reference so they come back normalised, errors keyed by the field name the form
@@ -226,15 +243,18 @@ class Organization extends Entity {
 	 * rejects. `status` is only checked when it was submitted, because only the admin
 	 * screen offers it.
 	 *
+	 * There is no email or phone here any more. The organization's contact details are
+	 * its billing email and billing phone, which `AddressFields` validates as part of
+	 * the address, and which are the pair that actually reaches an order.
+	 *
 	 * @param array     $values Details keyed without their prefix; normalised in place.
 	 * @param \WP_Error $errors Errors to add to, keyed by prefixed field name.
 	 * @return void
 	 */
 	public static function validate_details( array &$values, \WP_Error $errors ) {
 		$labels = array(
-			'name'  => __( 'Name', 'woo-organization-accounts-pro' ),
-			'email' => __( 'Email address', 'woo-organization-accounts-pro' ),
-			'phone' => __( 'Phone', 'woo-organization-accounts-pro' ),
+			'name'   => __( 'Name', 'woo-organization-accounts-pro' ),
+			'tax_id' => __( 'VAT number, tax ID or registration number', 'woo-organization-accounts-pro' ),
 		);
 
 		foreach ( $labels as $field => $label ) {
@@ -254,30 +274,15 @@ class Organization extends Entity {
 			);
 		}
 
-		if ( ! empty( $values['email'] ) && ! is_email( $values['email'] ) ) {
+		if ( self::tax_id_required() && array_key_exists( 'tax_id', $values ) && '' === $values['tax_id'] ) {
 			$errors->add(
-				'woap_email',
+				'woap_tax_id',
 				sprintf(
 					/* translators: %s: name of the field, in bold. */
-					__( '%s is not a valid email address.', 'woo-organization-accounts-pro' ),
-					'<strong>' . esc_html( $labels['email'] ) . '</strong>'
+					__( '%s is a required field.', 'woo-organization-accounts-pro' ),
+					'<strong>' . esc_html( $labels['tax_id'] ) . '</strong>'
 				)
 			);
-		}
-
-		if ( ! empty( $values['phone'] ) ) {
-			$values['phone'] = wc_remove_non_displayable_chars( $values['phone'] );
-
-			if ( ! \WC_Validation::is_phone( $values['phone'] ) ) {
-				$errors->add(
-					'woap_phone',
-					sprintf(
-						/* translators: %s: name of the field, in bold. */
-						__( '%s is not a valid phone number.', 'woo-organization-accounts-pro' ),
-						'<strong>' . esc_html( $labels['phone'] ) . '</strong>'
-					)
-				);
-			}
 		}
 
 		if ( array_key_exists( 'status', $values ) && ! array_key_exists( $values['status'], self::statuses() ) ) {

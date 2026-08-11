@@ -28,10 +28,10 @@ $woap_billing  = $organization->get_billing_address();
 
 $woap_details = array(
 	'name'   => $organization->get_name(),
-	'email'  => (string) $organization->get( 'email' ),
-	'phone'  => (string) $organization->get( 'phone' ),
 	'tax_id' => (string) $organization->get( 'tax_id' ),
 );
+
+$woap_tax_id_required = Organization::tax_id_required();
 
 // A rejected submission is handed straight back, so the form shows what was typed.
 if ( AccountHandlers::has_submission() ) {
@@ -71,16 +71,24 @@ $woap_detail_error = static function ( $woap_field ) use ( $woap_errors ) {
 		</h3>
 
 		<ul class="woap-meta">
-			<?php if ( '' !== (string) $organization->get( 'email' ) ) : ?>
+			<?php
+			/*
+			 * The contact details here are the billing ones, because they are the pair
+			 * that reaches an order — an organization has no separate email or phone of
+			 * its own any more, and having both meant the screen could show one address
+			 * while every order carried the other.
+			 */
+			?>
+			<?php if ( '' !== (string) $organization->get( 'billing_email' ) ) : ?>
 				<li class="woap-meta__item">
 					<span class="woap-meta__label"><?php esc_html_e( 'Email address', 'woo-organization-accounts-pro' ); ?></span>
-					<span class="woap-meta__value"><?php echo esc_html( (string) $organization->get( 'email' ) ); ?></span>
+					<span class="woap-meta__value"><?php echo esc_html( (string) $organization->get( 'billing_email' ) ); ?></span>
 				</li>
 			<?php endif; ?>
-			<?php if ( '' !== (string) $organization->get( 'phone' ) ) : ?>
+			<?php if ( '' !== (string) $organization->get( 'billing_phone' ) ) : ?>
 				<li class="woap-meta__item">
 					<span class="woap-meta__label"><?php esc_html_e( 'Phone', 'woo-organization-accounts-pro' ); ?></span>
-					<span class="woap-meta__value"><?php echo esc_html( (string) $organization->get( 'phone' ) ); ?></span>
+					<span class="woap-meta__value"><?php echo esc_html( (string) $organization->get( 'billing_phone' ) ); ?></span>
 				</li>
 			<?php endif; ?>
 			<?php if ( '' !== (string) $organization->get( 'tax_id' ) ) : ?>
@@ -144,27 +152,22 @@ $woap_detail_error = static function ( $woap_field ) use ( $woap_errors ) {
 			<?php endif; ?>
 		</p>
 
-		<?php $woap_bad = $woap_detail_error( 'email' ); ?>
-		<p class="woocommerce-form-row form-row-first<?php echo '' !== $woap_bad ? ' woocommerce-invalid' : ''; ?>">
-			<label for="woap-email"><?php esc_html_e( 'Email address', 'woo-organization-accounts-pro' ); ?></label>
-			<input type="email" class="woocommerce-Input input-text" id="woap-email" name="woap_email" value="<?php echo esc_attr( $woap_details['email'] ); ?>">
+		<?php
+		/*
+		 * The email address and the phone number are edited in the billing address
+		 * below, where WooCommerce defines and validates them for the country. They
+		 * used to be here too, in a second pair of columns that reached no order.
+		 */
+		?>
+		<?php $woap_bad = $woap_detail_error( 'tax_id' ); ?>
+		<p class="woocommerce-form-row form-row-wide<?php echo '' !== $woap_bad ? ' woocommerce-invalid woocommerce-invalid-required-field' : ''; ?><?php echo $woap_tax_id_required ? ' validate-required' : ''; ?>">
+			<label for="woap-tax-id"<?php echo $woap_tax_id_required ? ' class="required_field"' : ''; ?>>
+				<?php esc_html_e( 'VAT number, tax ID or registration number', 'woo-organization-accounts-pro' ); ?>
+			</label>
+			<input type="text" class="woocommerce-Input input-text" id="woap-tax-id" name="woap_tax_id" <?php echo $woap_tax_id_required ? 'required aria-required="true"' : ''; ?> value="<?php echo esc_attr( $woap_details['tax_id'] ); ?>">
 			<?php if ( '' !== $woap_bad ) : ?>
 				<span class="description"><?php echo esc_html( wp_strip_all_tags( $woap_bad ) ); ?></span>
 			<?php endif; ?>
-		</p>
-
-		<?php $woap_bad = $woap_detail_error( 'phone' ); ?>
-		<p class="woocommerce-form-row form-row-last<?php echo '' !== $woap_bad ? ' woocommerce-invalid' : ''; ?>">
-			<label for="woap-phone"><?php esc_html_e( 'Phone', 'woo-organization-accounts-pro' ); ?></label>
-			<input type="tel" class="woocommerce-Input input-text" id="woap-phone" name="woap_phone" value="<?php echo esc_attr( $woap_details['phone'] ); ?>">
-			<?php if ( '' !== $woap_bad ) : ?>
-				<span class="description"><?php echo esc_html( wp_strip_all_tags( $woap_bad ) ); ?></span>
-			<?php endif; ?>
-		</p>
-
-		<p class="woocommerce-form-row form-row-wide">
-			<label for="woap-tax-id"><?php esc_html_e( 'VAT number, tax ID or registration number', 'woo-organization-accounts-pro' ); ?></label>
-			<input type="text" class="woocommerce-Input input-text" id="woap-tax-id" name="woap_tax_id" value="<?php echo esc_attr( $woap_details['tax_id'] ); ?>">
 		</p>
 
 		<p class="woocommerce-form-row form-row-wide">

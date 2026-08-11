@@ -285,6 +285,31 @@ Relational tables rather than post types: these are relationships queried by sta
 every request that touches the checkout, and post meta would turn each of those into a join against
 a table the whole site shares — with no way to make the uniqueness above a constraint.
 
+**A column that nothing reads is deleted, not left alone.** `dbDelta()` adds and widens columns and
+never removes one, so `Install::drop_retired_columns()` is what actually retires a column, and
+`InstallTest::testEveryEntityDeclaresExactlyItsTablesColumns` is what keeps the schema and the
+entities from drifting apart in either direction. The drift matters in both: a column in
+`defaults()` with none in the table makes `Repository::save()` fail on a placeholder for a column
+that is not there, and a column in the table with none in `defaults()` is the quieter fault —
+`Entity::set()` ignores anything undeclared, so a fixture or a screen goes on writing to a retired
+column and every assertion about it silently reads the default instead.
+
+**An organization has no `email` or `phone` of its own**, and had both until 0.6.0. They sat beside
+`billing_email` and `billing_phone`, which is the pair `Checkout\BillingLock` copies onto every
+order and therefore the pair every WooCommerce order email is addressed to. Nothing read the other
+two but four display templates and the admin search — so the registration form asked for three
+email addresses and three phone numbers, the screens could show one address while the shop wrote to
+another, and registration insisted on an address the account screen would then let you blank.
+`Install::migrate_organization_contacts()` copies each onto its billing counterpart before the
+columns go, and only where that counterpart is empty, so a real billing address is never
+overwritten by the weaker copy.
+
+Retired with them: `woap_locations.date_created` and `woap_invitations.date_accepted`, both written
+since the first release and read by nothing. `woap_invitations.invited_by` was in that state too and
+went the other way — the invitations list now has a *Sent by* column, because an organization can
+have several people holding `woap_invite_members` and an invitation somebody did not send is worth
+being able to place before deciding whether to withdraw it.
+
 ### Address fields
 
 **A member has no address of their own, and WooCommerce's own address screen is refused.** Billing
@@ -340,6 +365,22 @@ checkout then rejected.
 - **A blank company falls back to the organization's name**, at save time and again when the order
   is built, because a parcel with no company on the label is one nobody at a loading bay
   recognises.
+- **Two shipping fields are relaxed, and only these two**, in `AddressFields::delivery_fields()`.
+  WooCommerce's shipping fields describe an address somebody is typing at a checkout; these
+  describe one the shop has kept on file, and a rule that is fair to apply to a keystroke is not
+  automatically fair to apply retroactively to records that already exist. **`last_name` is never
+  required**, because a delivery address belongs to a place at least as often as to a person —
+  "Warehouse North" has no surname, and demanding one produces an invented one on a parcel label.
+  The first name stays required, so the parcel is always addressed to something, and
+  `location-form.php` is where the person filling it in is told which of the two they are doing.
+  **`phone` is never required either**, whatever `woocommerce_checkout_phone_field` says: that
+  setting is a rule about the person buying, and `missing()` decides whether a location can be
+  shipped to at all — so inheriting it would mean a shop switching the setting on made every
+  location it had already saved undeliverable, as a refusal at somebody's checkout about a record
+  only an admin can edit. Both are still validated when they are filled in, and a shop that hides
+  the phone entirely is left alone: WooCommerce removes the field before this sees it, and nothing
+  puts one back. `docs/rest-api.md` says the same to the till, which has to be told or it will
+  refuse an address the shop's own screens accept.
 - **A rejected submission is handed back, not redirected away.** Losing a twelve-field address to
   one mistyped postcode is not an acceptable way to report an error. Every field that was rejected
   is marked `woocommerce-invalid` with the reason under it, because a notice at the top of a
@@ -656,6 +697,16 @@ but the login form — the visitor asked to sign up and the site answered by ask
 `Registration::redirect_register_action()` sends them to the registration page instead, and sends
 somebody already signed in to their account. GET only: a POST to that URL is a submission, and
 swallowing one in a redirect would lose what it carried.
+
+**`require_tax_id` is the one detail a site can make mandatory, and it is one predicate, not three.**
+Insisting on a VAT number is right for a shop selling to companies in the EU and wrong for one
+selling to schools or outside it, so it is a setting — off by default. Registration, the account
+profile and the admin screen all ask `Organization::tax_id_required()`, because a field that
+registration insists on and the profile screen lets you blank again is not a required field. That
+was exactly the state the organization's email address was in before it was removed. **No format is
+checked**: a VAT number, a company registration number and a US EIN look nothing alike, the rules
+change with the country and the year, and a pattern that rejects a valid identifier is worse than
+no pattern — the shop can see what was typed and this plugin cannot see whether it is real.
 
 ### Approval gates two different things, and they are two settings
 

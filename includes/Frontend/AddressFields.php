@@ -52,6 +52,7 @@ final class AddressFields {
 	public static function fields( $type, $country = '' ) {
 		$country = '' !== $country ? $country : WC()->countries->get_base_country();
 		$fields  = WC()->countries->get_address_fields( $country, $type . '_' );
+		$fields  = self::delivery_fields( $type, $fields );
 
 		/**
 		 * Filters the address fields this plugin collects.
@@ -68,6 +69,54 @@ final class AddressFields {
 		$fields = apply_filters( 'woo_org_accounts_address_fields', $fields, $type, $country );
 
 		uasort( $fields, 'wc_checkout_fields_uasort_comparison' );
+
+		return $fields;
+	}
+
+	/**
+	 * The two corrections a delivery address needs that a personal one does not.
+	 *
+	 * Applied before the plugin's own filter, so a shop can still overrule either.
+	 * Billing is left exactly as WooCommerce defines it.
+	 *
+	 * Both are about the same difference: WooCommerce's shipping fields describe an
+	 * address somebody is typing at a checkout, and these describe one the shop has
+	 * kept on file. A field that is fair to insist on in the first case is not
+	 * necessarily fair to insist on in the second, because in the second it is applied
+	 * retroactively to records that already exist.
+	 *
+	 * **The surname stops being required**, because a delivery address here belongs to
+	 * a place at least as often as to a person: "Warehouse North" has no surname, and
+	 * demanding one produces a made-up one. The first name is still required, so the
+	 * parcel is always addressed to something — see location-form.php, which is where
+	 * the person filling it in is told which of the two they are doing.
+	 *
+	 * **The phone stops being required.** WooCommerce marks it required when the shop
+	 * sets `woocommerce_checkout_phone_field` to `required`, which is a rule about the
+	 * person buying. `missing()` decides whether a location is complete enough to ship
+	 * to at all and `Checkout\ShippingSelector` refuses one it says is not, so
+	 * inheriting that rule would mean a shop turning the setting on made every location
+	 * it had already saved undeliverable — a refusal at somebody's checkout, about a
+	 * record only an admin can edit. The field is still offered, and still validated as
+	 * a phone number when it is filled in.
+	 *
+	 * A shop that hides the phone entirely is left alone: WooCommerce removes the field
+	 * before this sees it, and nothing here puts one back.
+	 *
+	 * @param string $type   self::BILLING or self::SHIPPING.
+	 * @param array  $fields WooCommerce's definitions, keyed by prefixed field name.
+	 * @return array The definitions, corrected for a delivery address.
+	 */
+	private static function delivery_fields( $type, array $fields ) {
+		if ( self::SHIPPING !== $type ) {
+			return $fields;
+		}
+
+		foreach ( array( 'shipping_last_name', 'shipping_phone' ) as $key ) {
+			if ( isset( $fields[ $key ] ) ) {
+				$fields[ $key ]['required'] = false;
+			}
+		}
 
 		return $fields;
 	}

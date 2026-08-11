@@ -53,10 +53,7 @@ class Location extends Entity {
 				'name'            => '',
 			),
 			array_fill_keys( self::ADDRESS_FIELDS, '' ),
-			array(
-				'is_default'   => false,
-				'date_created' => null,
-			)
+			array( 'is_default' => false )
 		);
 	}
 

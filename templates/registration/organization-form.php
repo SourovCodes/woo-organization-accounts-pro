@@ -13,6 +13,7 @@
  * @var string         $honeypot  Name of the honeypot field.
  */
 
+use WooOrgAccounts\Data\Organization;
 use WooOrgAccounts\Frontend\AddressFields;
 use WooOrgAccounts\Labels;
 
@@ -21,6 +22,8 @@ defined( 'ABSPATH' ) || exit;
 $woap_value = static function ( $key ) use ( $submitted ) {
 	return isset( $submitted[ $key ] ) ? (string) $submitted[ $key ] : '';
 };
+
+$woap_tax_id_required = Organization::tax_id_required();
 
 ?>
 <?php
@@ -104,19 +107,23 @@ $woap_value = static function ( $key ) use ( $submitted ) {
 					<input type="text" class="woocommerce-Input input-text" id="woap-organization-name" name="organization_name" required value="<?php echo esc_attr( $woap_value( 'organization_name' ) ); ?>">
 				</p>
 
-				<p class="woocommerce-form-row form-row-first">
-					<label for="woap-organization-email"><?php esc_html_e( 'Email address', 'woo-organization-accounts-pro' ); ?> <span class="required">*</span></label>
-					<input type="email" class="woocommerce-Input input-text" id="woap-organization-email" name="organization_email" required value="<?php echo esc_attr( $woap_value( 'organization_email' ) ); ?>">
-				</p>
-
-				<p class="woocommerce-form-row form-row-last">
-					<label for="woap-organization-phone"><?php esc_html_e( 'Phone', 'woo-organization-accounts-pro' ); ?></label>
-					<input type="tel" class="woocommerce-Input input-text" id="woap-organization-phone" name="organization_phone" value="<?php echo esc_attr( $woap_value( 'organization_phone' ) ); ?>">
-				</p>
-
+				<?php
+				/*
+				 * No email address and no phone number here. Both are collected by the
+				 * billing block in the next section, where WooCommerce defines them and
+				 * marks the email required, and that is the pair every order and every
+				 * order email is addressed to. Asking again above put three email fields
+				 * and three phone fields on one form and used one of each.
+				 */
+				?>
 				<p class="woocommerce-form-row form-row-wide">
-					<label for="woap-tax-id"><?php esc_html_e( 'VAT number, tax ID or registration number', 'woo-organization-accounts-pro' ); ?></label>
-					<input type="text" class="woocommerce-Input input-text" id="woap-tax-id" name="tax_id" value="<?php echo esc_attr( $woap_value( 'tax_id' ) ); ?>">
+					<label for="woap-tax-id">
+						<?php esc_html_e( 'VAT number, tax ID or registration number', 'woo-organization-accounts-pro' ); ?>
+						<?php if ( $woap_tax_id_required ) : ?>
+							<span class="required">*</span>
+						<?php endif; ?>
+					</label>
+					<input type="text" class="woocommerce-Input input-text" id="woap-tax-id" name="tax_id" <?php echo $woap_tax_id_required ? 'required' : ''; ?> value="<?php echo esc_attr( $woap_value( 'tax_id' ) ); ?>">
 				</p>
 
 			</div>
@@ -180,16 +187,21 @@ $woap_value = static function ( $key ) use ( $submitted ) {
 					<input type="text" class="woocommerce-Input input-text" id="woap-admin-last-name" name="admin_last_name" value="<?php echo esc_attr( $woap_value( 'admin_last_name' ) ); ?>">
 				</p>
 
-				<p class="woocommerce-form-row form-row-first">
+				<p class="woocommerce-form-row form-row-wide">
 					<label for="woap-admin-email"><?php esc_html_e( 'Your email address', 'woo-organization-accounts-pro' ); ?> <span class="required">*</span></label>
 					<input type="email" class="woocommerce-Input input-text" id="woap-admin-email" name="admin_email" required autocomplete="username" value="<?php echo esc_attr( $woap_value( 'admin_email' ) ); ?>">
 				</p>
 
-				<p class="woocommerce-form-row form-row-last">
-					<label for="woap-admin-phone"><?php esc_html_e( 'Your phone (optional)', 'woo-organization-accounts-pro' ); ?></label>
-					<input type="tel" class="woocommerce-Input input-text" id="woap-admin-phone" name="admin_phone" value="<?php echo esc_attr( $woap_value( 'admin_phone' ) ); ?>">
-				</p>
-
+				<?php
+				/*
+				 * There was a "Your phone (optional)" here, and it was stored as the
+				 * user's `billing_phone` meta — which nothing on this site can ever
+				 * read: `Checkout\BillingLock` overwrites billing from the organization
+				 * row, and `MyAccount::refuse_address_endpoint()` closes the only screen
+				 * that would show it. A field nobody can use is worse than a missing
+				 * one, because somebody fills it in.
+				 */
+				?>
 				<p class="woocommerce-form-row form-row-first">
 					<label for="woap-password"><?php esc_html_e( 'Password', 'woo-organization-accounts-pro' ); ?> <span class="required">*</span></label>
 					<input type="password" class="woocommerce-Input input-text" id="woap-password" name="password" required autocomplete="new-password" minlength="8">

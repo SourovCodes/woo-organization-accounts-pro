@@ -313,11 +313,12 @@ class AdminListTableTest extends TestCase {
 	 * A column with nothing in it prints a dash rather than an empty cell.
 	 */
 	public function testEmptyColumnsPrintADash() {
-		$organization = $this->make_organization(
+		$organization = $this->make_organization( array( 'tax_id' => '' ) );
+
+		$organization->set_billing_address(
 			array(
-				'email'  => '',
-				'phone'  => '',
-				'tax_id' => '',
+				'email' => '',
+				'phone' => '',
 			)
 		);
 
@@ -329,9 +330,15 @@ class AdminListTableTest extends TestCase {
 
 	/**
 	 * The contact column prints whichever of the two it has.
+	 *
+	 * The billing pair, because it is the pair every order carries. When the
+	 * organization had an email and a phone of its own beside these, this column could
+	 * show one address while the shop was sending to another.
 	 */
 	public function testTheContactColumnPrintsWhatItHas() {
-		$organization = $this->make_organization(
+		$organization = $this->make_organization();
+
+		$organization->set_billing_address(
 			array(
 				'email' => 'buy@acme.test',
 				'phone' => '+49 30 123456',

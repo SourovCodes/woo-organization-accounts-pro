@@ -24,6 +24,7 @@ class SettingsTest extends TestCase {
 		$this->assertSame( Labels::MODE_BUSINESS, $defaults['organization_mode'] );
 		$this->assertTrue( $defaults['require_approval'] );
 		$this->assertFalse( $defaults['require_approval_to_sign_in'] );
+		$this->assertFalse( $defaults['require_tax_id'], 'Insisting on a VAT number is right for one shop and wrong for the next.' );
 		$this->assertSame( 7, $defaults['invitation_expiry_days'] );
 		$this->assertTrue( $defaults['default_allow_custom_shipping'] );
 		$this->assertFalse( $defaults['remove_data_on_uninstall'] );
@@ -58,6 +59,7 @@ class SettingsTest extends TestCase {
 
 		$this->assertFalse( $clean['require_approval'] );
 		$this->assertFalse( $clean['require_approval_to_sign_in'] );
+		$this->assertFalse( $clean['require_tax_id'] );
 		$this->assertFalse( $clean['default_allow_custom_shipping'] );
 		$this->assertFalse( $clean['remove_data_on_uninstall'] );
 

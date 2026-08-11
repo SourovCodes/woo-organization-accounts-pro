@@ -277,7 +277,6 @@ class AccountHandlersTest extends TestCase {
 			'save_organization',
 			array(
 				'woap_name'   => 'Acme Holdings AG',
-				'woap_email'  => 'hello@acme.test',
 				'woap_tax_id' => 'DE999',
 			),
 			'woap_save_organization'
@@ -305,10 +304,7 @@ class AccountHandlersTest extends TestCase {
 
 		$this->submit_expecting_the_form_back(
 			'save_organization',
-			array(
-				'woap_name'  => '   ',
-				'woap_email' => 'hello@acme.test',
-			),
+			array( 'woap_name' => '   ' ),
 			'woap_save_organization'
 		);
 
@@ -327,22 +323,54 @@ class AccountHandlersTest extends TestCase {
 	}
 
 	/**
-	 * An email address that is not one is refused here too.
+	 * A required tax ID is required on this screen too, not only at registration.
+	 *
+	 * A field registration insists on and the account screen lets you blank again is
+	 * not a required field. The organization's email address was exactly that until
+	 * the column was retired, so the one setting that can make a detail mandatory is
+	 * asserted on every screen that writes one.
 	 */
-	public function testAnUnusableOrganizationEmailIsRefused() {
-		$organization = $this->make_organization( array( 'email' => 'buy@acme.test' ) );
+	public function testARequiredTaxIdIsRefusedWhenBlank() {
+		$this->set_setting( 'require_tax_id', true );
+
+		$organization = $this->make_organization( array( 'tax_id' => 'DE811234567' ) );
 		$this->act_as( $this->make_member( $organization, Member::ROLE_ADMIN ) );
 
 		$this->submit_expecting_the_form_back(
 			'save_organization',
 			array(
-				'woap_name'  => 'Acme Holdings AG',
-				'woap_email' => 'not-an-address',
+				'woap_name'   => 'Acme Holdings AG',
+				'woap_tax_id' => '',
 			),
 			'woap_save_organization'
 		);
 
-		$this->assertSame( 'buy@acme.test', OrganizationRepository::find( $organization->get_id() )->get( 'email' ) );
+		$this->assertSame(
+			'DE811234567',
+			OrganizationRepository::find( $organization->get_id() )->get( 'tax_id' ),
+			'A refused save overwrote the tax ID it refused to replace.'
+		);
+
+		wc_clear_notices();
+	}
+
+	/**
+	 * With the setting off, a blank tax ID is simply a blank tax ID.
+	 */
+	public function testABlankTaxIdIsAcceptedByDefault() {
+		$organization = $this->make_organization( array( 'tax_id' => 'DE811234567' ) );
+		$this->act_as( $this->make_member( $organization, Member::ROLE_ADMIN ) );
+
+		$this->submit(
+			'save_organization',
+			array(
+				'woap_name'   => 'Acme Holdings AG',
+				'woap_tax_id' => '',
+			),
+			'woap_save_organization'
+		);
+
+		$this->assertSame( '', OrganizationRepository::find( $organization->get_id() )->get( 'tax_id' ) );
 
 		wc_clear_notices();
 	}
@@ -358,13 +386,11 @@ class AccountHandlersTest extends TestCase {
 			'save_organization',
 			array(
 				'woap_name'   => '',
-				'woap_email'  => 'hello@acme.test',
 				'woap_tax_id' => 'DE999',
 			),
 			'woap_save_organization'
 		);
 
-		$this->assertSame( 'hello@acme.test', AccountHandlers::value( 'woap_email' ) );
 		$this->assertSame( 'DE999', AccountHandlers::value( 'woap_tax_id' ) );
 
 		wc_clear_notices();

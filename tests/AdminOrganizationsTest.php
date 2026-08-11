@@ -276,8 +276,6 @@ class AdminOrganizationsTest extends TestCase {
 		$organization = $this->make_billable_organization(
 			array(
 				'name'   => 'Acme Holdings AG',
-				'email'  => 'buy@acme.test',
-				'phone'  => '+49 30 123456',
 				'tax_id' => 'DE811234567',
 			)
 		);
@@ -303,19 +301,19 @@ class AdminOrganizationsTest extends TestCase {
 
 		$fields = $this->form_state( $this->render_detail( $organization->get_id() ) );
 
-		$fields['woap_name']   = 'Acme Holdings AG';
-		$fields['woap_email']  = 'hello@acme.test';
-		$fields['woap_phone']  = '+49 30 999999';
-		$fields['woap_tax_id'] = 'DE999';
+		$fields['woap_name']     = 'Acme Holdings AG';
+		$fields['woap_tax_id']   = 'DE999';
+		$fields['billing_email'] = 'hello@acme.test';
+		$fields['billing_phone'] = '+49 30 999999';
 
 		$this->save( $fields );
 
 		$saved = OrganizationRepository::find( $organization->get_id() );
 
 		$this->assertSame( 'Acme Holdings AG', $saved->get_name() );
-		$this->assertSame( 'hello@acme.test', $saved->get( 'email' ) );
-		$this->assertSame( '+49 30 999999', $saved->get( 'phone' ) );
 		$this->assertSame( 'DE999', $saved->get( 'tax_id' ) );
+		$this->assertSame( 'hello@acme.test', $saved->get( 'billing_email' ) );
+		$this->assertSame( '+49 30 999999', $saved->get( 'billing_phone' ) );
 	}
 
 	/**
@@ -370,35 +368,57 @@ class AdminOrganizationsTest extends TestCase {
 
 	/**
 	 * An email address that is not one is refused.
+	 *
+	 * The billing one, which is the only one an organization has: it is what every
+	 * order and every order email is addressed to. WooCommerce marks it required, and
+	 * `AddressFields::validate()` judges it exactly as the checkout would.
 	 */
 	public function testAnUnusableEmailAddressIsRefused() {
 		$this->act_as_shop_manager();
 
-		$organization = $this->make_billable_organization( array( 'email' => 'buy@acme.test' ) );
+		$organization = $this->make_billable_organization();
 
-		$fields               = $this->form_state( $this->render_detail( $organization->get_id() ) );
-		$fields['woap_email'] = 'not-an-address';
+		$fields                  = $this->form_state( $this->render_detail( $organization->get_id() ) );
+		$fields['billing_email'] = 'not-an-address';
 
 		$refusal = $this->save_expecting_refusal( $fields );
 
-		$this->assertNotSame( '', $refusal['errors']->get_error_message( 'woap_email' ) );
-		$this->assertSame( 'buy@acme.test', OrganizationRepository::find( $organization->get_id() )->get( 'email' ) );
+		$this->assertNotSame( '', $refusal['errors']->get_error_message( 'billing_email' ) );
+		$this->assertSame( 'buy@acme.test', OrganizationRepository::find( $organization->get_id() )->get( 'billing_email' ) );
 	}
 
 	/**
-	 * A phone number is checked the same way the billing one is.
+	 * A phone number is checked the same way the rest of the address is.
 	 */
 	public function testAnUnusablePhoneNumberIsRefused() {
 		$this->act_as_shop_manager();
 
 		$organization = $this->make_billable_organization();
 
-		$fields               = $this->form_state( $this->render_detail( $organization->get_id() ) );
-		$fields['woap_phone'] = 'call the office';
+		$fields                  = $this->form_state( $this->render_detail( $organization->get_id() ) );
+		$fields['billing_phone'] = 'call the office';
 
 		$refusal = $this->save_expecting_refusal( $fields );
 
-		$this->assertNotSame( '', $refusal['errors']->get_error_message( 'woap_phone' ) );
+		$this->assertNotSame( '', $refusal['errors']->get_error_message( 'billing_phone' ) );
+	}
+
+	/**
+	 * A required tax ID is required on this screen too.
+	 */
+	public function testARequiredTaxIdIsRefusedWhenBlank() {
+		$this->set_setting( 'require_tax_id', true );
+		$this->act_as_shop_manager();
+
+		$organization = $this->make_billable_organization( array( 'tax_id' => 'DE811234567' ) );
+
+		$fields                = $this->form_state( $this->render_detail( $organization->get_id() ) );
+		$fields['woap_tax_id'] = '';
+
+		$refusal = $this->save_expecting_refusal( $fields );
+
+		$this->assertNotSame( '', $refusal['errors']->get_error_message( 'woap_tax_id' ) );
+		$this->assertSame( 'DE811234567', OrganizationRepository::find( $organization->get_id() )->get( 'tax_id' ) );
 	}
 
 	/**
@@ -425,9 +445,9 @@ class AdminOrganizationsTest extends TestCase {
 	/**
 	 * One bad field does not cost the operator everything else they typed.
 	 *
-	 * The address has been handed back since the screen was written; the four detail
-	 * fields were re-read from the database, so correcting a postcode silently undid
-	 * the rename that was submitted with it.
+	 * The address has been handed back since the screen was written; the detail fields
+	 * were re-read from the database, so correcting a postcode silently undid the
+	 * rename that was submitted with it.
 	 */
 	public function testARefusedSaveHandsBackEverythingThatWasTyped() {
 		$this->act_as_shop_manager();

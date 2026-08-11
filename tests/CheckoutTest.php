@@ -354,19 +354,34 @@ class CheckoutTest extends TestCase {
 	 *
 	 * A location can be stored incomplete — saved before the plugin validated
 	 * addresses, or moved to a country with stricter rules. Left alone, WooCommerce
-	 * refuses the order with "Shipping Last name is a required field", which asks the
-	 * customer to fix a field they cannot see and do not own.
+	 * refuses the order with "Shipping Street address is a required field", which asks
+	 * the customer to fix a field they cannot see and do not own.
 	 */
 	public function testIncompleteLocationIsRefusedByName() {
 		$organization = $this->make_organization();
 		$this->act_as( $this->make_member( $organization ) );
-		$location = $this->make_location( $organization, array( 'last_name' => '' ) );
+		$location = $this->make_location( $organization, array( 'address_1' => '' ) );
 
 		$message = ShippingSelector::destination_error( (string) $location->get_id() );
 
 		$this->assertNotSame( '', $message );
 		$this->assertStringContainsString( 'Warehouse North', $message, 'The message must name the location.' );
-		$this->assertStringContainsString( 'Last name', $message, 'The message must name what is missing.' );
+		$this->assertStringContainsString( 'Street address', $message, 'The message must name what is missing.' );
+	}
+
+	/**
+	 * A location with no surname is not incomplete.
+	 *
+	 * "Warehouse North" has no surname, and the location form no longer demands one —
+	 * so the gate that decides whether a location can be shipped to must not refuse
+	 * what that form accepts, or the two would disagree about the same record.
+	 */
+	public function testALocationWithNoSurnameIsDeliverable() {
+		$organization = $this->make_organization();
+		$this->act_as( $this->make_member( $organization ) );
+		$location = $this->make_location( $organization, array( 'last_name' => '' ) );
+
+		$this->assertSame( '', ShippingSelector::destination_error( (string) $location->get_id() ) );
 	}
 
 	/**

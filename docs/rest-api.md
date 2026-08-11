@@ -212,6 +212,14 @@ Only the shipping form is served, because a **one-off delivery address is the on
 till ever composes** — billing comes from the organization row and locations arrive pre-validated
 in the snapshot; the server writes both itself.
 
+Two fields are deliberately **not** WooCommerce's answer, and the served form is the authority on
+both. `last_name` is never required: a delivery address belongs to a place at least as often as to
+a person, and "Warehouse North" has no surname — put a place name in `first_name` and leave
+`last_name` empty. `phone` is never required either, whatever the shop's checkout phone setting
+says, because that setting is a rule about the person buying. Both are still validated when they
+are filled in. Render required-ness from this response rather than from WooCommerce's published
+defaults, or the till will refuse an address the shop's own screens accept.
+
 Sync it like the snapshot: the whole set in one response, `ETag`/`If-None-Match` for cheap
 revalidation. It changes when WooCommerce or the shop's settings change, which is rarely.
 
@@ -222,7 +230,7 @@ revalidation. It changes when WooCommerce or the shop's settings change, which i
   "forms": {
     "CH": [
       { "name": "first_name", "label": "First name",       "required": true,  "hidden": false, "type": "text" },
-      { "name": "last_name",  "label": "Last name",        "required": true,  "hidden": false, "type": "text" },
+      { "name": "last_name",  "label": "Last name",        "required": false, "hidden": false, "type": "text" },
       { "name": "company",    "label": "Company name",     "required": false, "hidden": false, "type": "text" },
       { "name": "country",    "label": "Country / Region", "required": true,  "hidden": false, "type": "country" },
       { "name": "address_1",  "label": "Street address",   "required": true,  "hidden": false, "type": "text" },

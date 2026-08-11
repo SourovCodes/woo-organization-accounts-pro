@@ -475,6 +475,51 @@ class AccountTest extends TestCase {
 	}
 
 	/**
+	 * The list says who sent each invitation.
+	 *
+	 * An organization can have several people holding `woap_invite_members`, so an
+	 * invitation somebody did not send is worth being able to place before deciding
+	 * whether to withdraw it. `invited_by` had been recorded since the first release
+	 * and read by nothing.
+	 */
+	public function testTheInvitationListNamesWhoSentEachOne() {
+		$organization = $this->make_organization();
+		$sender       = $this->act_as( $this->make_member( $organization, Member::ROLE_ADMIN ) );
+
+		wp_update_user(
+			array(
+				'ID'           => $sender,
+				'display_name' => 'Grace Hopper',
+			)
+		);
+
+		\WooOrgAccounts\Members\Invitations::create( $organization->get_id(), 'bob@acme.test', Member::ROLE_MEMBER, $sender );
+
+		$markup = $this->render_invitations();
+
+		$this->assertStringContainsString( 'Sent by', $markup );
+		$this->assertStringContainsString( 'Grace Hopper', $markup );
+	}
+
+	/**
+	 * An invitation whose sender's account is gone is still listed.
+	 *
+	 * The invitation is still valid, so the row has to render — printing a bare user
+	 * ID, or fataling on a missing user, would both be worse than saying nothing.
+	 */
+	public function testAnInvitationOutlivesTheAccountThatSentIt() {
+		$organization = $this->make_organization();
+		$this->act_as( $this->make_member( $organization, Member::ROLE_ADMIN ) );
+
+		\WooOrgAccounts\Members\Invitations::create( $organization->get_id(), 'bob@acme.test', Member::ROLE_MEMBER, 987654 );
+
+		$markup = $this->render_invitations();
+
+		$this->assertStringContainsString( 'bob@acme.test', $markup );
+		$this->assertStringContainsString( '&mdash;', $markup );
+	}
+
+	/**
 	 * Asking for the invitation form gets the form, and not the list.
 	 */
 	public function testInviteScreenShowsTheForm() {

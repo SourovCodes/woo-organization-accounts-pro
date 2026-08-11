@@ -204,8 +204,13 @@ class OrganizationRepository extends Repository {
 		if ( ! empty( $args['search'] ) ) {
 			global $wpdb;
 
+			/*
+			 * The billing email rather than an email of the organization's own, which
+			 * this table no longer has: it is the address every order carries, so it is
+			 * the one somebody searching from an order will have in front of them.
+			 */
 			$like      = '%' . $wpdb->esc_like( (string) $args['search'] ) . '%';
-			$clauses[] = '( name LIKE %s OR email LIKE %s OR tax_id LIKE %s )';
+			$clauses[] = '( name LIKE %s OR billing_email LIKE %s OR tax_id LIKE %s )';
 			$params[]  = $like;
 			$params[]  = $like;
 			$params[]  = $like;

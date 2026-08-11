@@ -114,7 +114,7 @@ $woap_bad    = ( $woap_errors instanceof WP_Error ) && '' !== $woap_errors->get_
 							? $woap_errors->get_error_message( 'woap_name' )
 							: sprintf(
 								/* translators: %s: the singular location noun for the site's mode, for example "Branch". */
-								__( 'What members will see when they choose this %s at checkout.', 'woo-organization-accounts-pro' ),
+								__( 'Your own label for this %s, so whoever is ordering knows which one it is. It is not printed on the parcel.', 'woo-organization-accounts-pro' ),
 								Labels::location()
 							)
 					);
@@ -123,12 +123,26 @@ $woap_bad    = ( $woap_errors instanceof WP_Error ) && '' !== $woap_errors->get_
 			</span>
 		</p>
 
+		<p class="woap-account__note">
+			<?php
+			esc_html_e(
+				'The name below is who the parcel is addressed to. If it goes to a person, give their first and last name. If it goes to a warehouse, a department or a loading bay, put that name in the first name field and leave the last name empty.',
+				'woo-organization-accounts-pro'
+			);
+			?>
+		</p>
+
 		<?php
 		/*
 		 * WooCommerce's own shipping fields for the chosen country, rendered by
 		 * WooCommerce. Which fields exist, what they are called and which are required
 		 * all come from it, so this form asks a German customer for exactly what the
 		 * checkout will ask them for, and a Canadian one for a province from the list.
+		 *
+		 * Two fields are relaxed in `AddressFields::delivery_fields()` and explained
+		 * there — the surname, because the note above says this need not be a person,
+		 * and the phone, because a rule the shop set for its checkout must not make the
+		 * locations it has already saved undeliverable.
 		 */
 		AddressFields::render(
 			AddressFields::SHIPPING,

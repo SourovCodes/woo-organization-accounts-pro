@@ -48,7 +48,6 @@ class Invitation extends Entity {
 			'expires_at'      => null,
 			'invited_by'      => 0,
 			'date_created'    => null,
-			'date_accepted'   => null,
 		);
 	}
 
@@ -89,6 +88,31 @@ class Invitation extends Entity {
 	 */
 	public function get_role() {
 		return (string) $this->get( 'role' );
+	}
+
+	/**
+	 * The user who sent the invitation.
+	 *
+	 * @return int User ID, or 0 when it was not recorded.
+	 */
+	public function get_invited_by() {
+		return (int) $this->get( 'invited_by' );
+	}
+
+	/**
+	 * The display name of whoever sent the invitation.
+	 *
+	 * An organization can have several people who may invite, so "who sent this?" is a
+	 * real question when somebody opens the list and finds an invitation they did not
+	 * send. The column has been recorded since the first release and read by nothing.
+	 *
+	 * @return string Display name, or an empty string when the sender is unknown or
+	 *                their account has since been deleted.
+	 */
+	public function get_invited_by_name() {
+		$user = $this->get_invited_by() > 0 ? get_user_by( 'id', $this->get_invited_by() ) : false;
+
+		return $user instanceof \WP_User ? $user->display_name : '';
 	}
 
 	/**

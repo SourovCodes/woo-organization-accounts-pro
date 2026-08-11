@@ -33,6 +33,7 @@ $woap_post_url = esc_url( MyAccount::invitations_url() );
  */
 $woap_columns = array(
 	'email'   => __( 'Sent to', 'woo-organization-accounts-pro' ),
+	'sender'  => __( 'Sent by', 'woo-organization-accounts-pro' ),
 	'role'    => __( 'Role', 'woo-organization-accounts-pro' ),
 	'status'  => __( 'Status', 'woo-organization-accounts-pro' ),
 	'expires' => __( 'Expires', 'woo-organization-accounts-pro' ),
@@ -100,6 +101,7 @@ $woap_pills = array(
 					$woap_pill    = isset( $woap_pills[ $woap_status ] ) ? $woap_pills[ $woap_status ] : 'neutral';
 					$woap_sent    = $woap_invitation->get( 'date_created' );
 					$woap_expires = $woap_invitation->get( 'expires_at' );
+					$woap_sender  = $woap_invitation->get_invited_by_name();
 
 					if ( $woap_pending && $woap_invitation->is_expired() ) {
 						$woap_pill = 'rejected';
@@ -121,6 +123,18 @@ $woap_pills = array(
 									?>
 								</span>
 							<?php endif; ?>
+						</td>
+						<td data-title="<?php echo esc_attr( $woap_columns['sender'] ); ?>">
+							<?php
+							/*
+							 * An organization can have several people who may invite, so an
+							 * invitation somebody did not send is worth being able to place.
+							 * An em dash where the sender's account has since been deleted:
+							 * the invitation is still valid, and saying so is better than
+							 * printing a bare user ID.
+							 */
+							echo '' !== $woap_sender ? esc_html( $woap_sender ) : '&mdash;';
+							?>
 						</td>
 						<td data-title="<?php echo esc_attr( $woap_columns['role'] ); ?>"><?php echo esc_html( Member::ROLE_ADMIN === $woap_invitation->get_role() ? Labels::organization_admin() : Labels::member() ); ?></td>
 						<td data-title="<?php echo esc_attr( $woap_columns['status'] ); ?>">

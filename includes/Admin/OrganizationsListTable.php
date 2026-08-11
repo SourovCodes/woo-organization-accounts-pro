@@ -223,12 +223,17 @@ class OrganizationsListTable extends \WP_List_Table {
 	/**
 	 * The contact column.
 	 *
+	 * The billing pair, because it is the pair every order carries and every order
+	 * email is sent to. The organization used to have an email and a phone of its own
+	 * beside these, which meant this column could show one address while the shop was
+	 * writing to another.
+	 *
 	 * @param Organization $item The organization.
 	 * @return string Markup.
 	 */
 	public function column_contact( $item ) {
-		$email = (string) $item->get( 'email' );
-		$phone = (string) $item->get( 'phone' );
+		$email = (string) $item->get( 'billing_email' );
+		$phone = (string) $item->get( 'billing_phone' );
 
 		$lines = array();
 

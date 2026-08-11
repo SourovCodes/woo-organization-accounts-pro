@@ -621,19 +621,23 @@ class Registration {
 			return isset( $_POST[ $key ] ) ? sanitize_text_field( wp_unslash( $_POST[ $key ] ) ) : '';
 		};
 
+		/*
+		 * There is no organization email or phone here, and there were: the billing
+		 * block below collects both, WooCommerce marks the billing email required, and
+		 * that is the pair every order and every order email is addressed to. Asking
+		 * twice put three email fields and three phone fields on one registration form,
+		 * and two of each went nowhere.
+		 */
 		$fields = array(
-			'organization_name'  => $text( 'organization_name' ),
-			'organization_email' => isset( $_POST['organization_email'] ) ? sanitize_email( wp_unslash( $_POST['organization_email'] ) ) : '',
-			'organization_phone' => $text( 'organization_phone' ),
-			'tax_id'             => $text( 'tax_id' ),
-			'admin_first_name'   => $text( 'admin_first_name' ),
-			'admin_last_name'    => $text( 'admin_last_name' ),
-			'admin_email'        => isset( $_POST['admin_email'] ) ? sanitize_email( wp_unslash( $_POST['admin_email'] ) ) : '',
-			'admin_phone'        => $text( 'admin_phone' ),
+			'organization_name' => $text( 'organization_name' ),
+			'tax_id'            => $text( 'tax_id' ),
+			'admin_first_name'  => $text( 'admin_first_name' ),
+			'admin_last_name'   => $text( 'admin_last_name' ),
+			'admin_email'       => isset( $_POST['admin_email'] ) ? sanitize_email( wp_unslash( $_POST['admin_email'] ) ) : '',
 			// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- A password is hashed, never stored or echoed; sanitising it would silently change what the visitor typed.
-			'password'           => isset( $_POST['password'] ) ? (string) wp_unslash( $_POST['password'] ) : '',
+			'password'          => isset( $_POST['password'] ) ? (string) wp_unslash( $_POST['password'] ) : '',
 			// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- As above.
-			'password_confirm'   => isset( $_POST['password_confirm'] ) ? (string) wp_unslash( $_POST['password_confirm'] ) : '',
+			'password_confirm'  => isset( $_POST['password_confirm'] ) ? (string) wp_unslash( $_POST['password_confirm'] ) : '',
 		);
 		// phpcs:enable WordPress.Security.NonceVerification.Missing
 
@@ -676,14 +680,15 @@ class Registration {
 			);
 		}
 
-		if ( ! is_email( $fields['organization_email'] ) ) {
+		/*
+		 * The same rule as the two edit screens, from the same predicate, because a
+		 * field registration insists on and the account screen lets you blank again is
+		 * not a required field.
+		 */
+		if ( Organization::tax_id_required() && '' === $fields['tax_id'] ) {
 			$errors->add(
-				'organization_email',
-				sprintf(
-					/* translators: %s: the organization noun for the site's mode, for example "Company". */
-					__( 'Please enter a valid %s email address.', 'woo-organization-accounts-pro' ),
-					Labels::organization()
-				)
+				'tax_id',
+				__( 'Please enter a VAT number, tax ID or registration number.', 'woo-organization-accounts-pro' )
 			);
 		}
 
@@ -818,16 +823,10 @@ class Registration {
 			return $user_id;
 		}
 
-		if ( '' !== $fields['admin_phone'] ) {
-			update_user_meta( $user_id, 'billing_phone', $fields['admin_phone'] );
-		}
-
 		$organization = new Organization();
 		$organization->set_props(
 			array(
 				'name'                  => $fields['organization_name'],
-				'email'                 => $fields['organization_email'],
-				'phone'                 => $fields['organization_phone'],
 				'tax_id'                => $fields['tax_id'],
 				'status'                => Settings::get( 'require_approval', true ) ? Organization::STATUS_PENDING : Organization::STATUS_ACTIVE,
 				'allow_custom_shipping' => (bool) Settings::get( 'default_allow_custom_shipping', true ),
@@ -843,14 +842,20 @@ class Registration {
 		}
 
 		/*
-		 * A shop that hides the company, phone or email billing fields does not collect
-		 * them above, so the organization's own details fill those in. An invoice with
-		 * no company name and no way to reach anybody is not much of an invoice.
+		 * A shop that hides the company or email billing field does not collect it
+		 * above, so the rest of the form fills it in: an invoice with no company name
+		 * and no address to send it to is not much of an invoice. The account holder's
+		 * own address is the fallback for the second, because it is the one address on
+		 * this form that is always present and always real.
+		 *
+		 * There is no phone fallback. A shop that hides the checkout phone field has
+		 * decided it does not want phone numbers, and inventing one from another field
+		 * to fill a column would be exactly the invented input this plugin refuses
+		 * elsewhere.
 		 */
 		foreach ( array(
 			'company' => 'organization_name',
-			'email'   => 'organization_email',
-			'phone'   => 'organization_phone',
+			'email'   => 'admin_email',
 		) as $field => $source ) {
 			if ( '' === trim( (string) ( $address[ $field ] ?? '' ) ) ) {
 				$address[ $field ] = $fields[ $source ];

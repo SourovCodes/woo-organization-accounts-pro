@@ -47,6 +47,156 @@ class RegistrationSurfaceTest extends TestCase {
 	}
 
 	/**
+	 * A complete registration submission, as the form posts it.
+	 *
+	 * @param array $overrides Fields to add or replace.
+	 * @return array The submission.
+	 */
+	private function registration_submission( array $overrides = array() ) {
+		return array_merge(
+			array(
+				'woap_action'        => 'register',
+				'_wpnonce'           => wp_create_nonce( Registration::REGISTER_ACTION ),
+				'organization_name'  => 'Acme Holdings AG',
+				'tax_id'             => '',
+				'admin_first_name'   => 'Ada',
+				'admin_last_name'    => 'Byron',
+				'admin_email'        => 'ada@acme.test',
+				'password'           => 'correct horse battery',
+				'password_confirm'   => 'correct horse battery',
+				'billing_first_name' => 'Ada',
+				'billing_last_name'  => 'Byron',
+				'billing_company'    => '',
+				'billing_address_1'  => '1 Hauptstrasse',
+				'billing_city'       => 'Berlin',
+				'billing_postcode'   => '10115',
+				'billing_country'    => 'DE',
+				'billing_email'      => 'invoices@acme.test',
+				'billing_phone'      => '+49 30 123456',
+			),
+			$overrides
+		);
+	}
+
+	/**
+	 * Post a registration and report where it ended up.
+	 *
+	 * @param array $overrides Fields to add or replace.
+	 * @return string Redirect target, or an empty string when the form came back.
+	 */
+	private function register( array $overrides = array() ) {
+		/*
+		 * A visitor registering is by definition signed out, and `process_registration()`
+		 * returns early for anybody who is not — so a second call in one test would
+		 * otherwise be answered by the account the first one signed in.
+		 */
+		wp_set_current_user( 0 );
+
+		$_POST = $this->registration_submission( $overrides );
+
+		/*
+		 * check_admin_referer() reads the nonce from $_REQUEST, which the web server
+		 * fills in from the body and PHPUnit does not.
+		 */
+		$_REQUEST = $_POST; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Building the request the handler will then verify; the nonce is in the submission above.
+
+		$redirect = static function ( $location ) {
+			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Carried to an assertion in a test, never rendered.
+			throw new RedirectException( $location );
+		};
+
+		add_filter( 'wp_redirect', $redirect );
+
+		try {
+			( new Registration() )->maybe_process();
+
+			$location = '';
+		} catch ( RedirectException $caught ) {
+			$location = $caught->location;
+		} finally {
+			remove_filter( 'wp_redirect', $redirect );
+
+			$_POST    = array();
+			$_REQUEST = array();
+		}
+
+		return $location;
+	}
+
+	/**
+	 * Registering asks for one email address and one phone number, and uses both.
+	 *
+	 * The form used to ask for three of each — an organization pair beside the billing
+	 * pair beside the account holder's — and only the billing pair reached an order.
+	 * What is asserted here is that what is left is sufficient: the organization is
+	 * created, and its billing address is the address that was typed.
+	 */
+	public function testRegisteringStoresTheBillingAddressThatWasTyped() {
+		$this->make_registration_page();
+		$this->set_setting( 'require_approval', false );
+
+		$this->register();
+
+		$user = get_user_by( 'email', 'ada@acme.test' );
+
+		$this->assertInstanceOf( \WP_User::class, $user );
+
+		$member = MemberRepository::find_by_user( $user->ID );
+
+		$this->assertNotNull( $member );
+
+		$organization = \WooOrgAccounts\Data\OrganizationRepository::find( $member->get_organization_id() );
+
+		$this->assertSame( 'Acme Holdings AG', $organization->get_name() );
+		$this->assertSame( 'invoices@acme.test', $organization->get( 'billing_email' ) );
+		$this->assertSame( '+49 30 123456', $organization->get( 'billing_phone' ) );
+
+		// A blank billing company still falls back to the organization's name.
+		$this->assertSame( 'Acme Holdings AG', $organization->get( 'billing_company' ) );
+	}
+
+	/**
+	 * A tax ID is optional by default and required when the site says so.
+	 *
+	 * Both halves matter: the setting exists because insisting on a VAT number is
+	 * right for one shop and wrong for the next, and a shop that has not asked for it
+	 * must not find registrations refused.
+	 */
+	public function testATaxIdIsRequiredOnlyWhenTheSettingSaysSo() {
+		$this->make_registration_page();
+		$this->set_setting( 'require_approval', false );
+
+		$this->assertNotSame( '', $this->register(), 'A blank tax ID was refused with the setting off.' );
+		$this->assertInstanceOf( \WP_User::class, get_user_by( 'email', 'ada@acme.test' ) );
+
+		$this->set_setting( 'require_tax_id', true );
+
+		$this->assertSame(
+			'',
+			$this->register( array( 'admin_email' => 'grace@acme.test' ) ),
+			'A blank tax ID was accepted with the setting on.'
+		);
+
+		$this->assertFalse( get_user_by( 'email', 'grace@acme.test' ), 'A refused registration created an account anyway.' );
+
+		/*
+		 * And the same submission goes through once the number is supplied, so the
+		 * refusal is about the tax ID rather than about anything else on the form.
+		 */
+		$this->assertNotSame(
+			'',
+			$this->register(
+				array(
+					'admin_email' => 'grace@acme.test',
+					'tax_id'      => 'DE811234567',
+				)
+			)
+		);
+
+		$this->assertInstanceOf( \WP_User::class, get_user_by( 'email', 'grace@acme.test' ) );
+	}
+
+	/**
 	 * WordPress's own registration is off as well as WooCommerce's.
 	 *
 	 * An account created outside an organization cannot buy anything, so offering to

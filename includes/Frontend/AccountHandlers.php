@@ -207,16 +207,8 @@ class AccountHandlers {
 	public function save_organization() {
 		$organization = Guard::check_request( 'woap_save_organization', Roles::MANAGE_ORGANIZATION );
 
-		/*
-		 * Read as text rather than through sanitize_email(), which strips a mistyped
-		 * address down to an empty string — so the screen answered a typo by quietly
-		 * deleting the address it already had. Validation is what judges it, and it is
-		 * the same judgement the admin screen makes.
-		 */
 		$details = array(
 			'name'   => self::posted( 'woap_name' ),
-			'email'  => self::posted( 'woap_email' ),
-			'phone'  => self::posted( 'woap_phone' ),
 			'tax_id' => self::posted( 'woap_tax_id' ),
 		);
 

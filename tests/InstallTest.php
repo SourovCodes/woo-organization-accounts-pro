@@ -7,8 +7,12 @@
 
 namespace WooOrgAccounts\Tests;
 
+use WooOrgAccounts\Data\Invitation;
 use WooOrgAccounts\Data\Location;
 use WooOrgAccounts\Data\LocationRepository;
+use WooOrgAccounts\Data\Member;
+use WooOrgAccounts\Data\Organization;
+use WooOrgAccounts\Data\OrganizationRepository;
 use WooOrgAccounts\Install;
 
 /**
@@ -204,5 +208,118 @@ class InstallTest extends TestCase {
 		$wpdb->query( 'COMMIT' );
 
 		$this->assertCount( 0, LocationRepository::for_organization( $organization_id ) );
+	}
+
+	/**
+	 * Every column an entity declares exists, and every column that exists is declared.
+	 *
+	 * The two halves catch different mistakes and both have happened. A column in
+	 * `defaults()` with none in the table makes `Repository::save()` fail on a `$wpdb`
+	 * placeholder for a column that is not there. A column in the table with none in
+	 * `defaults()` is the quieter one: `Entity::set()` ignores anything undeclared, so
+	 * a fixture or a screen goes on writing to a retired column and every assertion
+	 * about it silently reads the default instead — which is exactly what the retired
+	 * organization email did to this suite until it was removed from both.
+	 */
+	public function testEveryEntityDeclaresExactlyItsTablesColumns() {
+		global $wpdb;
+
+		$entities = array(
+			Install::ORGANIZATIONS => Organization::class,
+			Install::MEMBERS       => Member::class,
+			Install::LOCATIONS     => Location::class,
+			Install::INVITATIONS   => Invitation::class,
+		);
+
+		foreach ( $entities as $table => $entity ) {
+			$name = Install::table( $table );
+
+			$columns  = $wpdb->get_col( "SHOW COLUMNS FROM {$name}" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name from a class constant.
+			$columns  = array_values( array_diff( $columns, array( 'id' ) ) );
+			$declared = array_keys( $entity::defaults() );
+
+			sort( $columns );
+			sort( $declared );
+
+			$this->assertSame( $columns, $declared, $entity . ' and ' . $table . ' disagree about their columns.' );
+		}
+	}
+
+	/**
+	 * Upgrading retires the columns that nothing read, and keeps what one of them held.
+	 *
+	 * `email` and `phone` on an organization were a second contact pair beside
+	 * `billing_email` and `billing_phone`, and only the billing pair ever reached an
+	 * order — so they are copied onto it rather than dropped outright, and only where
+	 * the billing side is empty, so a real billing address is never overwritten by the
+	 * weaker copy. The other two columns held nothing anybody read.
+	 */
+	public function testUpgradeRetiresTheColumnsNothingRead() {
+		global $wpdb;
+
+		$table = Install::table( Install::ORGANIZATIONS );
+
+		$wpdb->query( "ALTER TABLE {$table} ADD COLUMN email varchar(100) NOT NULL DEFAULT '', ADD COLUMN phone varchar(50) NOT NULL DEFAULT ''" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name from a class constant.
+
+		// As above: the migration is DDL, so nothing here survives inside the suite's transaction.
+		$rows = array(
+			'Empty billing' => array(
+				'email'         => 'old@acme.test',
+				'phone'         => '+49 30 111',
+				'billing_email' => '',
+				'billing_phone' => '',
+			),
+			'Real billing'  => array(
+				'email'         => 'old@acme.test',
+				'phone'         => '+49 30 111',
+				'billing_email' => 'invoices@acme.test',
+				'billing_phone' => '+49 30 999',
+			),
+		);
+
+		$ids = array();
+
+		foreach ( $rows as $name => $row ) {
+			$wpdb->insert(
+				$table,
+				array_merge(
+					array(
+						'name'   => $name,
+						'status' => Organization::STATUS_ACTIVE,
+					),
+					$row
+				)
+			);
+
+			$ids[ $name ] = (int) $wpdb->insert_id;
+		}
+
+		Install::install();
+
+		$columns = $wpdb->get_col( "SHOW COLUMNS FROM {$table}" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name from a class constant.
+
+		$this->assertNotContains( 'email', $columns, 'The organization email column should be gone.' );
+		$this->assertNotContains( 'phone', $columns, 'The organization phone column should be gone.' );
+
+		$moved = OrganizationRepository::find( $ids['Empty billing'] );
+		$kept  = OrganizationRepository::find( $ids['Real billing'] );
+
+		$this->assertSame( 'old@acme.test', $moved->get( 'billing_email' ), 'A contact address with nowhere else to go was dropped.' );
+		$this->assertSame( '+49 30 111', $moved->get( 'billing_phone' ) );
+
+		$this->assertSame( 'invoices@acme.test', $kept->get( 'billing_email' ), 'The billing address was overwritten by the weaker copy.' );
+		$this->assertSame( '+49 30 999', $kept->get( 'billing_phone' ) );
+
+		$locations   = Install::table( Install::LOCATIONS );
+		$invitations = Install::table( Install::INVITATIONS );
+
+		$this->assertNotContains( 'date_created', $wpdb->get_col( "SHOW COLUMNS FROM {$locations}" ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name from a class constant.
+		$this->assertNotContains( 'date_accepted', $wpdb->get_col( "SHOW COLUMNS FROM {$invitations}" ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name from a class constant.
+
+		foreach ( $ids as $id ) {
+			OrganizationRepository::delete( $id );
+		}
+
+		$wpdb->query( 'COMMIT' );
 	}
 }
