@@ -765,7 +765,7 @@ class AccountTest extends TestCase {
 		$markup = do_shortcode( '[' . Registration::SHORTCODE . ']' );
 
 		$this->assertStringContainsString( 'woap-registration-form', $markup );
-		$this->assertStringContainsString( 'name="organization_name"', $markup );
+		$this->assertStringContainsString( 'name="woap_organization_name"', $markup );
 		$this->assertStringContainsString( 'name="' . Registration::HONEYPOT_FIELD . '"', $markup );
 	}
 

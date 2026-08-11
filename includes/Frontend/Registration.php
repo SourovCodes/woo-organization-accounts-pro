@@ -482,7 +482,7 @@ class Registration {
 		check_admin_referer( self::JOIN_ACTION );
 
 		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Verified by check_admin_referer() immediately above.
-		$token = isset( $_POST['token'] ) ? sanitize_text_field( wp_unslash( $_POST['token'] ) ) : '';
+		$token = isset( $_POST[ Invitations::QUERY_VAR ] ) ? sanitize_text_field( wp_unslash( $_POST[ Invitations::QUERY_VAR ] ) ) : '';
 
 		$invitation = InvitationRepository::find_by_token( $token );
 
@@ -568,24 +568,24 @@ class Registration {
 	 */
 	private static function create_invited_user( Invitation $invitation ) {
 		// phpcs:disable WordPress.Security.NonceVerification.Missing -- The caller verified the nonce before reaching here.
-		$first_name = isset( $_POST['first_name'] ) ? sanitize_text_field( wp_unslash( $_POST['first_name'] ) ) : '';
-		$last_name  = isset( $_POST['last_name'] ) ? sanitize_text_field( wp_unslash( $_POST['last_name'] ) ) : '';
+		$first_name = isset( $_POST['woap_first_name'] ) ? sanitize_text_field( wp_unslash( $_POST['woap_first_name'] ) ) : '';
+		$last_name  = isset( $_POST['woap_last_name'] ) ? sanitize_text_field( wp_unslash( $_POST['woap_last_name'] ) ) : '';
 		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- A password is hashed, never stored or echoed; sanitising it would silently change what the visitor typed.
-		$password = isset( $_POST['password'] ) ? (string) wp_unslash( $_POST['password'] ) : '';
+		$password = isset( $_POST['woap_password'] ) ? (string) wp_unslash( $_POST['woap_password'] ) : '';
 		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- As above.
-		$confirm = isset( $_POST['password_confirm'] ) ? (string) wp_unslash( $_POST['password_confirm'] ) : '';
+		$confirm = isset( $_POST['woap_password_confirm'] ) ? (string) wp_unslash( $_POST['woap_password_confirm'] ) : '';
 		// phpcs:enable WordPress.Security.NonceVerification.Missing
 
 		self::$submitted = array(
-			'first_name' => $first_name,
-			'last_name'  => $last_name,
+			'woap_first_name' => $first_name,
+			'woap_last_name'  => $last_name,
 		);
 
 		$errors = new \WP_Error();
 		self::validate_password( $password, $confirm, $errors );
 
 		if ( '' === $first_name ) {
-			$errors->add( 'first_name', __( 'Please enter your first name.', 'woo-organization-accounts-pro' ) );
+			$errors->add( 'woap_first_name', __( 'Please enter your first name.', 'woo-organization-accounts-pro' ) );
 		}
 
 		if ( $errors->has_errors() ) {
@@ -629,15 +629,15 @@ class Registration {
 		 * and two of each went nowhere.
 		 */
 		$fields = array(
-			'organization_name' => $text( 'organization_name' ),
-			'tax_id'            => $text( 'tax_id' ),
-			'admin_first_name'  => $text( 'admin_first_name' ),
-			'admin_last_name'   => $text( 'admin_last_name' ),
-			'admin_email'       => isset( $_POST['admin_email'] ) ? sanitize_email( wp_unslash( $_POST['admin_email'] ) ) : '',
+			'woap_organization_name' => $text( 'woap_organization_name' ),
+			'woap_tax_id'            => $text( 'woap_tax_id' ),
+			'woap_admin_first_name'  => $text( 'woap_admin_first_name' ),
+			'woap_admin_last_name'   => $text( 'woap_admin_last_name' ),
+			'woap_admin_email'       => isset( $_POST['woap_admin_email'] ) ? sanitize_email( wp_unslash( $_POST['woap_admin_email'] ) ) : '',
 			// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- A password is hashed, never stored or echoed; sanitising it would silently change what the visitor typed.
-			'password'          => isset( $_POST['password'] ) ? (string) wp_unslash( $_POST['password'] ) : '',
+			'woap_password'          => isset( $_POST['woap_password'] ) ? (string) wp_unslash( $_POST['woap_password'] ) : '',
 			// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- As above.
-			'password_confirm'  => isset( $_POST['password_confirm'] ) ? (string) wp_unslash( $_POST['password_confirm'] ) : '',
+			'woap_password_confirm'  => isset( $_POST['woap_password_confirm'] ) ? (string) wp_unslash( $_POST['woap_password_confirm'] ) : '',
 		);
 		// phpcs:enable WordPress.Security.NonceVerification.Missing
 
@@ -669,9 +669,9 @@ class Registration {
 			return $errors;
 		}
 
-		if ( '' === $fields['organization_name'] ) {
+		if ( '' === $fields['woap_organization_name'] ) {
 			$errors->add(
-				'organization_name',
+				'woap_organization_name',
 				sprintf(
 					/* translators: %s: the organization noun for the site's mode, for example "Company". */
 					__( 'Please enter the %s name.', 'woo-organization-accounts-pro' ),
@@ -685,18 +685,18 @@ class Registration {
 		 * field registration insists on and the account screen lets you blank again is
 		 * not a required field.
 		 */
-		if ( Organization::tax_id_required() && '' === $fields['tax_id'] ) {
+		if ( Organization::tax_id_required() && '' === $fields['woap_tax_id'] ) {
 			$errors->add(
-				'tax_id',
+				'woap_tax_id',
 				__( 'Please enter a VAT number, tax ID or registration number.', 'woo-organization-accounts-pro' )
 			);
 		}
 
-		if ( ! is_email( $fields['admin_email'] ) ) {
-			$errors->add( 'admin_email', __( 'Please enter a valid email address for the account holder.', 'woo-organization-accounts-pro' ) );
-		} elseif ( email_exists( $fields['admin_email'] ) ) {
+		if ( ! is_email( $fields['woap_admin_email'] ) ) {
+			$errors->add( 'woap_admin_email', __( 'Please enter a valid email address for the account holder.', 'woo-organization-accounts-pro' ) );
+		} elseif ( email_exists( $fields['woap_admin_email'] ) ) {
 			$errors->add(
-				'admin_email',
+				'woap_admin_email',
 				sprintf(
 					/* translators: %s: URL of the My Account page. */
 					wp_kses_post( __( 'An account already exists for that address. <a href="%s">Sign in instead</a>.', 'woo-organization-accounts-pro' ) ),
@@ -705,11 +705,11 @@ class Registration {
 			);
 		}
 
-		if ( '' === $fields['admin_first_name'] ) {
-			$errors->add( 'admin_first_name', __( 'Please enter your first name.', 'woo-organization-accounts-pro' ) );
+		if ( '' === $fields['woap_admin_first_name'] ) {
+			$errors->add( 'woap_admin_first_name', __( 'Please enter your first name.', 'woo-organization-accounts-pro' ) );
 		}
 
-		self::validate_password( $fields['password'], $fields['password_confirm'], $errors );
+		self::validate_password( $fields['woap_password'], $fields['woap_password_confirm'], $errors );
 		self::validate_billing( $fields, $errors );
 
 		/**
@@ -773,13 +773,13 @@ class Registration {
 	 */
 	private static function validate_password( $password, $confirm, \WP_Error $errors ) {
 		if ( strlen( $password ) < 8 ) {
-			$errors->add( 'password', __( 'Please choose a password of at least 8 characters.', 'woo-organization-accounts-pro' ) );
+			$errors->add( 'woap_password', __( 'Please choose a password of at least 8 characters.', 'woo-organization-accounts-pro' ) );
 
 			return;
 		}
 
 		if ( $password !== $confirm ) {
-			$errors->add( 'password_confirm', __( 'The two passwords do not match.', 'woo-organization-accounts-pro' ) );
+			$errors->add( 'woap_password_confirm', __( 'The two passwords do not match.', 'woo-organization-accounts-pro' ) );
 		}
 	}
 
@@ -810,11 +810,11 @@ class Registration {
 	private static function create_organization( array $fields ) {
 		$user_id = wp_insert_user(
 			array(
-				'user_login' => $fields['admin_email'],
-				'user_email' => $fields['admin_email'],
-				'user_pass'  => $fields['password'],
-				'first_name' => $fields['admin_first_name'],
-				'last_name'  => $fields['admin_last_name'],
+				'user_login' => $fields['woap_admin_email'],
+				'user_email' => $fields['woap_admin_email'],
+				'user_pass'  => $fields['woap_password'],
+				'first_name' => $fields['woap_admin_first_name'],
+				'last_name'  => $fields['woap_admin_last_name'],
 				'role'       => Roles::ROLE_ORG_ADMIN,
 			)
 		);
@@ -826,8 +826,8 @@ class Registration {
 		$organization = new Organization();
 		$organization->set_props(
 			array(
-				'name'                  => $fields['organization_name'],
-				'tax_id'                => $fields['tax_id'],
+				'name'                  => $fields['woap_organization_name'],
+				'tax_id'                => $fields['woap_tax_id'],
 				'status'                => Settings::get( 'require_approval', true ) ? Organization::STATUS_PENDING : Organization::STATUS_ACTIVE,
 				'allow_custom_shipping' => (bool) Settings::get( 'default_allow_custom_shipping', true ),
 			)
@@ -854,8 +854,8 @@ class Registration {
 		 * elsewhere.
 		 */
 		foreach ( array(
-			'company' => 'organization_name',
-			'email'   => 'admin_email',
+			'company' => 'woap_organization_name',
+			'email'   => 'woap_admin_email',
 		) as $field => $source ) {
 			if ( '' === trim( (string) ( $address[ $field ] ?? '' ) ) ) {
 				$address[ $field ] = $fields[ $source ];
@@ -921,10 +921,16 @@ class Registration {
 			return sanitize_text_field( wp_unslash( $_GET[ Invitations::QUERY_VAR ] ) );
 		}
 
+		/*
+		 * The same name in the body as in the link. The form posts the token back so a
+		 * rejected submission returns to the invitation it was about rather than to the
+		 * organization registration form, and giving that field a second name would be
+		 * two names for one value.
+		 */
 		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Reading the token back out of a submission that check_admin_referer() has already verified.
-		if ( isset( $_POST['token'] ) ) {
+		if ( isset( $_POST[ Invitations::QUERY_VAR ] ) ) {
 			// phpcs:ignore WordPress.Security.NonceVerification.Missing -- As above.
-			return sanitize_text_field( wp_unslash( $_POST['token'] ) );
+			return sanitize_text_field( wp_unslash( $_POST[ Invitations::QUERY_VAR ] ) );
 		}
 
 		return '';

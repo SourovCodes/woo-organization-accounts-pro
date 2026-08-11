@@ -17,6 +17,8 @@
  * @var string                                $honeypot     Name of the honeypot field.
  */
 
+use WooOrgAccounts\Members\Invitations;
+
 defined( 'ABSPATH' ) || exit;
 
 $woap_value = static function ( $key ) use ( $submitted ) {
@@ -82,7 +84,14 @@ $woap_value = static function ( $key ) use ( $submitted ) {
 
 		<form class="woocommerce-form register woap-invitation-form" method="post">
 			<input type="hidden" name="woap_action" value="join">
-			<input type="hidden" name="token" value="<?php echo esc_attr( $token ); ?>">
+			<?php
+			/*
+			 * The token is posted back under the name it already has in the link, so a
+			 * rejected submission returns to the invitation it was about rather than to
+			 * the organization registration form. One value, one name.
+			 */
+			?>
+			<input type="hidden" name="<?php echo esc_attr( Invitations::QUERY_VAR ); ?>" value="<?php echo esc_attr( $token ); ?>">
 			<?php wp_nonce_field( $action ); ?>
 
 			<?php
@@ -100,22 +109,22 @@ $woap_value = static function ( $key ) use ( $submitted ) {
 
 				<p class="woocommerce-form-row form-row-first">
 					<label for="woap-join-first-name"><?php esc_html_e( 'First name', 'woo-organization-accounts-pro' ); ?> <span class="required">*</span></label>
-					<input type="text" class="woocommerce-Input input-text" id="woap-join-first-name" name="first_name" required value="<?php echo esc_attr( $woap_value( 'first_name' ) ); ?>">
+					<input type="text" class="woocommerce-Input input-text" id="woap-join-first-name" name="woap_first_name" required value="<?php echo esc_attr( $woap_value( 'woap_first_name' ) ); ?>">
 				</p>
 
 				<p class="woocommerce-form-row form-row-last">
 					<label for="woap-join-last-name"><?php esc_html_e( 'Last name', 'woo-organization-accounts-pro' ); ?></label>
-					<input type="text" class="woocommerce-Input input-text" id="woap-join-last-name" name="last_name" value="<?php echo esc_attr( $woap_value( 'last_name' ) ); ?>">
+					<input type="text" class="woocommerce-Input input-text" id="woap-join-last-name" name="woap_last_name" value="<?php echo esc_attr( $woap_value( 'woap_last_name' ) ); ?>">
 				</p>
 
 				<p class="woocommerce-form-row form-row-first">
 					<label for="woap-join-password"><?php esc_html_e( 'Choose a password', 'woo-organization-accounts-pro' ); ?> <span class="required">*</span></label>
-					<input type="password" class="woocommerce-Input input-text" id="woap-join-password" name="password" required autocomplete="new-password" minlength="8">
+					<input type="password" class="woocommerce-Input input-text" id="woap-join-password" name="woap_password" required autocomplete="new-password" minlength="8">
 				</p>
 
 				<p class="woocommerce-form-row form-row-last">
 					<label for="woap-join-password-confirm"><?php esc_html_e( 'Repeat password', 'woo-organization-accounts-pro' ); ?> <span class="required">*</span></label>
-					<input type="password" class="woocommerce-Input input-text" id="woap-join-password-confirm" name="password_confirm" required autocomplete="new-password" minlength="8">
+					<input type="password" class="woocommerce-Input input-text" id="woap-join-password-confirm" name="woap_password_confirm" required autocomplete="new-password" minlength="8">
 				</p>
 
 			<?php endif; ?>

@@ -55,24 +55,24 @@ class RegistrationSurfaceTest extends TestCase {
 	private function registration_submission( array $overrides = array() ) {
 		return array_merge(
 			array(
-				'woap_action'        => 'register',
-				'_wpnonce'           => wp_create_nonce( Registration::REGISTER_ACTION ),
-				'organization_name'  => 'Acme Holdings AG',
-				'tax_id'             => '',
-				'admin_first_name'   => 'Ada',
-				'admin_last_name'    => 'Byron',
-				'admin_email'        => 'ada@acme.test',
-				'password'           => 'correct horse battery',
-				'password_confirm'   => 'correct horse battery',
-				'billing_first_name' => 'Ada',
-				'billing_last_name'  => 'Byron',
-				'billing_company'    => '',
-				'billing_address_1'  => '1 Hauptstrasse',
-				'billing_city'       => 'Berlin',
-				'billing_postcode'   => '10115',
-				'billing_country'    => 'DE',
-				'billing_email'      => 'invoices@acme.test',
-				'billing_phone'      => '+49 30 123456',
+				'woap_action'            => 'register',
+				'_wpnonce'               => wp_create_nonce( Registration::REGISTER_ACTION ),
+				'woap_organization_name' => 'Acme Holdings AG',
+				'woap_tax_id'            => '',
+				'woap_admin_first_name'  => 'Ada',
+				'woap_admin_last_name'   => 'Byron',
+				'woap_admin_email'       => 'ada@acme.test',
+				'woap_password'          => 'correct horse battery',
+				'woap_password_confirm'  => 'correct horse battery',
+				'billing_first_name'     => 'Ada',
+				'billing_last_name'      => 'Byron',
+				'billing_company'        => '',
+				'billing_address_1'      => '1 Hauptstrasse',
+				'billing_city'           => 'Berlin',
+				'billing_postcode'       => '10115',
+				'billing_country'        => 'DE',
+				'billing_email'          => 'invoices@acme.test',
+				'billing_phone'          => '+49 30 123456',
 			),
 			$overrides
 		);
@@ -173,7 +173,7 @@ class RegistrationSurfaceTest extends TestCase {
 
 		$this->assertSame(
 			'',
-			$this->register( array( 'admin_email' => 'grace@acme.test' ) ),
+			$this->register( array( 'woap_admin_email' => 'grace@acme.test' ) ),
 			'A blank tax ID was accepted with the setting on.'
 		);
 
@@ -187,13 +187,112 @@ class RegistrationSurfaceTest extends TestCase {
 			'',
 			$this->register(
 				array(
-					'admin_email' => 'grace@acme.test',
-					'tax_id'      => 'DE811234567',
+					'woap_admin_email' => 'grace@acme.test',
+					'woap_tax_id'      => 'DE811234567',
 				)
 			)
 		);
 
 		$this->assertInstanceOf( \WP_User::class, get_user_by( 'email', 'grace@acme.test' ) );
+	}
+
+	/**
+	 * Post the invitation acceptance form and report where it ended up.
+	 *
+	 * @param string $token     Raw token from the link.
+	 * @param array  $overrides Fields to add or replace.
+	 * @return string Redirect target, or an empty string when the form came back.
+	 */
+	private function join( $token, array $overrides = array() ) {
+		$_POST = array_merge(
+			array(
+				'woap_action'           => 'join',
+				'_wpnonce'              => wp_create_nonce( Registration::JOIN_ACTION ),
+				Invitations::QUERY_VAR  => $token,
+				'woap_first_name'       => 'Grace',
+				'woap_last_name'        => 'Hopper',
+				'woap_password'         => 'correct horse battery',
+				'woap_password_confirm' => 'correct horse battery',
+			),
+			$overrides
+		);
+
+		$_REQUEST = $_POST; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Building the request the handler will then verify; the nonce is in the submission above.
+
+		$redirect = static function ( $location ) {
+			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Carried to an assertion in a test, never rendered.
+			throw new RedirectException( $location );
+		};
+
+		add_filter( 'wp_redirect', $redirect );
+
+		try {
+			( new Registration() )->maybe_process();
+
+			$location = '';
+		} catch ( RedirectException $caught ) {
+			$location = $caught->location;
+		} finally {
+			remove_filter( 'wp_redirect', $redirect );
+
+			$_POST    = array();
+			$_REQUEST = array();
+		}
+
+		return $location;
+	}
+
+	/**
+	 * Redeeming an invitation through the form creates the account and the membership.
+	 *
+	 * The rest of the suite drives `Invitations::accept()` directly, which is the half
+	 * of this flow that holds the security properties — and which is why the *form* half
+	 * could be renamed out from under it without a single test failing. Everything from
+	 * the token in the hidden field to the name on the new account goes through here.
+	 */
+	public function testAcceptingAnInvitationThroughTheFormCreatesTheAccount() {
+		$organization = $this->make_organization();
+		$this->act_as( $this->make_member( $organization, Member::ROLE_ADMIN ) );
+		$this->make_registration_page();
+
+		$result = Invitations::create( $organization->get_id(), 'newcomer@acme.test', Member::ROLE_MEMBER );
+
+		$this->assertNotWPError( $result );
+
+		wp_set_current_user( 0 );
+
+		$this->assertNotSame( '', $this->join( $result['token'] ), 'The form did not accept a good submission.' );
+
+		$user = get_user_by( 'email', 'newcomer@acme.test' );
+
+		$this->assertInstanceOf( \WP_User::class, $user );
+		$this->assertSame( 'Grace', $user->first_name );
+		$this->assertSame( 'Hopper', $user->last_name );
+
+		$member = MemberRepository::find_by_user( $user->ID );
+
+		$this->assertNotNull( $member, 'The invitee did not end up a member.' );
+		$this->assertSame( $organization->get_id(), $member->get_organization_id() );
+	}
+
+	/**
+	 * The join form reports a missing first name rather than accepting a blank one.
+	 *
+	 * The half of the rename that a happy-path test cannot catch: a field read under
+	 * the wrong name is empty every time, so validation would refuse every submission
+	 * while the form looked perfectly correct.
+	 */
+	public function testTheJoinFormRefusesABlankFirstName() {
+		$organization = $this->make_organization();
+		$this->act_as( $this->make_member( $organization, Member::ROLE_ADMIN ) );
+		$this->make_registration_page();
+
+		$result = Invitations::create( $organization->get_id(), 'newcomer@acme.test', Member::ROLE_MEMBER );
+
+		wp_set_current_user( 0 );
+
+		$this->assertSame( '', $this->join( $result['token'], array( 'woap_first_name' => '' ) ) );
+		$this->assertFalse( get_user_by( 'email', 'newcomer@acme.test' ) );
 	}
 
 	/**

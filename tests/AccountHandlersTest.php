@@ -164,6 +164,49 @@ class AccountHandlersTest extends TestCase {
 	}
 
 	/**
+	 * Every field a template posts is prefixed, which is the rule the one above needs.
+	 *
+	 * Staying clear of the 82 query variables by inspection is luck, not a rule: the
+	 * list is WordPress's to change, a plugin can add to it, and the check above only
+	 * ever reports the collision that already exists. The prefix is what makes a
+	 * collision impossible, and until this test the registration templates were the
+	 * ones quietly outside it — they posted `password`, `tax_id`, `first_name` and five
+	 * others under their bare names, and the only thing keeping them safe was that none
+	 * of those eight happened to be a query variable.
+	 *
+	 * The exception is WooCommerce's own address blocks. `country-select.js` looks for
+	 * `#billing_state` and `#shipping_state` by those exact names, so renaming them
+	 * would silently stop the state field following the country.
+	 */
+	public function testEveryPostedFieldIsPrefixed() {
+		$templates = glob( dirname( __DIR__ ) . '/templates/*/*.php' );
+
+		$this->assertNotEmpty( $templates );
+
+		foreach ( $templates as $template ) {
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- Reading a file from this repository, not a remote URL.
+			$markup = (string) file_get_contents( $template );
+
+			preg_match_all( '/name="([a-z_][a-z_0-9]*)(\[\])?"/', $markup, $matches );
+
+			foreach ( $matches[1] as $field ) {
+				$prefixed = 0 === strpos( $field, 'woap_' )
+					|| 0 === strpos( $field, 'billing_' )
+					|| 0 === strpos( $field, 'shipping_' );
+
+				$this->assertTrue(
+					$prefixed,
+					sprintf(
+						'%s posts a field called "%s". Every field this plugin defines is prefixed woap_; only the WooCommerce address blocks keep billing_ and shipping_.',
+						basename( $template ),
+						$field
+					)
+				);
+			}
+		}
+	}
+
+	/**
 	 * Saving a location stores it, says so, and returns to the locations screen.
 	 */
 	public function testSaveLocation() {

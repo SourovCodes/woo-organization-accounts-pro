@@ -141,9 +141,21 @@ which cannot discover capabilities this plugin grants at runtime.
 - **Every field this plugin defines is prefixed `woap_`.** WordPress reads its 82 public query
   variables out of `$_POST` as readily as out of the URL, so a form posting back to its own page
   with a field called `name` sets the post-slug query var, resolves the main query to nothing and
-  returns a 404 — after the write has landed. `AccountHandlersTest` asserts no template posts a
-  field named after a query variable. The only exceptions are the WooCommerce address blocks,
-  which must keep `billing_` and `shipping_`.
+  returns a 404 — after the write has landed. The only exceptions are the WooCommerce address
+  blocks, which must keep `billing_` and `shipping_`.
+
+  Two tests guard it, and the weaker one is not enough on its own.
+  `AccountHandlersTest::testNoFieldNameCollidesWithAWordPressQueryVar` reports a collision that
+  already exists; `testEveryPostedFieldIsPrefixed` is the rule, because staying clear of that list
+  by inspection is luck — it is WordPress's list to change and a plugin can add to it. The
+  registration templates were the ones outside the rule until 0.6.0: they posted `password`,
+  `tax_id`, `first_name` and five others under their bare names, and nothing was wrong except that
+  the only thing keeping them safe was that none of the eight happened to be a query variable.
+
+  **The invitation token is `woap_invite` in the form as well as in the link** —
+  `Invitations::QUERY_VAR`, read from `$_GET` or `$_POST` by `token_from_request()`. It is posted
+  back so a rejected submission returns to the invitation it was about rather than to the
+  organization registration form, and one value with two names is how those two drift apart.
 - **Frontend forms are handled on `template_redirect`, never through `admin-post.php`.**
   WooCommerce decides what to load from `is_admin()`, and `admin-post.php` is an admin request:
   `wc_load_cart()` never runs there, so `wc_add_notice()` is undefined and `WC()->session` does not

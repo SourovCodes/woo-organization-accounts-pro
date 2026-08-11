@@ -104,7 +104,7 @@ $woap_tax_id_required = Organization::tax_id_required();
 						?>
 						<span class="required">*</span>
 					</label>
-					<input type="text" class="woocommerce-Input input-text" id="woap-organization-name" name="organization_name" required value="<?php echo esc_attr( $woap_value( 'organization_name' ) ); ?>">
+					<input type="text" class="woocommerce-Input input-text" id="woap-organization-name" name="woap_organization_name" required value="<?php echo esc_attr( $woap_value( 'woap_organization_name' ) ); ?>">
 				</p>
 
 				<?php
@@ -123,7 +123,7 @@ $woap_tax_id_required = Organization::tax_id_required();
 							<span class="required">*</span>
 						<?php endif; ?>
 					</label>
-					<input type="text" class="woocommerce-Input input-text" id="woap-tax-id" name="tax_id" <?php echo $woap_tax_id_required ? 'required' : ''; ?> value="<?php echo esc_attr( $woap_value( 'tax_id' ) ); ?>">
+					<input type="text" class="woocommerce-Input input-text" id="woap-tax-id" name="woap_tax_id" <?php echo $woap_tax_id_required ? 'required' : ''; ?> value="<?php echo esc_attr( $woap_value( 'woap_tax_id' ) ); ?>">
 				</p>
 
 			</div>
@@ -179,17 +179,17 @@ $woap_tax_id_required = Organization::tax_id_required();
 
 				<p class="woocommerce-form-row form-row-first">
 					<label for="woap-admin-first-name"><?php esc_html_e( 'First name', 'woo-organization-accounts-pro' ); ?> <span class="required">*</span></label>
-					<input type="text" class="woocommerce-Input input-text" id="woap-admin-first-name" name="admin_first_name" required value="<?php echo esc_attr( $woap_value( 'admin_first_name' ) ); ?>">
+					<input type="text" class="woocommerce-Input input-text" id="woap-admin-first-name" name="woap_admin_first_name" required value="<?php echo esc_attr( $woap_value( 'woap_admin_first_name' ) ); ?>">
 				</p>
 
 				<p class="woocommerce-form-row form-row-last">
 					<label for="woap-admin-last-name"><?php esc_html_e( 'Last name', 'woo-organization-accounts-pro' ); ?></label>
-					<input type="text" class="woocommerce-Input input-text" id="woap-admin-last-name" name="admin_last_name" value="<?php echo esc_attr( $woap_value( 'admin_last_name' ) ); ?>">
+					<input type="text" class="woocommerce-Input input-text" id="woap-admin-last-name" name="woap_admin_last_name" value="<?php echo esc_attr( $woap_value( 'woap_admin_last_name' ) ); ?>">
 				</p>
 
 				<p class="woocommerce-form-row form-row-wide">
 					<label for="woap-admin-email"><?php esc_html_e( 'Your email address', 'woo-organization-accounts-pro' ); ?> <span class="required">*</span></label>
-					<input type="email" class="woocommerce-Input input-text" id="woap-admin-email" name="admin_email" required autocomplete="username" value="<?php echo esc_attr( $woap_value( 'admin_email' ) ); ?>">
+					<input type="email" class="woocommerce-Input input-text" id="woap-admin-email" name="woap_admin_email" required autocomplete="username" value="<?php echo esc_attr( $woap_value( 'woap_admin_email' ) ); ?>">
 				</p>
 
 				<?php
@@ -204,12 +204,12 @@ $woap_tax_id_required = Organization::tax_id_required();
 				?>
 				<p class="woocommerce-form-row form-row-first">
 					<label for="woap-password"><?php esc_html_e( 'Password', 'woo-organization-accounts-pro' ); ?> <span class="required">*</span></label>
-					<input type="password" class="woocommerce-Input input-text" id="woap-password" name="password" required autocomplete="new-password" minlength="8">
+					<input type="password" class="woocommerce-Input input-text" id="woap-password" name="woap_password" required autocomplete="new-password" minlength="8">
 				</p>
 
 				<p class="woocommerce-form-row form-row-last">
 					<label for="woap-password-confirm"><?php esc_html_e( 'Repeat password', 'woo-organization-accounts-pro' ); ?> <span class="required">*</span></label>
-					<input type="password" class="woocommerce-Input input-text" id="woap-password-confirm" name="password_confirm" required autocomplete="new-password" minlength="8">
+					<input type="password" class="woocommerce-Input input-text" id="woap-password-confirm" name="woap_password_confirm" required autocomplete="new-password" minlength="8">
 				</p>
 
 			</div>
