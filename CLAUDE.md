@@ -118,6 +118,10 @@ remembered. If the hook reports that phpcbf reformatted a file, re-read it befor
   uses `printf`-style placeholders rather than concatenation.
 - Class files follow PSR-4 (`includes/Data/Organization.php`), not WordPress's `class-*.php`
   convention — the ruleset already excludes `includes/` from `WordPress.Files.FileName`.
+- **The four concrete email classes are the one exception, and they are global.**
+  `WooOrgAccounts_Invitation_Email` and its three siblings carry no namespace, are listed in
+  `composer.json` under `autoload.classmap` rather than `autoload.psr-4`, and so need a
+  `composer dump-autoload` when one is added. See *Emails are named for a URL* below.
 
 Three sniffs are relaxed, each scoped to the files that genuinely need it and each with the reason
 written into `phpcs.xml.dist`: the hook prefix and hook-comment rules inside `templates/emails/`,
@@ -722,6 +726,43 @@ It is registered outside the `is_admin()` branch, because the ongoing path runs 
 that predate the fix reappear by themselves the next time their owner signs in. Only an account
 that never signs in again needs Analytics → Settings → *Import historical data*; there is no
 Status → Tools entry and no wp-cli command for it.
+
+### Emails are named for a URL
+
+The plugin sends four messages, each a `WC_Email` subclass so it appears in WooCommerce →
+Settings → Emails with the same switch, subject and heading fields, template overrides and
+branding as every other message the shop sends. `Emails::add_classes()` registers them.
+
+**The four concrete classes live in the global namespace — the only departure from PSR-4 in the
+plugin — because a class name here is part of the plugin's URL surface.** WooCommerce identifies
+an email to preview by `get_class()`: `EmailPreview::set_email_type()` matches the `type` query
+argument against `array_map( 'get_class', WC()->mailer()->get_emails() )`, with no filter anywhere
+between the class name and the wire, and the settings bundle interpolates the result straight into
+the preview iframe's `src` as `` `${previewUrl}&type=${emailType}` `` — no `encodeURIComponent`.
+A namespaced class therefore puts raw backslashes in a query string.
+
+That is what broke. Many hosts run a WordPress-hardening snippet containing
+`if ($args ~ ...) { return 403; }`, and a bare backslash trips it, so the preview returned nginx's
+stock 403 for all four of these emails while every core `WC_Email_*` one worked. **No hook in this
+plugin could have answered it**: nginx rejects the request before PHP is reached, which rules out
+every idea that starts with filtering `$_GET['type']`. Changing what `get_class()` returns was the
+only lever a plugin has.
+
+Worth knowing about the rule that caused it, because it argues against fixing this on the server:
+nginx's `$args` is the *raw* query string and is never percent-decoded, so `%5C` sails straight
+through and PHP decodes it back to a backslash. The rule stops WooCommerce's own admin UI and
+stops nobody else. It is still the wrong shape, and this plugin routes around it rather than
+depending on every host getting it right.
+
+- **`$this->id` is what a shop's settings are keyed by** — `woocommerce_{$id}_settings`, so
+  `woap_invitation` and its three siblings. The class name is not in that key, which is why these
+  could be renamed without a single shop losing its configured subjects and headings.
+- **The two abstract bases stay namespaced.** `Emails\Email` and `Emails\StatusEmail` are never
+  registered, so `get_class()` never returns either and neither reaches a URL.
+- **The guard is an invariant, not a list.** `EmailsTest::testNoRegisteredEmailClassNameNeedsUrlEncoding`
+  asserts `rawurlencode( get_class( $email ) ) === get_class( $email )` over everything actually
+  registered. A test naming today's four would pass while a fifth email written back inside
+  `WooOrgAccounts\Emails` reintroduced the bug.
 
 ### Invitations
 

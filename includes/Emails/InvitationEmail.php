@@ -5,10 +5,9 @@
  * @package WooOrgAccounts
  */
 
-namespace WooOrgAccounts\Emails;
-
 use WooOrgAccounts\Data\Invitation;
 use WooOrgAccounts\Data\OrganizationRepository;
+use WooOrgAccounts\Emails\Email;
 use WooOrgAccounts\Labels;
 use WooOrgAccounts\Members\Invitations;
 
@@ -21,8 +20,11 @@ defined( 'ABSPATH' ) || exit;
  * generated, which is why the trigger takes it as an argument rather than looking it
  * up: there is nothing to look up. If this email does not go out, the invitation has
  * to be sent again rather than recovered.
+ *
+ * Declared in the global namespace rather than `WooOrgAccounts\Emails` — see `Emails`
+ * for why the class name is URL surface.
  */
-class InvitationEmail extends Email {
+class WooOrgAccounts_Invitation_Email extends Email {
 
 	/**
 	 * The invitation being sent.

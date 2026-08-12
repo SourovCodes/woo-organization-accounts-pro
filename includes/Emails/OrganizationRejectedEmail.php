@@ -5,9 +5,8 @@
  * @package WooOrgAccounts
  */
 
-namespace WooOrgAccounts\Emails;
-
 use WooOrgAccounts\Data\Organization;
+use WooOrgAccounts\Emails\StatusEmail;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -16,8 +15,11 @@ defined( 'ABSPATH' ) || exit;
  *
  * Deliberately says nothing about why. The shop knows its own reasons and may not want
  * them in an automatic email; the message points at the shop instead.
+ *
+ * Declared in the global namespace rather than `WooOrgAccounts\Emails` — see `Emails`
+ * for why the class name is URL surface.
  */
-class OrganizationRejectedEmail extends StatusEmail {
+class WooOrgAccounts_Organization_Rejected_Email extends StatusEmail {
 
 	/**
 	 * Set the email up and hook its trigger.

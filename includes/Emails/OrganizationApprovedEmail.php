@@ -5,16 +5,18 @@
  * @package WooOrgAccounts
  */
 
-namespace WooOrgAccounts\Emails;
-
 use WooOrgAccounts\Data\Organization;
+use WooOrgAccounts\Emails\StatusEmail;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
  * Tells an organization's admins that it may now order.
+ *
+ * Declared in the global namespace rather than `WooOrgAccounts\Emails` — see `Emails`
+ * for why the class name is URL surface.
  */
-class OrganizationApprovedEmail extends StatusEmail {
+class WooOrgAccounts_Organization_Approved_Email extends StatusEmail {
 
 	/**
 	 * Set the email up and hook its trigger.

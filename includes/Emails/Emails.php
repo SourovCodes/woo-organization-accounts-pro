@@ -19,6 +19,21 @@ defined( 'ABSPATH' ) || exit;
  * instantiate its emails — which is most requests, including the one that sends an
  * invitation. Registering the action means WooCommerce re-fires it as
  * `…_notification` with the emails loaded, which is what each class listens for.
+ *
+ * **The four concrete email classes are declared in the global namespace**, the one
+ * place in this plugin that departs from PSR-4, and the reason is that a class name is
+ * part of this plugin's URL surface whether we like it or not.
+ * `Internal\Admin\EmailPreview\EmailPreview` identifies an email by
+ * `get_class()` — there is no filter between that and the wire — and WooCommerce's own
+ * settings bundle interpolates the result straight into the preview iframe's `src`
+ * without encoding it. A namespaced class therefore puts raw backslashes in a query
+ * string, which the WordPress-hardening snippets many hosts run reject with a 403
+ * before PHP is reached. Nothing on the PHP side can answer a request that never
+ * arrives, so the only fix available to a plugin is to not need the character.
+ *
+ * `$this->id` and the `woocommerce_{$id}_settings` option it keys are untouched by the
+ * class name, so these can be renamed without a shop losing what it has configured.
+ * `EmailsTest::testNoRegisteredEmailClassNameNeedsUrlEncoding` is the guard.
  */
 class Emails {
 
@@ -62,10 +77,10 @@ class Emails {
 	 * @return array Emails, with ours added.
 	 */
 	public function add_classes( $emails ) {
-		$emails['WooOrgAccounts_Invitation']           = new InvitationEmail();
-		$emails['WooOrgAccounts_OrganizationApproved'] = new OrganizationApprovedEmail();
-		$emails['WooOrgAccounts_OrganizationRejected'] = new OrganizationRejectedEmail();
-		$emails['WooOrgAccounts_NewOrganization']      = new NewOrganizationEmail();
+		$emails['WooOrgAccounts_Invitation']           = new \WooOrgAccounts_Invitation_Email();
+		$emails['WooOrgAccounts_OrganizationApproved'] = new \WooOrgAccounts_Organization_Approved_Email();
+		$emails['WooOrgAccounts_OrganizationRejected'] = new \WooOrgAccounts_Organization_Rejected_Email();
+		$emails['WooOrgAccounts_NewOrganization']      = new \WooOrgAccounts_New_Organization_Email();
 
 		return $emails;
 	}

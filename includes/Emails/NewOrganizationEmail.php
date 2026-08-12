@@ -5,11 +5,10 @@
  * @package WooOrgAccounts
  */
 
-namespace WooOrgAccounts\Emails;
-
 use WooOrgAccounts\Admin\Organizations;
 use WooOrgAccounts\Data\Member;
 use WooOrgAccounts\Data\Organization;
+use WooOrgAccounts\Emails\Email;
 use WooOrgAccounts\Labels;
 
 defined( 'ABSPATH' ) || exit;
@@ -20,8 +19,11 @@ defined( 'ABSPATH' ) || exit;
  * Without this, approval is a queue nobody is told about: a new organization sits at
  * "pending" until an administrator happens to open the screen, and the customer waits
  * without knowing why.
+ *
+ * Declared in the global namespace rather than `WooOrgAccounts\Emails` — see `Emails`
+ * for why the class name is URL surface.
  */
-class NewOrganizationEmail extends Email {
+class WooOrgAccounts_New_Organization_Email extends Email {
 
 	/**
 	 * The organization that registered.

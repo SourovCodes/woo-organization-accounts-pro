@@ -86,6 +86,38 @@ class EmailsTest extends TestCase {
 	}
 
 	/**
+	 * No email class name needs URL-encoding to survive a query string.
+	 *
+	 * WooCommerce identifies an email to preview by `get_class()`, and its settings
+	 * bundle interpolates that into the preview iframe's `src` without encoding it — so
+	 * a class name is URL surface, and a namespaced one puts raw backslashes in a query
+	 * string. The WordPress-hardening `if ($args ~ ...) { return 403; }` snippets many
+	 * hosts run reject those before PHP is reached, which no hook here could answer:
+	 * the request never arrives. Hence the four concrete email classes living in the
+	 * global namespace, against this plugin's PSR-4 rule everywhere else.
+	 *
+	 * Asserted over `get_class()` of everything actually registered rather than as a
+	 * list of expected names, because the failure is a property of any future email
+	 * added to this plugin — and one written back inside `WooOrgAccounts\Emails` would
+	 * pass a test that only named today's four.
+	 */
+	public function testNoRegisteredEmailClassNameNeedsUrlEncoding() {
+		$emails = ( new Emails() )->add_classes( array() );
+
+		$this->assertNotEmpty( $emails );
+
+		foreach ( $emails as $email ) {
+			$class = get_class( $email );
+
+			$this->assertSame(
+				$class,
+				rawurlencode( $class ),
+				sprintf( '%s has to survive a query string unencoded.', $class )
+			);
+		}
+	}
+
+	/**
 	 * The plugin's actions are added to WooCommerce's transactional list.
 	 *
 	 * Without this WooCommerce never loads its email classes on the request that fires

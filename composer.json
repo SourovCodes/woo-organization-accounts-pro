@@ -15,7 +15,13 @@
 	"autoload": {
 		"psr-4": {
 			"WooOrgAccounts\\": "includes/"
-		}
+		},
+		"classmap": [
+			"includes/Emails/InvitationEmail.php",
+			"includes/Emails/NewOrganizationEmail.php",
+			"includes/Emails/OrganizationApprovedEmail.php",
+			"includes/Emails/OrganizationRejectedEmail.php"
+		]
 	},
 	"autoload-dev": {
 		"psr-4": {
