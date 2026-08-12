@@ -84,7 +84,7 @@ msgstr "Details"
 msgid "Name"
 msgstr "Name"
 
-#: includes/Admin/Import.php:593
+#: includes/Admin/Import.php:595
 #: includes/Admin/Organizations.php:440
 #: includes/Admin/Organizations.php:519
 #: includes/Import/Mapping.php:52
@@ -1951,7 +1951,7 @@ msgid "Import %s"
 msgstr "%s importieren"
 
 #: includes/Admin/Import.php:169
-#: includes/Admin/Import.php:963
+#: includes/Admin/Import.php:965
 msgid "You are not allowed to import customers."
 msgstr "Sie dürfen keine Kunden importieren."
 
@@ -2033,7 +2033,7 @@ msgstr "Empfohlen. Dieses Plugin sendet ohnehin nichts von sich aus, aber ein an
 
 #. translators: %s: comma-separated list of field names.
 #: includes/Admin/Import.php:444
-#: includes/Admin/Import.php:851
+#: includes/Admin/Import.php:853
 #, php-format
 msgid "Nothing can be imported until these columns are chosen: %s."
 msgstr "Es kann nichts importiert werden, solange diese Spalten nicht gewählt sind: %s."
@@ -2062,114 +2062,114 @@ msgstr "%s Zeilen importieren"
 msgid "%s created"
 msgstr "%s erstellt"
 
-#: includes/Admin/Import.php:554
+#: includes/Admin/Import.php:556
 msgid "What is wrong with the file"
 msgstr "Was an der Datei nicht stimmt"
 
-#: includes/Admin/Import.php:557
+#: includes/Admin/Import.php:559
 msgid "None of these stops a row being imported. A required field that is empty is the one worth reading twice: the shop asks for it at checkout, so an account without it cannot buy until somebody fills it in — or until the shop stops requiring it."
 msgstr "Nichts davon verhindert den Import einer Zeile. Ein leeres Pflichtfeld ist das, was zweimal gelesen werden sollte: Der Shop fragt es an der Kasse ab, ein Konto ohne diese Angabe kann also nicht bestellen, bis jemand sie einträgt — oder bis der Shop sie nicht mehr verlangt."
 
-#: includes/Admin/Import.php:561
+#: includes/Admin/Import.php:563
 msgid "Rows"
 msgstr "Zeilen"
 
-#: includes/Admin/Import.php:562
+#: includes/Admin/Import.php:564
 msgid "Problem"
 msgstr "Problem"
 
-#: includes/Admin/Import.php:585
+#: includes/Admin/Import.php:587
 msgid "Rows worth checking"
 msgstr "Zeilen, die eine Prüfung wert sind"
 
-#: includes/Admin/Import.php:588
+#: includes/Admin/Import.php:590
 msgid "Every one of these is still imported. They are listed because something about them was not straightforward, and the report you can download afterwards lists them all."
 msgstr "Jede davon wird trotzdem importiert. Sie stehen hier, weil etwas an ihnen nicht eindeutig war; der Bericht, den Sie danach herunterladen können, führt sie alle auf."
 
-#: includes/Admin/Import.php:592
+#: includes/Admin/Import.php:594
 #: includes/Import/Report.php:36
 msgid "Row"
 msgstr "Zeile"
 
-#: includes/Admin/Import.php:595
+#: includes/Admin/Import.php:597
 #: includes/Import/Report.php:39
 msgid "Result"
 msgstr "Ergebnis"
 
-#: includes/Admin/Import.php:596
+#: includes/Admin/Import.php:598
 #: includes/Import/Report.php:44
 msgid "Notes"
 msgstr "Hinweise"
 
 #. translators: %s: number of rows listed.
-#: includes/Admin/Import.php:617
+#: includes/Admin/Import.php:619
 #, php-format
 msgid "Only the first %s are listed here."
 msgstr "Hier werden nur die ersten %s aufgeführt."
 
-#: includes/Admin/Import.php:634
+#: includes/Admin/Import.php:636
 msgid "Importing"
 msgstr "Import läuft"
 
 #. translators: 1: rows done. 2: rows in the file.
-#: includes/Admin/Import.php:640
+#: includes/Admin/Import.php:642
 #, php-format
 msgid "%1$s of %2$s rows."
 msgstr "%1$s von %2$s Zeilen."
 
-#: includes/Admin/Import.php:656
+#: includes/Admin/Import.php:658
 msgid "Continue"
 msgstr "Fortfahren"
 
-#: includes/Admin/Import.php:668
+#: includes/Admin/Import.php:670
 msgid "JavaScript is switched off, so press Continue once for each batch until the import finishes."
 msgstr "JavaScript ist ausgeschaltet — drücken Sie also für jeden Stapel einmal auf „Fortfahren“, bis der Import abgeschlossen ist."
 
-#: includes/Admin/Import.php:674
+#: includes/Admin/Import.php:676
 msgid "Stop the import"
 msgstr "Import abbrechen"
 
 #. translators: %s: number of rows.
-#: includes/Admin/Import.php:690
+#: includes/Admin/Import.php:692
 #, php-format
 msgid "Finished. %s rows were read."
 msgstr "Fertig. %s Zeilen wurden gelesen."
 
 #. translators: %s: number of rows.
-#: includes/Admin/Import.php:705
+#: includes/Admin/Import.php:707
 #, php-format
 msgid "%s row needs a look. The report says which, and why."
 msgid_plural "%s rows need a look. The report says which, and why."
 msgstr[0] "%s Zeile sollte angesehen werden. Der Bericht sagt, welche und warum."
 msgstr[1] "%s Zeilen sollten angesehen werden. Der Bericht sagt, welche und warum."
 
-#: includes/Admin/Import.php:723
+#: includes/Admin/Import.php:725
 msgid "Download the report"
 msgstr "Bericht herunterladen"
 
-#: includes/Admin/Import.php:736
+#: includes/Admin/Import.php:738
 msgid "Finish and clear"
 msgstr "Abschließen und aufräumen"
 
-#: includes/Admin/Import.php:743
+#: includes/Admin/Import.php:745
 msgid "Download the report before you clear this: it is deleted with the rest of the import, and it is the only record of which row became which account."
 msgstr "Laden Sie den Bericht herunter, bevor Sie hier aufräumen: Er wird mit dem Rest des Imports gelöscht und ist der einzige Nachweis darüber, welche Zeile zu welchem Konto geworden ist."
 
-#: includes/Admin/Import.php:757
+#: includes/Admin/Import.php:759
 msgid "An import is already under way. Finish or cancel it first."
 msgstr "Es läuft bereits ein Import. Schließen Sie ihn zuerst ab oder brechen Sie ihn ab."
 
 #. translators: %s: comma-separated list of field names.
-#: includes/Admin/Import.php:787
+#: includes/Admin/Import.php:789
 #, php-format
 msgid "These columns could not be recognised and have to be chosen by hand: %s."
 msgstr "Diese Spalten konnten nicht erkannt werden und müssen von Hand gewählt werden: %s."
 
-#: includes/Admin/Import.php:914
+#: includes/Admin/Import.php:916
 msgid "The import was cleared and its files deleted."
 msgstr "Der Import wurde aufgeräumt und seine Dateien wurden gelöscht."
 
-#: includes/Admin/Import.php:936
+#: includes/Admin/Import.php:938
 msgid "That report is no longer available."
 msgstr "Dieser Bericht ist nicht mehr verfügbar."
 
@@ -2314,7 +2314,7 @@ msgstr "Jedes importierte Konto verwaltet seine Organisation"
 msgid "The first account of each organization administers it; the rest are ordinary members"
 msgstr "Das erste Konto jeder Organisation verwaltet sie; die übrigen sind gewöhnliche Mitglieder"
 
-#: includes/Import/Run.php:199
+#: includes/Import/Run.php:200
 msgid "That file has column headings but no customers under them."
 msgstr "Diese Datei hat Spaltenüberschriften, aber keine Kunden darunter."
 

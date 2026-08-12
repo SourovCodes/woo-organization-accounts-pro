@@ -362,13 +362,14 @@ final class Run {
 	/**
 	 * Add one outcome to a set of counters.
 	 *
-	 * The tally of problems is the reason this counts warnings as well as outcomes, and
-	 * it came straight out of running a real export: 581 of its 647 rows had no phone
-	 * number on a shop whose checkout requires one, so a screen listing the rows with
-	 * something wrong listed almost every row, and the five genuinely broken postcodes
-	 * were somewhere in the middle of it. Counted by message instead, the same file says
-	 * two things in two lines — one of which is a shop-wide setting to reconsider before
-	 * importing at all, rather than 581 records to go through.
+	 * The tally of problems is the reason this counts warnings as well as outcomes. A
+	 * real 647-row export carried 54 postcodes WooCommerce would not accept; listed by
+	 * row that is 54 lines to read one at a time, and counted by message it is four,
+	 * which is enough to see that they are nearly all German postcodes on rows labelled
+	 * Switzerland. The same file run against a shop still on WooCommerce's defaults adds
+	 * 581 more warnings, one per row with no phone number — because the default is that
+	 * the checkout requires one. That is a single setting to reconsider before importing
+	 * at all, and as a list of rows it would have buried the 54 completely.
 	 *
 	 * @param array  $counters Summary or state, changed in place.
 	 * @param Result $result   The outcome.

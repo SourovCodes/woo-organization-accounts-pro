@@ -759,12 +759,20 @@ is the round trip that keeps the two halves honest.
   postcode is wrong can sign in and be repaired; a customer who was never imported has to be told to
   register again, and some of them will not. `testOnlyAMissingEmailAddressMakesARowUnimportable`
   asserts the rule from the other side, over every row of the fixture.
-- **What is wrong with a file is counted by problem, not by row**, and that came straight out of
-  running the real export: 581 of its 647 rows had no phone number on a shop whose checkout requires
-  one. Listed by row that is 581 lines with five genuinely broken postcodes somewhere in the middle;
-  counted by problem it is five lines, the first of which is a shop-wide setting to reconsider
-  before importing at all. A warning must therefore never carry the row's own data in it — that
-  would be a tally of one, every time.
+- **What is wrong with a file is counted by problem, not by row**, and that came out of running the
+  real export. Its 647 rows carried 54 postcodes WooCommerce would not accept — 54 lines to read one
+  at a time, four when counted by message, and those four show at a glance that they are nearly all
+  German postcodes on rows labelled Switzerland. The same file against a shop still on WooCommerce's
+  defaults adds 581 more, one per row with no phone number, because **WooCommerce defaults the
+  checkout phone field to required** and `AddressFields` reads the shop's own answer. That is one
+  setting to reconsider before importing rather than 581 records to repair, and as rows in a list it
+  would have buried the 54 entirely. A warning must therefore never carry the row's own data in it —
+  that would be a tally of one, every time.
+
+  The corollary is a trap worth naming: **the suite's database is not the shop's.** It is a fresh
+  WooCommerce install on stock settings, so a required-field warning seen under test may be saying
+  something about WooCommerce's defaults rather than about the file. Check a settings-dependent
+  figure against the real site with `./bin/wp` before reporting it as a property of the data.
 - **The preview is the importer with its writes switched off**, not a second pass that agrees with
   it. `Importer` takes a `$dry_run` flag and hands out negative pseudo-IDs for the rows it decides
   to create; everything else — the grouping, the roles, the location de-duplication, the reasons a

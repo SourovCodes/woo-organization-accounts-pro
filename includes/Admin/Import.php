@@ -535,11 +535,13 @@ class Import {
 	 * What is wrong with the file, counted by what is wrong rather than by row.
 	 *
 	 * The most useful thing on the screen, and it exists because of what a real export
-	 * looked like: 581 of its 647 rows had no phone number on a shop whose checkout
-	 * requires one. Listed by row that is 581 lines to read, and the five genuinely
-	 * broken postcodes were somewhere among them. Counted by problem it is two lines,
-	 * and the first of them is a shop-wide setting worth reconsidering before importing
-	 * at all rather than a pile of records to repair one at a time.
+	 * looked like. Its 647 rows carried 54 postcodes WooCommerce would not accept, which
+	 * is 54 lines to read one at a time and four when they are counted by message — four
+	 * that show at a glance that they are nearly all German postcodes on rows labelled
+	 * Switzerland. Run against a shop still on WooCommerce's defaults the same file adds
+	 * 581 more, one per row with no phone number, because the default is that the
+	 * checkout requires one. That is one setting to reconsider before importing at all,
+	 * and as 581 rows in a list it would have buried the 54 entirely.
 	 *
 	 * @param array $summary Preview summary or run state.
 	 * @return void
