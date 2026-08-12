@@ -238,7 +238,21 @@ class Organizations {
 		$table->prepare_items();
 
 		echo '<div class="wrap woap-organizations">';
-		printf( '<h1>%s</h1>', esc_html( Labels::organizations() ) );
+		printf( '<h1 class="wp-heading-inline">%s</h1>', esc_html( Labels::organizations() ) );
+
+		/*
+		 * The only way to reach the import screen. It is registered under this menu and
+		 * then taken back out of it, because a permanent menu item for something a shop
+		 * does once is clutter on every other day — and this is where somebody who wants
+		 * it is already standing.
+		 */
+		printf(
+			'<a href="%1$s" class="page-title-action">%2$s</a>',
+			esc_url( Import::url() ),
+			esc_html__( 'Import', 'woo-organization-accounts-pro' )
+		);
+
+		echo '<hr class="wp-header-end">';
 
 		$table->views();
 

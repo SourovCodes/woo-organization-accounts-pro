@@ -698,7 +698,8 @@ back on from WooCommerce → Accounts while the plugin is active. An account bel
 organization cannot buy anything, so offering to create one would only produce a customer who cannot
 check out. Accounts arrive through the `[woap_organization_registration]` shortcode — on a page
 created at activation — or through an invitation. Both flows share that one shortcode: it shows the
-join form instead of the registration form when the request carries a token.
+join form instead of the registration form when the request carries a token. The importer below is
+the third way, and the only one that is not somebody filling in a form.
 
 **Switching WooCommerce's registration off leaves the theme's links to it pointing at nothing, so
 `?action=register` is redirected rather than ignored.** `add_query_arg( 'action', 'register' )` is
@@ -719,6 +720,100 @@ was exactly the state the organization's email address was in before it was remo
 checked**: a VAT number, a company registration number and a US EIN look nothing alike, the rules
 change with the country and the year, and a pattern that rejects a valid identifier is worse than
 no pattern — the shop can see what was typed and this plugin cannot see whether it is real.
+
+### Importing a shop that had no organizations
+
+The third way an account comes into existence, and the only one that is not a person filling in a
+form. A shop moving onto this plugin has customers who are not organizations yet: a flat export,
+one row per person, in which the only evidence of who works together is the address they billed to.
+`includes/Import/` turns that into organizations, members and locations; `Admin\Import` is the
+screen, registered under the WooCommerce menu and then removed from it with
+`remove_submenu_page()` — the page stays registered and capability-checked, and the organizations
+list links to it, because a permanent menu item for something a shop does once is clutter on every
+other day.
+
+**The grouping key is company + street + postcode + town, and the person's name is deliberately not
+in it.** The person is the member, not the organization. Keying on them splits the one case this
+plugin exists for: on the 647-row export this was built against, including the name turned three
+colleagues at one address into three organizations that could not see each other's orders. Company
+plus a full street address is already specific enough that a false merge needs two unrelated parties
+to share a company name *and* a street *and* a postcode.
+
+The key **errs towards splitting**, because the two mistakes are not equally bad. An organization
+that arrived as two is a merge away. Two unrelated customers merged into one are a privacy failure —
+each can read the other's orders and ship to the other's addresses — and no later merge undoes
+having shown them. `Lüthy + Stocker AG` with four branch addresses stays four organizations for the
+same reason, and stripping the legal form (`Example` / `Example GmbH`) is an opt-in checkbox rather
+than a default: on the real file it merged two pairs correctly and would merge two different
+companies sharing a building.
+
+**The key is derived, never stored**, which is the load-bearing decision. `for_organization()`
+re-derives it from an organization's own columns, so a second run of the same file creates nothing,
+a follow-up export joins the organizations the first one made, and an import finds an organization
+that registered on the site by hand. It costs no column — so no schema change and no
+`WOAP_DB_VERSION` bump — and `ImportTest::testAStoredOrganizationAnswersWithTheKeyItWasCreatedFrom`
+is the round trip that keeps the two halves honest.
+
+- **Nothing refuses a row but a missing email address.** A postcode WooCommerce rejects, a country
+  it does not know, an address with no street — all imported, all reported. A customer whose
+  postcode is wrong can sign in and be repaired; a customer who was never imported has to be told to
+  register again, and some of them will not. `testOnlyAMissingEmailAddressMakesARowUnimportable`
+  asserts the rule from the other side, over every row of the fixture.
+- **What is wrong with a file is counted by problem, not by row**, and that came straight out of
+  running the real export: 581 of its 647 rows had no phone number on a shop whose checkout requires
+  one. Listed by row that is 581 lines with five genuinely broken postcodes somewhere in the middle;
+  counted by problem it is five lines, the first of which is a shop-wide setting to reconsider
+  before importing at all. A warning must therefore never carry the row's own data in it — that
+  would be a tally of one, every time.
+- **The preview is the importer with its writes switched off**, not a second pass that agrees with
+  it. `Importer` takes a `$dry_run` flag and hands out negative pseudo-IDs for the rows it decides
+  to create; everything else — the grouping, the roles, the location de-duplication, the reasons a
+  row is skipped — runs identically. `testThePreviewAgreesWithTheImport` is the assertion that makes
+  the preview worth showing, and it caught two real divergences: a `> 0` test that read every
+  pseudo-ID as "no organization", and a created/joined flag read from the run rather than the row.
+- **Nothing sends email.** Not the shop's new-account mail, not `NewOrganizationEmail` — the import
+  fires `woo_org_accounts_organization_imported` rather than `..._registered`, because a migration
+  is not six hundred sign-ups. Accounts are created with a random password nobody holds and the
+  shop invites people to set one in its own time; `pre_wp_mail` is short-circuited for the length of
+  each batch as well, because another plugin may be listening for new users.
+- **A user who is already a member of an organization is never moved.** The membership row is what
+  every order they have placed is scoped by. An address belonging to the organization the row maps
+  to has been imported already; one belonging to a *different* organization is the case an import
+  cannot answer, and it is reported rather than guessed at. An existing WordPress user with no
+  membership is joined up instead of duplicated — but **anybody holding `manage_woocommerce` keeps
+  their role**, because `set_role()` replaces every role a user holds and demoting an administrator
+  is how an import locks the shop's own staff out of wp-admin.
+- **An organization is active if any of its rows is.** The status arrives once per person and the
+  copies disagree — one employee who has left, one who has not. Taking the first row's answer
+  suspends a working customer because a former colleague's login was closed. Only organizations the
+  run created are corrected this way; one that was already on the site has a status somebody chose.
+- **The location key is the address and the company at it, not the contact name or the phone.**
+  Those say who to ask for when the van arrives, not where it goes. A flat export names a different
+  employee as the contact on every row, so keying on the name turned one loading bay into one
+  location per employee — an identical address repeated down the checkout's delivery selector with
+  nothing to tell the copies apart. `address_2` stays in the key, which is where a floor or a unit
+  number lives.
+- **Every organization ends up with at least one location**, falling back to its billing address,
+  because an organization with none cannot be shipped to and therefore cannot check out at all.
+- **The export is the most sensitive file a shop owns and the uploads directory is public.** A
+  random 32-character filename, `.htaccess` plus `index.html`, deletion the moment the last batch
+  finishes, and a sweep of anything a closed browser left behind after a day. The report is written
+  beside it and never linked: downloading it goes through an admin-post handler with a capability
+  check and a nonce. The report is also where the source shop's customer number lives — this plugin
+  has no column for one and inventing one would be a field with no destination, but it is what the
+  two systems are reconciled by.
+- **State lives in an unautoloaded option, not a transient**, because a transient is allowed to
+  vanish and an import whose state disappeared halfway through is six hundred half-imported
+  customers with no screen able to say which. One import at a time: two running at once would race
+  on the very lookup the grouping depends on.
+- **Batches are nonced POSTs to `admin-post.php`.** The objection recorded above is about *frontend*
+  handlers, where WooCommerce loads nothing; in wp-admin it is the right door. Each batch redirects
+  back to the screen, so progress survives a host that kills a long request, and a small inline
+  script clicks the button a person would otherwise click — with the script blocked the import still
+  finishes, one press per batch.
+
+`tests/fixtures/customers.csv` is synthetic. Every shape in it was found in the real export and none
+of the data is anybody's: **never commit a customer file**, the same rule as a credential.
 
 ### Approval gates two different things, and they are two settings
 

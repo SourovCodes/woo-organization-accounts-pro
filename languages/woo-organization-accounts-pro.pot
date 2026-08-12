@@ -2,14 +2,14 @@
 # This file is distributed under the GPL-2.0-or-later.
 msgid ""
 msgstr ""
-"Project-Id-Version: WooCommerce Organization Accounts Pro 0.6.0\n"
+"Project-Id-Version: WooCommerce Organization Accounts Pro 0.7.0\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/woo-organization-accounts-pro\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-08-11T05:28:34+00:00\n"
+"POT-Creation-Date: 2026-08-12T02:40:29+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: woo-organization-accounts-pro\n"
@@ -34,6 +34,252 @@ msgstr ""
 msgid "Sourov Biswas"
 msgstr ""
 
+#. translators: %s: the plural organization noun for the site's mode, for example "Companies".
+#: includes/Admin/Import.php:131
+#, php-format
+msgid "Import %s"
+msgstr ""
+
+#: includes/Admin/Import.php:169
+#: includes/Admin/Import.php:963
+msgid "You are not allowed to import customers."
+msgstr ""
+
+#. translators: %s: the plural organization noun for the site's mode, for example "companies".
+#: includes/Admin/Import.php:250
+#, php-format
+msgid "Upload a customer export from your old shop, one row per customer. Rows that share a company name and a street address become one %s, and each row becomes an account inside it."
+msgstr ""
+
+#: includes/Admin/Import.php:257
+msgid "Nothing is written until you have seen a preview of what will happen, and no email is sent to anybody. Imported accounts are created with a random password: your customers set their own through the shop's lost-password form, whenever you choose to tell them."
+msgstr ""
+
+#: includes/Admin/Import.php:265
+msgid "CSV file"
+msgstr ""
+
+#. translators: %s: maximum upload size, for example "8 MB".
+#: includes/Admin/Import.php:272
+#, php-format
+msgid "Comma or semicolon separated, with the column headings on the first line. Up to %s."
+msgstr ""
+
+#: includes/Admin/Import.php:279
+msgid "Upload and continue"
+msgstr ""
+
+#. translators: 1: file name. 2: number of rows.
+#: includes/Admin/Import.php:295
+#, php-format
+msgid "%1$s, %2$s customer."
+msgid_plural "%1$s, %2$s customers."
+msgstr[0] ""
+msgstr[1] ""
+
+#: includes/Admin/Import.php:309
+msgid "Preview the import"
+msgstr ""
+
+#: includes/Admin/Import.php:320
+msgid "Cancel and delete the uploaded file"
+msgstr ""
+
+#: includes/Admin/Import.php:352
+msgid "(required)"
+msgstr ""
+
+#: includes/Admin/Import.php:358
+msgid "— not in this file —"
+msgstr ""
+
+#: includes/Admin/Import.php:386
+msgid "Options"
+msgstr ""
+
+#: includes/Admin/Import.php:389
+#: templates/myaccount/member-form.php:151
+#: templates/myaccount/members.php:48
+msgid "Permissions"
+msgstr ""
+
+#: includes/Admin/Import.php:402
+msgid "Grouping"
+msgstr ""
+
+#: includes/Admin/Import.php:406
+msgid "Treat \"Example\" and \"Example GmbH\" at the same address as one account"
+msgstr ""
+
+#: includes/Admin/Import.php:410
+msgid "Off by default. It merges a company that spelled its own name two ways, and it would merge two different companies whose names differ only by their legal form and who share a building."
+msgstr ""
+
+#: includes/Admin/Import.php:414
+msgid "Email"
+msgstr ""
+
+#: includes/Admin/Import.php:418
+msgid "Send no email at all while the import runs"
+msgstr ""
+
+#: includes/Admin/Import.php:422
+msgid "Recommended. This plugin sends nothing of its own either way, but another plugin may be listening for new accounts, and an import is not the moment to find out."
+msgstr ""
+
+#. translators: %s: comma-separated list of field names.
+#: includes/Admin/Import.php:444
+#: includes/Admin/Import.php:851
+#, php-format
+msgid "Nothing can be imported until these columns are chosen: %s."
+msgstr ""
+
+#: includes/Admin/Import.php:461
+msgid "Preview"
+msgstr ""
+
+#. translators: 1: rows previewed. 2: rows in the file.
+#: includes/Admin/Import.php:469
+#, php-format
+msgid "This preview covers the first %1$s rows of %2$s. The import itself processes the whole file."
+msgstr ""
+
+#. translators: %s: number of rows.
+#: includes/Admin/Import.php:490
+#, php-format
+msgid "Import %s rows"
+msgstr ""
+
+#. translators: %s: the plural organization noun for the site's mode.
+#. translators: %s: the plural location noun for the site's mode.
+#: includes/Admin/Import.php:507
+#: includes/Admin/Import.php:512
+#, php-format
+msgid "%s created"
+msgstr ""
+
+#: includes/Admin/Import.php:554
+msgid "What is wrong with the file"
+msgstr ""
+
+#: includes/Admin/Import.php:557
+msgid "None of these stops a row being imported. A required field that is empty is the one worth reading twice: the shop asks for it at checkout, so an account without it cannot buy until somebody fills it in — or until the shop stops requiring it."
+msgstr ""
+
+#: includes/Admin/Import.php:561
+msgid "Rows"
+msgstr ""
+
+#: includes/Admin/Import.php:562
+msgid "Problem"
+msgstr ""
+
+#: includes/Admin/Import.php:585
+msgid "Rows worth checking"
+msgstr ""
+
+#: includes/Admin/Import.php:588
+msgid "Every one of these is still imported. They are listed because something about them was not straightforward, and the report you can download afterwards lists them all."
+msgstr ""
+
+#: includes/Admin/Import.php:592
+#: includes/Import/Report.php:36
+msgid "Row"
+msgstr ""
+
+#: includes/Admin/Import.php:593
+#: includes/Admin/Organizations.php:440
+#: includes/Admin/Organizations.php:519
+#: includes/Import/Mapping.php:52
+#: includes/Import/Report.php:37
+#: templates/myaccount/invitation-form.php:60
+#: templates/myaccount/member-form.php:86
+#: templates/myaccount/organization.php:84
+msgid "Email address"
+msgstr ""
+
+#: includes/Admin/Import.php:595
+#: includes/Import/Report.php:39
+msgid "Result"
+msgstr ""
+
+#: includes/Admin/Import.php:596
+#: includes/Import/Report.php:44
+msgid "Notes"
+msgstr ""
+
+#. translators: %s: number of rows listed.
+#: includes/Admin/Import.php:617
+#, php-format
+msgid "Only the first %s are listed here."
+msgstr ""
+
+#: includes/Admin/Import.php:634
+msgid "Importing"
+msgstr ""
+
+#. translators: 1: rows done. 2: rows in the file.
+#: includes/Admin/Import.php:640
+#, php-format
+msgid "%1$s of %2$s rows."
+msgstr ""
+
+#: includes/Admin/Import.php:656
+msgid "Continue"
+msgstr ""
+
+#: includes/Admin/Import.php:668
+msgid "JavaScript is switched off, so press Continue once for each batch until the import finishes."
+msgstr ""
+
+#: includes/Admin/Import.php:674
+msgid "Stop the import"
+msgstr ""
+
+#. translators: %s: number of rows.
+#: includes/Admin/Import.php:690
+#, php-format
+msgid "Finished. %s rows were read."
+msgstr ""
+
+#. translators: %s: number of rows.
+#: includes/Admin/Import.php:705
+#, php-format
+msgid "%s row needs a look. The report says which, and why."
+msgid_plural "%s rows need a look. The report says which, and why."
+msgstr[0] ""
+msgstr[1] ""
+
+#: includes/Admin/Import.php:723
+msgid "Download the report"
+msgstr ""
+
+#: includes/Admin/Import.php:736
+msgid "Finish and clear"
+msgstr ""
+
+#: includes/Admin/Import.php:743
+msgid "Download the report before you clear this: it is deleted with the rest of the import, and it is the only record of which row became which account."
+msgstr ""
+
+#: includes/Admin/Import.php:757
+msgid "An import is already under way. Finish or cancel it first."
+msgstr ""
+
+#. translators: %s: comma-separated list of field names.
+#: includes/Admin/Import.php:787
+#, php-format
+msgid "These columns could not be recognised and have to be chosen by hand: %s."
+msgstr ""
+
+#: includes/Admin/Import.php:914
+msgid "The import was cleared and its files deleted."
+msgstr ""
+
+#: includes/Admin/Import.php:936
+msgid "That report is no longer available."
+msgstr ""
+
 #. translators: %s: the organization noun for the site's mode, for example "Company".
 #: includes/Admin/OrderColumn.php:136
 #, php-format
@@ -55,28 +301,32 @@ msgstr ""
 msgid "Placed by"
 msgstr ""
 
-#: includes/Admin/Organizations.php:269
+#: includes/Admin/Organizations.php:252
+msgid "Import"
+msgstr ""
+
+#: includes/Admin/Organizations.php:283
 msgid "Search"
 msgstr ""
 
-#: includes/Admin/Organizations.php:287
+#: includes/Admin/Organizations.php:301
 #: includes/Guard.php:105
 msgid "That account no longer exists."
 msgstr ""
 
 #. translators: %s: the plural organization noun for the site's mode.
-#: includes/Admin/Organizations.php:312
+#: includes/Admin/Organizations.php:326
 #, php-format
 msgid "← Back to all %s"
 msgstr ""
 
-#: includes/Admin/Organizations.php:372
+#: includes/Admin/Organizations.php:386
 msgid "Details"
 msgstr ""
 
-#: includes/Admin/Organizations.php:373
-#: includes/Admin/Organizations.php:425
-#: includes/Admin/Organizations.php:471
+#: includes/Admin/Organizations.php:387
+#: includes/Admin/Organizations.php:439
+#: includes/Admin/Organizations.php:485
 #: includes/Data/Organization.php:256
 #: templates/myaccount/location-form.php:106
 #: templates/myaccount/locations.php:29
@@ -84,16 +334,16 @@ msgstr ""
 msgid "Name"
 msgstr ""
 
-#: includes/Admin/Organizations.php:374
+#: includes/Admin/Organizations.php:388
 #: includes/Admin/OrganizationsListTable.php:69
 #: includes/Admin/Settings.php:178
 msgid "VAT / tax ID"
 msgstr ""
 
-#: includes/Admin/Organizations.php:376
-#: includes/Admin/Organizations.php:428
-#: includes/Admin/Organizations.php:507
-#: includes/Admin/Organizations.php:543
+#: includes/Admin/Organizations.php:390
+#: includes/Admin/Organizations.php:442
+#: includes/Admin/Organizations.php:521
+#: includes/Admin/Organizations.php:557
 #: includes/Admin/OrganizationsListTable.php:67
 #: templates/myaccount/invitations.php:38
 #: templates/myaccount/member-form.php:133
@@ -102,35 +352,29 @@ msgstr ""
 msgid "Status"
 msgstr ""
 
-#: includes/Admin/Organizations.php:391
+#: includes/Admin/Organizations.php:405
 msgid "Shipping"
 msgstr ""
 
-#: includes/Admin/Organizations.php:393
+#: includes/Admin/Organizations.php:407
 msgid "Allow one-off shipping addresses at checkout"
 msgstr ""
 
-#: includes/Admin/Organizations.php:398
+#: includes/Admin/Organizations.php:412
+#: includes/Import/Mapping.php:175
+#: includes/Import/Record.php:123
 #: templates/myaccount/organization.php:198
 #: templates/myaccount/organization.php:209
 #: templates/registration/organization-form.php:134
 msgid "Billing address"
 msgstr ""
 
-#: includes/Admin/Organizations.php:419
+#: includes/Admin/Organizations.php:433
 msgid "Nobody yet."
 msgstr ""
 
-#: includes/Admin/Organizations.php:426
-#: includes/Admin/Organizations.php:505
-#: templates/myaccount/invitation-form.php:60
-#: templates/myaccount/member-form.php:86
-#: templates/myaccount/organization.php:84
-msgid "Email address"
-msgstr ""
-
-#: includes/Admin/Organizations.php:427
-#: includes/Admin/Organizations.php:506
+#: includes/Admin/Organizations.php:441
+#: includes/Admin/Organizations.php:520
 #: templates/myaccount/invitation-form.php:71
 #: templates/myaccount/invitations.php:37
 #: templates/myaccount/member-form.php:108
@@ -138,77 +382,78 @@ msgstr ""
 msgid "Role"
 msgstr ""
 
-#: includes/Admin/Organizations.php:439
+#: includes/Admin/Organizations.php:453
 #: templates/myaccount/member-form.php:55
 #: templates/myaccount/members.php:143
 msgid "(deleted account)"
 msgstr ""
 
-#: includes/Admin/Organizations.php:445
+#: includes/Admin/Organizations.php:459
 #: includes/Data/Organization.php:111
+#: includes/Import/Mapping.php:76
 #: templates/myaccount/member-form.php:137
 #: templates/myaccount/members.php:181
 msgid "Active"
 msgstr ""
 
-#: includes/Admin/Organizations.php:445
+#: includes/Admin/Organizations.php:459
 #: templates/myaccount/member-form.php:140
 #: templates/myaccount/members.php:183
 msgid "Inactive"
 msgstr ""
 
-#: includes/Admin/Organizations.php:465
+#: includes/Admin/Organizations.php:479
 msgid "None yet."
 msgstr ""
 
-#: includes/Admin/Organizations.php:472
+#: includes/Admin/Organizations.php:486
 msgid "Address"
 msgstr ""
 
-#: includes/Admin/Organizations.php:473
+#: includes/Admin/Organizations.php:487
 #: includes/Admin/OrganizationsListTable.php:68
 msgid "Contact"
 msgstr ""
 
-#: includes/Admin/Organizations.php:494
+#: includes/Admin/Organizations.php:508
 #: includes/Frontend/MyAccount.php:103
 msgid "Invitations"
 msgstr ""
 
-#: includes/Admin/Organizations.php:499
+#: includes/Admin/Organizations.php:513
 msgid "None sent."
 msgstr ""
 
-#: includes/Admin/Organizations.php:531
+#: includes/Admin/Organizations.php:545
 msgid "Recent orders"
 msgstr ""
 
-#: includes/Admin/Organizations.php:534
+#: includes/Admin/Organizations.php:548
 msgid "No orders yet."
 msgstr ""
 
-#: includes/Admin/Organizations.php:540
+#: includes/Admin/Organizations.php:554
 #: templates/myaccount/organization-orders.php:35
 msgid "Order"
 msgstr ""
 
-#: includes/Admin/Organizations.php:541
+#: includes/Admin/Organizations.php:555
 #: templates/myaccount/organization-orders.php:36
 msgid "Date"
 msgstr ""
 
-#: includes/Admin/Organizations.php:544
+#: includes/Admin/Organizations.php:558
 #: templates/myaccount/organization-orders.php:40
 msgid "Total"
 msgstr ""
 
-#: includes/Admin/Organizations.php:791
+#: includes/Admin/Organizations.php:805
 #: includes/Admin/Settings.php:693
 #: includes/Guard.php:68
 msgid "You do not have permission to do that."
 msgstr ""
 
-#: includes/Admin/Organizations.php:792
+#: includes/Admin/Organizations.php:806
 #: includes/Admin/Settings.php:694
 #: includes/Guard.php:69
 msgid "Permission denied"
@@ -570,6 +815,7 @@ msgid "Rejected"
 msgstr ""
 
 #: includes/Data/Organization.php:257
+#: includes/Import/Mapping.php:92
 #: templates/myaccount/organization.php:165
 #: templates/registration/organization-form.php:121
 msgid "VAT number, tax ID or registration number"
@@ -904,12 +1150,207 @@ msgstr ""
 msgid "Registration failed. Please try again."
 msgstr ""
 
-#: includes/Frontend/Registration.php:947
+#: includes/Frontend/Registration.php:953
 msgid "Register your organization"
 msgstr ""
 
 #: includes/Guard.php:106
 msgid "Not found"
+msgstr ""
+
+#: includes/Import/Csv.php:82
+#: includes/Import/Csv.php:92
+msgid "The uploaded file could not be read. Upload it again."
+msgstr ""
+
+#: includes/Import/Csv.php:132
+#: includes/Import/Csv.php:146
+msgid "That file has no columns in it. The first line of the file has to be the column headings."
+msgstr ""
+
+#: includes/Import/Importer.php:158
+msgid "The organization could not be saved."
+msgstr ""
+
+#: includes/Import/Importer.php:183
+msgid "The membership could not be saved."
+msgstr ""
+
+#: includes/Import/Importer.php:221
+msgid "This account has been imported already."
+msgstr ""
+
+#. translators: 1: email address. 2: name of the organization the address already belongs to.
+#: includes/Import/Importer.php:232
+#, php-format
+msgid "%1$s already belongs to \"%2$s\", so this row was left alone. Two organizations claim this person and only one of them can have them."
+msgstr ""
+
+#: includes/Import/Importer.php:445
+msgid "A WordPress account with this address already existed and was added to the organization."
+msgstr ""
+
+#: includes/Import/Importer.php:448
+msgid "Their WordPress role was left alone, because they can manage the shop."
+msgstr ""
+
+#: includes/Import/Importer.php:548
+msgid "The delivery address could not be saved."
+msgstr ""
+
+#: includes/Import/Mapping.php:58
+#: includes/Import/Mapping.php:116
+#: templates/registration/invitation-form.php:111
+#: templates/registration/organization-form.php:181
+msgid "First name"
+msgstr ""
+
+#: includes/Import/Mapping.php:64
+#: includes/Import/Mapping.php:117
+#: templates/registration/invitation-form.php:116
+#: templates/registration/organization-form.php:186
+msgid "Last name"
+msgstr ""
+
+#: includes/Import/Mapping.php:70
+#: includes/Import/Report.php:38
+msgid "Customer number"
+msgstr ""
+
+#. translators: %s: the organization noun for the site's mode, for example "Company".
+#: includes/Import/Mapping.php:84
+#: templates/registration/organization-form.php:100
+#, php-format
+msgid "%s name"
+msgstr ""
+
+#: includes/Import/Mapping.php:118
+#: includes/Labels.php:81
+msgid "Company"
+msgstr ""
+
+#: includes/Import/Mapping.php:119
+msgid "Street address"
+msgstr ""
+
+#: includes/Import/Mapping.php:120
+msgid "Address line 2"
+msgstr ""
+
+#: includes/Import/Mapping.php:121
+msgid "Town / City"
+msgstr ""
+
+#: includes/Import/Mapping.php:122
+msgid "State / County"
+msgstr ""
+
+#: includes/Import/Mapping.php:123
+msgid "Postcode / ZIP"
+msgstr ""
+
+#: includes/Import/Mapping.php:124
+msgid "Country"
+msgstr ""
+
+#: includes/Import/Mapping.php:125
+#: templates/myaccount/organization.php:90
+msgid "Phone"
+msgstr ""
+
+#: includes/Import/Mapping.php:174
+msgid "Account"
+msgstr ""
+
+#. translators: %s: the location noun for the site's mode, for example "Branch".
+#: includes/Import/Mapping.php:178
+#, php-format
+msgid "Delivery address (imported as a %s)"
+msgstr ""
+
+#: includes/Import/Record.php:124
+#: templates/myaccount/locations.php:30
+msgid "Delivery address"
+msgstr ""
+
+#: includes/Import/Record.php:127
+msgid "No email address, so no account can be created for this row."
+msgstr ""
+
+#: includes/Import/Record.php:137
+msgid "The email address is not one WordPress will accept."
+msgstr ""
+
+#. translators: 1: which address, for example "Billing address". 2: what is wrong with it.
+#: includes/Import/Record.php:198
+#, php-format
+msgid "%1$s: %2$s"
+msgstr ""
+
+#: includes/Import/Report.php:40
+msgid "Organization"
+msgstr ""
+
+#: includes/Import/Report.php:41
+msgid "Organization ID"
+msgstr ""
+
+#: includes/Import/Report.php:42
+msgid "User ID"
+msgstr ""
+
+#: includes/Import/Report.php:43
+msgid "Delivery addresses added"
+msgstr ""
+
+#: includes/Import/Result.php:103
+msgid "Created"
+msgstr ""
+
+#: includes/Import/Result.php:104
+msgid "Added to an existing account"
+msgstr ""
+
+#: includes/Import/Result.php:105
+msgid "Existing user linked"
+msgstr ""
+
+#: includes/Import/Result.php:106
+msgid "Skipped"
+msgstr ""
+
+#: includes/Import/Result.php:107
+msgid "Failed"
+msgstr ""
+
+#: includes/Import/Run.php:83
+msgid "Every imported account administers its organization"
+msgstr ""
+
+#: includes/Import/Run.php:84
+msgid "The first account of each organization administers it; the rest are ordinary members"
+msgstr ""
+
+#: includes/Import/Run.php:199
+msgid "That file has column headings but no customers under them."
+msgstr ""
+
+#. translators: %s: directory path.
+#: includes/Import/Storage.php:64
+#, php-format
+msgid "The directory %s could not be created, so there is nowhere to put the uploaded file."
+msgstr ""
+
+#: includes/Import/Storage.php:108
+msgid "No file arrived. Choose a CSV file and try again."
+msgstr ""
+
+#: includes/Import/Storage.php:121
+msgid "That is not a CSV file. Export the customers as CSV and upload that."
+msgstr ""
+
+#: includes/Import/Storage.php:128
+msgid "The uploaded file could not be stored. Check that the uploads directory is writable."
 msgstr ""
 
 #: includes/Labels.php:68
@@ -922,10 +1363,6 @@ msgstr ""
 
 #: includes/Labels.php:80
 msgid "Institute"
-msgstr ""
-
-#: includes/Labels.php:81
-msgid "Company"
 msgstr ""
 
 #: includes/Labels.php:91
@@ -1542,10 +1979,6 @@ msgstr ""
 msgid "Add %s"
 msgstr ""
 
-#: templates/myaccount/locations.php:30
-msgid "Delivery address"
-msgstr ""
-
 #: templates/myaccount/locations.php:31
 msgid "Delivery contact"
 msgstr ""
@@ -1615,11 +2048,6 @@ msgstr ""
 
 #: templates/myaccount/member-form.php:144
 msgid "An inactive member keeps their sign-in but cannot order until you make them active again."
-msgstr ""
-
-#: templates/myaccount/member-form.php:151
-#: templates/myaccount/members.php:48
-msgid "Permissions"
 msgstr ""
 
 #: templates/myaccount/member-form.php:155
@@ -1746,10 +2174,6 @@ msgstr ""
 msgid "Next"
 msgstr ""
 
-#: templates/myaccount/organization.php:90
-msgid "Phone"
-msgstr ""
-
 #: templates/myaccount/organization.php:96
 msgid "VAT or tax ID"
 msgstr ""
@@ -1802,54 +2226,38 @@ msgid "Go to my account"
 msgstr ""
 
 #. translators: %s: organization name.
-#: templates/registration/invitation-form.php:42
-#: templates/registration/invitation-form.php:129
+#: templates/registration/invitation-form.php:44
+#: templates/registration/invitation-form.php:138
 #, php-format
 msgid "Join %s"
 msgstr ""
 
 #. translators: 1: organization name, 2: the invited email address.
-#: templates/registration/invitation-form.php:54
+#: templates/registration/invitation-form.php:56
 #, php-format
 msgid "You have been invited to join %1$s as %2$s."
 msgstr ""
 
-#: templates/registration/invitation-form.php:73
+#: templates/registration/invitation-form.php:75
 msgid "An account already exists for that address. Sign in with it, then follow the invitation link again."
 msgstr ""
 
-#: templates/registration/invitation-form.php:77
+#: templates/registration/invitation-form.php:79
 msgid "Sign in"
 msgstr ""
 
-#: templates/registration/invitation-form.php:95
+#: templates/registration/invitation-form.php:104
 #: templates/registration/organization-form.php:65
 msgid "Leave this field empty"
 msgstr ""
 
-#: templates/registration/invitation-form.php:102
-#: templates/registration/organization-form.php:181
-msgid "First name"
-msgstr ""
-
-#: templates/registration/invitation-form.php:107
-#: templates/registration/organization-form.php:186
-msgid "Last name"
-msgstr ""
-
-#: templates/registration/invitation-form.php:112
+#: templates/registration/invitation-form.php:121
 msgid "Choose a password"
 msgstr ""
 
-#: templates/registration/invitation-form.php:117
+#: templates/registration/invitation-form.php:126
 #: templates/registration/organization-form.php:211
 msgid "Repeat password"
-msgstr ""
-
-#. translators: %s: the organization noun for the site's mode, for example "Company".
-#: templates/registration/organization-form.php:100
-#, php-format
-msgid "%s name"
 msgstr ""
 
 #. translators: %s: the organization noun for the site's mode, for example "Company".

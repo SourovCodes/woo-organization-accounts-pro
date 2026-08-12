@@ -66,3 +66,26 @@
 	color: #d63638;
 	margin: 4px 0 0;
 }
+
+/*
+ * The import's progress bar. wp-admin's own colours again, and no animation: the bar
+ * moves once per batch, when the screen reloads, so a transition would be a lie about
+ * what is happening between two page loads.
+ */
+.woap-import__progress {
+	background: #f0f0f1;
+	border: 1px solid #c3c4c7;
+	border-radius: 2px;
+	height: 20px;
+	max-width: 32em;
+	overflow: hidden;
+}
+
+.woap-import__progress-bar {
+	background: #2271b1;
+	height: 100%;
+}
+
+.woap-import__summary th {
+	font-weight: 600;
+}

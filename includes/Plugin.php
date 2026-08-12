@@ -7,6 +7,7 @@
 
 namespace WooOrgAccounts;
 
+use WooOrgAccounts\Admin\Import;
 use WooOrgAccounts\Admin\Organizations;
 use WooOrgAccounts\Admin\OrderColumn;
 use WooOrgAccounts\Admin\Settings;
@@ -145,6 +146,7 @@ final class Plugin {
 		if ( is_admin() ) {
 			( new Settings() )->register();
 			( new Organizations() )->register();
+			( new Import() )->register();
 			( new OrderColumn() )->register();
 			( new ThemeSettings() )->register();
 		}
