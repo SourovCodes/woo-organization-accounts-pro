@@ -7,6 +7,7 @@
 
 namespace WooOrgAccounts\Tests;
 
+use WooOrgAccounts\Admin\Import;
 use WooOrgAccounts\Data\LocationRepository;
 use WooOrgAccounts\Data\Member;
 use WooOrgAccounts\Data\MemberRepository;
@@ -124,6 +125,62 @@ class ImportTest extends TestCase {
 		}
 
 		return null;
+	}
+
+	/**
+	 * The screen is hidden from the menu and still reachable by URL.
+	 *
+	 * The two halves have to be asserted together, because doing the second thing the
+	 * obvious way breaks the first and nothing else notices. `remove_submenu_page()`
+	 * during `admin_menu` — which is what this shipped as — left the page answering 403
+	 * to everybody, including administrators: `user_can_access_admin_page()` runs from
+	 * `wp-admin/includes/menu.php` as soon as `admin_menu` is done, and it does not ask
+	 * the page who its parent is. `get_admin_page_parent()` finds one by searching
+	 * `$submenu`, so a page taken out of `$submenu` resolves to no parent, its hook name
+	 * comes out as `admin_page_<slug>` rather than `woocommerce_page_<slug>`, and the
+	 * lookup misses the entry `add_submenu_page()` made under the real name.
+	 *
+	 * The assertion is therefore made at the two moments WordPress makes them: the
+	 * access check after `admin_menu`, and the menu contents after `admin_head`.
+	 *
+	 * @return void
+	 */
+	public function testTheImportScreenIsHiddenFromTheMenuAndStillReachable() {
+		require_once ABSPATH . 'wp-admin/includes/admin.php';
+
+		$this->act_as_shop_manager();
+
+		global $menu, $submenu, $_registered_pages, $admin_page_hooks, $_parent_pages, $pagenow, $plugin_page, $parent_file, $typenow;
+
+		$backup = array( $menu, $submenu, $_registered_pages, $admin_page_hooks, $_parent_pages );
+
+		$menu              = array();
+		$submenu           = array();
+		$_registered_pages = array();
+		$admin_page_hooks  = array();
+		$_parent_pages     = array();
+		$pagenow           = 'admin.php';
+		$typenow           = '';
+		$plugin_page       = Import::PAGE_SLUG;
+		$parent_file       = '';
+
+		add_menu_page( 'WooCommerce', 'WooCommerce', 'manage_woocommerce', 'woocommerce', '__return_null' );
+
+		$screen = new Import();
+		$screen->register_menu();
+
+		$reachable = user_can_access_admin_page();
+
+		$parent_file = '';
+
+		$screen->hide_from_menu();
+
+		$slugs = wp_list_pluck( (array) ( $submenu['woocommerce'] ?? array() ), 2 );
+
+		list( $menu, $submenu, $_registered_pages, $admin_page_hooks, $_parent_pages ) = $backup;
+
+		$this->assertTrue( $reachable, 'An administrator was refused the import screen.' );
+		$this->assertNotContains( Import::PAGE_SLUG, $slugs, 'The import screen should not sit in the menu.' );
 	}
 
 	/**

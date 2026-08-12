@@ -67,6 +67,7 @@ class Import {
 	 */
 	public function register() {
 		add_action( 'admin_menu', array( $this, 'register_menu' ) );
+		add_action( 'admin_head', array( $this, 'hide_from_menu' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 		add_action( 'admin_post_woap_import_upload', array( $this, 'handle_upload' ) );
 		add_action( 'admin_post_woap_import_configure', array( $this, 'handle_configure' ) );
@@ -77,14 +78,22 @@ class Import {
 	}
 
 	/**
-	 * Add the screen, and then take it back out of the menu.
+	 * Add the screen under the WooCommerce menu.
 	 *
-	 * Registered under the WooCommerce menu so that it is capability-checked and
-	 * reachable the ordinary way, and removed from the menu itself because a permanent
-	 * item for something a shop does once is clutter on every other day. It is linked
-	 * from the organizations list, which is where somebody who wants it is already
-	 * standing. `remove_submenu_page()` only takes the item out of the menu; the page
-	 * stays registered, so the URL still resolves and still checks the capability.
+	 * Registered here and hidden later, on `admin_head` — never with
+	 * `remove_submenu_page()` during `admin_menu`, which is what this first shipped as
+	 * and which made the screen answer **403 to everybody**.
+	 *
+	 * `user_can_access_admin_page()` does not ask the page who its parent is. It calls
+	 * `get_admin_page_parent()`, which finds one by *searching `$submenu`* — so a page
+	 * taken out of `$submenu` has no parent, its hook name is computed as
+	 * `admin_page_<slug>` instead of `woocommerce_page_<slug>`, and the lookup against
+	 * `$_registered_pages` misses the entry `add_submenu_page()` made under the real
+	 * name. Nothing about the page is wrong; WordPress simply cannot find it any more.
+	 *
+	 * `admin_head` is late enough that the access check and `$parent_file` have both
+	 * been resolved, and early enough that the menu has not been printed. It is what
+	 * WooCommerce does for its own product importer, for the same reason.
 	 *
 	 * @return void
 	 */
@@ -97,8 +106,32 @@ class Import {
 			self::PAGE_SLUG,
 			array( $this, 'render' )
 		);
+	}
 
-		remove_submenu_page( 'woocommerce', self::PAGE_SLUG );
+	/**
+	 * Take the item out of the menu, leaving the page reachable.
+	 *
+	 * A permanent menu item for something a shop does once is clutter on every other
+	 * day, and the organizations list carries the link for the day it is wanted. While
+	 * the screen is open the organizations item is highlighted instead, so the menu is
+	 * not left with nothing marked at all.
+	 *
+	 * @return void
+	 */
+	public function hide_from_menu() {
+		global $submenu, $submenu_file;
+
+		foreach ( (array) ( $submenu['woocommerce'] ?? array() ) as $key => $item ) {
+			if ( self::PAGE_SLUG === $item[2] ) {
+				unset( $submenu['woocommerce'][ $key ] );
+			}
+		}
+
+		$screen = get_current_screen();
+
+		if ( $screen instanceof \WP_Screen && false !== strpos( $screen->id, self::PAGE_SLUG ) ) {
+			$submenu_file = Organizations::PAGE_SLUG; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- The documented way to say which menu item a hidden screen belongs under; WooCommerce highlights its own importer the same way.
+		}
 	}
 
 	/**

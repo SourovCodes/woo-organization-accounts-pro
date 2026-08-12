@@ -113,6 +113,17 @@
 		<exclude-pattern>*/tests/bootstrap.php</exclude-pattern>
 	</rule>
 
+	<!--
+		wp-admin keeps its menu in globals — $menu, $submenu, $_registered_pages and the
+		rest — and the only way to assert on what WordPress does with them is to set them
+		up and put them back afterwards. That is what ImportTest does to prove the hidden
+		import screen is still reachable, which is a 403 for every administrator when it
+		is wrong and invisible to every other kind of test.
+	-->
+	<rule ref="WordPress.WP.GlobalVariablesOverride">
+		<exclude-pattern>*/tests/*</exclude-pattern>
+	</rule>
+
 	<!-- Test methods are camelCase per PHPUnit, and test files legitimately use direct queries. -->
 	<rule ref="WordPress.NamingConventions.ValidFunctionName.MethodNameInvalid">
 		<exclude-pattern>*/tests/*</exclude-pattern>
