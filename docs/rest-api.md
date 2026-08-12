@@ -1,22 +1,29 @@
 # REST API
 
-This plugin's REST surface exists for one consumer: an external system — in practice a
-point-of-sale app — that syncs the shop's organizations to work from offline and places orders on
-members' behalf. It has two halves, split by whether WooCommerce already has the noun:
+This plugin's REST surface serves two consumers, and it is worth knowing which one a route was
+written for:
+
+- **A till** — a point-of-sale app that syncs the shop's organizations to work from offline and
+  places orders on members' behalf. It reads; it writes only orders.
+- **A back office** — an app where somebody reviews a registration and approves it, corrects a
+  billing address, adds a branch, puts an employee on an account. It writes.
+
+Split the other way, by whether WooCommerce already has the noun:
 
 | Surface | What it is | Route |
 |---|---|---|
 | Organization snapshot | **New route.** WooCommerce has no representation of organizations, members or locations — `/wc/v3/customers` returns WordPress users. | `GET /wp-json/wc-woap/v1/organizations` |
+| Organizations, branches, employees | **New routes.** Create and edit the same records, and approve or suspend an account. | `/wp-json/wc-woap/v1/organizations/…` |
 | Address forms | **New route.** WooCommerce's per-country address field definitions, serialised so the app renders the same form the checkout would. | `GET /wp-json/wc-woap/v1/address-form` |
 | Orders | **WooCommerce's own route, extended.** Same line items, taxes, coupons and stock handling as any `/wc/v3` order — plus the organization rules, five extra read fields, one extra write field and one list filter. | `/wp-json/wc/v3/orders` |
 
 There is deliberately no `woap/v1` orders route. Recreating order creation would re-implement line
 items, tax and stock, and split "every order carries one organization" across two code paths.
 
-Everything below is implemented in `includes/Rest/` — `OrganizationsController` for the snapshot,
-`Orders` for the order rules — and asserted by `tests/RestApiTest.php` and
-`tests/RestOrdersTest.php`. When this document and the code disagree, the code and its tests win;
-fix the document.
+Everything below is implemented in `includes/Rest/` — `OrganizationsController` for organizations,
+`LocationsController` and `MembersController` for the sub-resources, `Orders` for the order rules —
+and asserted by `tests/RestApiTest.php`, `tests/RestWritesTest.php` and `tests/RestOrdersTest.php`.
+When this document and the code disagree, the code and its tests win; fix the document.
 
 ## Authentication
 
@@ -31,10 +38,12 @@ the prefix WooCommerce documents for third-party plugins that want its authentic
 `RestApiTest::testTheNamespaceKeepsWooCommercesAuthenticationPrefix` pins it, because renaming the
 namespace would break nothing in the test suite and every till in the field.
 
-The key must belong to a user holding `manage_woocommerce`. The plugin's own capabilities
-(`woap_manage_organization` and friends) deliberately do **not** open the snapshot: they are
-granted from a membership and answer what a member may do to *their own* organization, and the
-answer to that is never "read every organization on the site".
+The key must belong to a user holding `manage_woocommerce`, on every route in this namespace —
+reads and writes alike. The plugin's own capabilities (`woap_manage_organization` and friends)
+deliberately do **not** open any of it: they are granted from a membership and answer what a member
+may do to *their own* organization, and the answer to that is never "read every organization on the
+site", still less "approve one". An organization admin's key is refused with `403` here even for
+their own organization; their surface is the account screens on the site itself.
 
 Error handling throughout: **key on the `code` field, never on `message`.** Messages are
 translated into the site's locale and follow the site's organization mode — the same refusal reads
@@ -263,6 +272,257 @@ one-off address with the same rules anyway (below), and its answers are authorit
 
 ---
 
+## Managing accounts from a back office
+
+Everything a shop does to an organization from wp-admin, an app can do here. Same records, same
+rules, same validation as the plugin's own screens — these routes call the identical repositories
+and validators, so an address this route accepts is one the checkout accepts, and an account this
+route approves sends the same email wp-admin would.
+
+```
+GET    /wc-woap/v1/organizations/<id>
+POST   /wc-woap/v1/organizations
+PATCH  /wc-woap/v1/organizations/<id>
+POST   /wc-woap/v1/organizations/<id>/status
+
+GET    /wc-woap/v1/organizations/<id>/locations
+POST   /wc-woap/v1/organizations/<id>/locations
+GET    /wc-woap/v1/organizations/<id>/locations/<location_id>
+PATCH  /wc-woap/v1/organizations/<id>/locations/<location_id>
+DELETE /wc-woap/v1/organizations/<id>/locations/<location_id>
+
+GET    /wc-woap/v1/organizations/<id>/members
+POST   /wc-woap/v1/organizations/<id>/members
+GET    /wc-woap/v1/organizations/<id>/members/<member_id>
+PATCH  /wc-woap/v1/organizations/<id>/members/<member_id>
+DELETE /wc-woap/v1/organizations/<id>/members/<member_id>
+```
+
+Three things hold across all of them:
+
+- **Sub-resources are scoped to the organization in the path.** A location or member ID belonging
+  to another organization is a `404`, not a `403` and not a silent success. Ask for the right
+  parent.
+- **A validation refusal names the fields.** The body carries WordPress's own shape —
+  `data.params`, a map of field path to reason — so a form can mark the offending inputs instead of
+  showing one banner over a fourteen-field address. Paths match what you sent:
+  `billing.postcode` on an organization, `postcode` on a location.
+- **Nothing here is deleted that orders depend on.** There is no route to delete an organization:
+  that cascades members, locations and invitations and resets everybody's WordPress role, and it is
+  a wp-admin act. Use `suspended` or `rejected`, both reversible.
+
+### Reviewing and approving
+
+The review queue is the snapshot filtered by status:
+
+```bash
+curl -u ck_xxx:cs_xxx "https://shop.example/wp-json/wc-woap/v1/organizations?status=pending"
+```
+
+Approving is its own route, deliberately not a field on the edit:
+
+```bash
+curl -u ck_xxx:cs_xxx -X POST \
+  "https://shop.example/wp-json/wc-woap/v1/organizations/12/status" \
+  -H "Content-Type: application/json" \
+  -d '{ "status": "active" }'
+```
+
+```json
+{ "changed": true, "organization": { "id": 12, "status": "active", "…": "…" } }
+```
+
+- **`status` is one of `pending`, `active`, `suspended`, `rejected`.** Only `active` can buy.
+- **This is what sends the mail.** The approval and rejection emails, and the sign-in gate when the
+  shop runs `require_approval_to_sign_in`, all hang off the status change — which is why it is a
+  route of its own and why `PATCH`ing an organization with a `status` in the body is refused with
+  `400 woap_rest_status_has_its_own_route` rather than quietly applied. A client that fetched an
+  organization, fixed a typo and sent the whole object back would otherwise approve it by accident.
+- **Asking for the status it already holds is a success, not an error**: `changed` comes back
+  `false` and nothing is sent. Two people working the same queue, or one person double-tapping, do
+  not produce two approval emails.
+
+### Creating and editing an organization
+
+```bash
+curl -u ck_xxx:cs_xxx -X POST "https://shop.example/wp-json/wc-woap/v1/organizations" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Bauer & Söhne GmbH",
+    "tax_id": "DE123456789",
+    "billing": {
+      "first_name": "Ada", "last_name": "Byron",
+      "address_1": "1 Hauptstrasse", "city": "Berlin",
+      "postcode": "10115", "country": "DE",
+      "email": "buy@bauer.example", "phone": "+49 30 000000"
+    }
+  }'
+```
+
+Answers `201` with the organization in the snapshot's own shape — the same payload `GET
+/organizations/<id>` returns, so a client has one parser.
+
+| Field | On create | On edit |
+|---|---|---|
+| `name` | required | optional; blank is refused |
+| `tax_id` | optional, unless the shop sets *require tax ID* | same |
+| `status` | optional, defaults to `pending` | **refused** — use the status route |
+| `allow_custom_shipping` | optional, defaults to `true` | optional |
+| `billing` | object, WooCommerce's billing field names | optional; merged onto what is stored |
+
+- **A new organization starts `pending`** unless you say otherwise, so an account entered by staff
+  goes through the same review as one that registered itself.
+- **Nothing is emailed on create.** The shop's new-account mail belongs to somebody signing up; the
+  approval mail comes from the status route.
+- **An edit is partial**, and merges: send three billing fields and three change. But the *merged*
+  address is then validated whole, because which fields an address needs depends on its country —
+  changing only `country` would otherwise leave a US address with no state. The consequence worth
+  knowing: editing the address of a record that was stored incomplete refuses until the missing
+  field is supplied, naming it. An edit that says nothing about the address skips the check
+  entirely, so such a record can still be renamed.
+- **The address is validated exactly as the checkout validates one** — required fields for that
+  country, postcode format, state from the country's list — and normalised the same way, so
+  `"California"` is stored as `CA`. Build the form from [the address forms](#the-address-forms).
+- Fields a country does not have are dropped rather than refused, the same as the shop's own forms:
+  a `state` posted for a country with no states is not data.
+
+### Branches
+
+A location is a WooCommerce shipping address column for column, plus `name` (the label it is chosen
+by at the checkout) and `is_default`. The address fields sit at the top level of the body, matching
+how the snapshot reports them.
+
+```bash
+curl -u ck_xxx:cs_xxx -X POST \
+  "https://shop.example/wp-json/wc-woap/v1/organizations/12/locations" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Warehouse North",
+    "first_name": "Grace", "last_name": "Hopper",
+    "address_1": "9 Lagerweg", "city": "Hamburg",
+    "postcode": "20095", "country": "DE"
+  }'
+```
+
+- **`name` is required; a surname and a phone are not** — even when the shop's checkout requires a
+  phone of a buyer. A delivery address belongs to a place at least as often as to a person
+  ("Warehouse North" has no surname), and a rule fair to apply to somebody typing at a checkout is
+  not automatically fair applied retroactively to records the shop has already saved. Both are
+  still validated when present.
+- **A blank `company` becomes the organization's name**, stored rather than resolved later — a
+  parcel with no company on the label is one nobody at a loading bay recognises.
+- **`is_default` is the location new orders start at.** Setting it on one clears it on the others.
+- **Deleting takes the location out of every member's access list** as it goes. It is allowed even
+  for the last one — the shop's own screens allow it — but the response says what that means:
+  `organization_can_ship` comes back `false`, and an organization with no locations cannot check
+  out at all.
+
+```json
+{ "deleted": true, "previous": { "…": "…" }, "organization_can_ship": false }
+```
+
+### Employees
+
+Adding somebody happens two ways and the request says which, because they are not variants of one
+act:
+
+```bash
+# Invite — the default. They set their own password and join by accepting.
+curl -u ck_xxx:cs_xxx -X POST \
+  "https://shop.example/wp-json/wc-woap/v1/organizations/12/members" \
+  -H "Content-Type: application/json" \
+  -d '{ "email": "karl@bauer.example", "role": "member" }'
+
+# Create — staff entering an employee on the customer's behalf.
+curl -u ck_xxx:cs_xxx -X POST \
+  "https://shop.example/wp-json/wc-woap/v1/organizations/12/members" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "karl@bauer.example", "method": "create", "role": "member",
+    "first_name": "Karl", "last_name": "Schmidt",
+    "location_access": [ 3 ]
+  }'
+```
+
+| | `invite` (default) | `create` |
+|---|---|---|
+| What exists afterwards | an invitation | the WordPress account and the membership |
+| Response | `201` with the invitation | `201` with the member |
+| Email | the invitation link | **none** |
+| Password | they choose it | random, nobody holds it — they use the shop's lost-password form |
+| May carry permissions | no | yes |
+
+- **The invitation token is never in a response.** It exists in plaintext long enough to be put in
+  one email; the row keeps only a SHA-256 digest. An invitation is bound to the address it was sent
+  to, works once, and can be withdrawn from the account screens.
+- **An invitation cannot carry `capabilities`, `location_access`, `status`, `first_name` or
+  `last_name`** — they describe a membership, and no membership exists until acceptance. Sending
+  them is `400 woap_rest_invitation_extras` rather than a silent drop, so a client is never left
+  believing it restricted somebody when it did not. Set them afterwards with `PATCH`.
+- **An address that already has a WordPress account is joined up, not duplicated** — and anybody
+  who can manage the shop keeps their WordPress role, because a membership must not demote an
+  administrator out of wp-admin.
+- **Somebody who already belongs to an organization is never moved into another**:
+  `409 woap_rest_already_member`, with `organization_id` and `member_id` in `data` so the app can
+  show where they are. A person belongs to one organization at a time — the column is UNIQUE — and
+  every order they have placed is scoped by that membership row.
+
+Editing a membership:
+
+```bash
+curl -u ck_xxx:cs_xxx -X PATCH \
+  "https://shop.example/wp-json/wc-woap/v1/organizations/12/members/7" \
+  -H "Content-Type: application/json" \
+  -d '{ "role": "admin", "capabilities": "role_default", "location_access": "all" }'
+```
+
+| Field | Values |
+|---|---|
+| `role` | `admin` or `member` — the *organization* role, not a WordPress role name |
+| `status` | `active` or `inactive` |
+| `capabilities` | `"role_default"`, or an object of capability → boolean |
+| `location_access` | `"all"`, or a non-empty array of location IDs of this organization |
+
+- **Permissions are a diff against the role, and this route does the arithmetic.** Send what should
+  be *true* of the member; anything you do not mention follows the role, and only what differs is
+  stored. So `{"role": "admin", "capabilities": "role_default"}` produces an admin with an admin's
+  permissions, and `{"capabilities": {"woap_place_orders": false}}` produces a member who may do
+  everything their role allows except buy. **Do not send back the map you read for the previous
+  role** as an absolute set — it would pin the member to permissions their new role has moved away
+  from. The capabilities are `woap_manage_organization`, `woap_manage_billing`,
+  `woap_manage_locations`, `woap_manage_members`, `woap_invite_members`,
+  `woap_view_organization_orders`, `woap_place_orders`; anything else is a `400`.
+- **`location_access` has no way to say "none".** In storage an empty list means *every* location,
+  so `[]` would silently grant the opposite of what it asks; it is refused. Somebody who should not
+  be ordering is `"status": "inactive"`.
+- **The member routes report permissions; the snapshot does not.** `GET …/members` and
+  `GET …/members/<id>` carry `capabilities` (the resolved map, role defaults with overrides applied)
+  and `capabilities_follow_role`. The snapshot deliberately omits both: a till syncing a copy it
+  carries on a counter has no use for the permission configuration of every employee on the shop.
+- **An organization must keep one active admin.** The last one cannot be demoted or deactivated
+  (`400`, with `role` in `data.params`) or removed (`409 woap_rest_last_admin`). Promote somebody
+  else first.
+- **Removing somebody keeps their login** and moves it to WooCommerce's `customer` role. Deleting a
+  WordPress account because somebody changed jobs is not this plugin's decision; with no membership
+  row they simply cannot buy on the account any more.
+
+### Errors
+
+| Status | Code | When |
+|---|---|---|
+| 401 / 403 | `woap_rest_forbidden` | No credentials, or credentials without `manage_woocommerce`. |
+| 404 | `woap_rest_organization_not_found` | No such organization. |
+| 404 | `woap_rest_location_not_found` / `woap_rest_member_not_found` | Not that organization's — check the parent in the path. |
+| 400 | `woap_rest_invalid_organization` / `woap_rest_invalid_location` / `woap_rest_invalid_member` | Validation. `data.params` maps field path → reason. |
+| 400 | `woap_rest_status_has_its_own_route` | A `status` in the body of an organization edit. |
+| 400 | `woap_rest_invitation_extras` | Membership fields on an invitation. |
+| 409 | `woap_rest_already_member` | That address belongs to an organization already. |
+| 409 | `woap_rest_last_admin` | Removing the last active organization admin. |
+| 400 | `rest_invalid_param` / `rest_missing_callback_param` | WordPress's own validation: unknown `role`, `status` or `method`, a missing required `name` or `email`. |
+| 500 | `woap_rest_not_saved` | The write failed at the database. Nothing partial is left behind. |
+
+---
+
 ## Orders
 
 Orders are created, read, updated and listed through WooCommerce's standard route — [its
@@ -396,3 +656,23 @@ through unchanged. On any error the order does not exist — the checks run befo
 
 The device never enforces anything. Every rule above is applied server-side on every request, so a
 stale snapshot, a modified client or a hand-written request all degrade to the same clean refusal.
+
+---
+
+## A back office's flow, end to end
+
+1. **The queue** — `GET /wc-woap/v1/organizations?status=pending`. Each entry already carries its
+   members and locations, so the review screen needs no further calls.
+2. **Review** — show `billing_formatted` rather than assembling an address, and `tax_id` is
+   deliberately absent from the snapshot: fetch the one organization with
+   `GET /wc-woap/v1/organizations/<id>` if the reviewer needs it.
+3. **Decide** — `POST /organizations/<id>/status` with `active` or `rejected`. That is what emails
+   the customer. `changed: false` means somebody else got there first.
+4. **Correct** — `PATCH /organizations/<id>` for the name or the billing address, building the form
+   from `GET /wc-woap/v1/address-form`. Mark the fields named in `data.params` on a refusal.
+5. **Branches and people** — `POST …/locations` and `POST …/members`, the latter as an invitation
+   unless the shop is entering the account on somebody's behalf. Check `organization_can_ship` after
+   deleting a location: an organization with none cannot check out.
+
+The same rule as the till holds here. The app enforces nothing — every refusal above is decided
+server-side, by the same code the shop's own screens run.

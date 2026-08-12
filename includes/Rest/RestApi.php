@@ -19,11 +19,26 @@ defined( 'ABSPATH' ) || exit;
  * order above all — is extended on its own route by `Orders` rather than duplicated
  * here, so there is one code path per thing.
  *
- * Every route registered under this namespace is read-only. A till reads a snapshot
- * of the organizations to work from offline; it does not edit them, and a route that
- * let it would be a second way of writing records the account screens already own.
- * The orders it creates go through `/wc/v3/orders`, where `Orders` holds them to the
- * same rules as the checkouts.
+ * The namespace serves two consumers, and it is worth knowing which a route is for.
+ *
+ * **A till** reads the organization snapshot and the address forms, and writes nothing
+ * here: it sells from a copy it syncs on an interval, and the orders it creates go
+ * through `/wc/v3/orders`, where `Orders` holds them to the same rules as the two
+ * checkouts. Everything it needs is a read.
+ *
+ * **A back office** reviews a registration and approves it, corrects a billing address,
+ * adds a branch, puts an employee on an account. Those are writes, and until 0.8.0 this
+ * namespace had none — the shop's own wp-admin screens were the only way to do any of
+ * it, which is fine for a shop and useless for an app. They are here rather than in a
+ * namespace of their own because they are the same nouns: an organization written
+ * through one route and read back through the other must not be able to describe itself
+ * differently, and it cannot, because both go through the same payload builders.
+ *
+ * What has not changed is that this plugin's own screens remain the only *member-facing*
+ * way to edit an organization. Every route here is gated on `manage_woocommerce`, so
+ * none of them is a second way for a member to write records the account screens own —
+ * they are the shop acting on any organization, which is a question those screens never
+ * answer.
  */
 final class RestApi {
 
@@ -72,6 +87,8 @@ final class RestApi {
 	 */
 	public function register_routes() {
 		( new OrganizationsController() )->register_routes();
+		( new LocationsController() )->register_routes();
+		( new MembersController() )->register_routes();
 		( new AddressFormController() )->register_routes();
 	}
 }

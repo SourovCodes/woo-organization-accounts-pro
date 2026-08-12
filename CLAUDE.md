@@ -554,16 +554,65 @@ does.
 ### The REST surface a till talks to
 
 **`docs/rest-api.md` is the client-facing reference** — routes, parameters, payloads, error codes
-and the till's end-to-end flow. It is written for the developer of the consuming app, this section
-for the developer of the plugin; a change to either half of the surface updates both.
+and both consumers' end-to-end flows. It is written for the developer of the consuming app, this
+section for the developer of the plugin; a change to either half of the surface updates both.
 
-Two halves, split by whether WooCommerce already has the noun. `Rest\OrganizationsController`
-serves `GET /wp-json/wc-woap/v1/organizations` — every organization with its members and its
-locations embedded, for a point-of-sale device that syncs on an interval and then sells offline.
-It is read-only, and the only route this plugin registers of its own: anything WooCommerce already
-models is extended on its own route instead, so there is one code path per thing. An order is the
-case that matters — `/wc/v3/orders` is a third way an order comes into existence, beside the two
-checkouts, and `Rest\Orders` holds it to the same rules.
+Two halves, split by whether WooCommerce already has the noun. This plugin registers routes only
+for what WooCommerce cannot say; anything it already models is extended on its own route instead,
+so there is one code path per thing. An order is the case that matters — `/wc/v3/orders` is a third
+way an order comes into existence, beside the two checkouts, and `Rest\Orders` holds it to the same
+rules.
+
+`Rest\OrganizationsController` serves `GET /wp-json/wc-woap/v1/organizations` — every organization
+with its members and its locations embedded, for a point-of-sale device that syncs on an interval
+and then sells offline.
+
+**The namespace serves two consumers, and which one a route is for decides its shape.** The till
+above reads; a back-office app writes — the screen where somebody reviews a registration and
+approves it, corrects a billing address, adds a branch, puts an employee on an account. Until 0.8.0
+there was no way to do any of that but wp-admin, which is fine for a shop and useless for an app.
+The writes live beside the reads rather than in a namespace of their own because they are the same
+nouns, and both directions go through the same payload builders so one organization cannot describe
+itself two ways. `Rest\Writes` holds what they share: the capability check, the parent lookup, the
+address merge and the refusal.
+
+- **`manage_woocommerce` on every route, reads and writes alike.** The plugin's own capabilities
+  answer what a member may do to *their* organization; approving one is not that question, and an
+  organization admin approving their own registration is why it cannot be.
+- **The status is a route of its own** (`POST /organizations/<id>/status`), not a field on the edit,
+  and an edit carrying one is refused rather than ignored. Moving between statuses is what fires
+  `woo_org_accounts_organization_status_changed` — the approval and rejection emails, and
+  `LoginGate` — so it must go through `OrganizationRepository::set_status()` and must not be
+  reachable by a client round-tripping an object it fetched. Asking for the status already held is a
+  success with `changed: false` and no mail, because two people working one review queue must not
+  send two approval emails.
+- **A write reuses the screens' own validators**, so `AddressFields::validate()` and
+  `Organization::validate_details()` decide, and the errors they key by form field name are
+  rewritten to the payload path the client sent and stripped of their `<strong>` markup — a `params`
+  map in WordPress's own `rest_invalid_param` shape, so a form can mark the field rather than show a
+  banner over fourteen of them.
+- **An edit is partial, and declares no argument defaults.** WordPress fills a declared default into
+  the request, so `'default' => ''` on `tax_id` would blank the tax ID of every organization renamed
+  through the route — and `''` on `first_name` made every invitation arrive carrying a field an
+  invitation is not allowed to carry. Both were caught by tests rather than by reading.
+- **A submitted address is merged onto the stored one and then validated whole**, because which
+  fields an address needs depends on its country: validating only what was sent would let an edit
+  changing `country` alone leave a US address with no state. The cost is that editing an address
+  stored incomplete refuses until the missing field is supplied — which is `AddressFields::missing()`
+  behaviour, deliberate, and why an edit that says nothing about the address skips the check.
+- **No route deletes an organization.** That cascades members, locations and invitations and resets
+  everybody's WordPress role; `suspended` and `rejected` are the reversible answers, and wp-admin
+  keeps the irreversible one.
+- **Permissions are sent only where they are edited** — the member routes, never the snapshot, which
+  `RestApiTest::testTheSnapshotOmitsWhatTheDeviceMustNotDecideFrom` already pinned. What is sent is
+  the *resolved* map and a `capabilities_follow_role` flag, never the stored diff. `MembersController`
+  does the diff arithmetic on the way in, against the role *being saved*, which is
+  `testPromotingToAdminGrantsTheAdminDefaults` asked of a REST client.
+- **Adding somebody is two acts, and the request says which.** `invite` issues an invitation and
+  cannot carry membership fields — there is no row for them to land on, so they are refused rather
+  than dropped; `create` makes the account outright, the importer's shape, random password and no
+  mail. Both refuse an address that already belongs to an organization, and neither ever demotes
+  somebody holding `manage_woocommerce`.
 
 - **The `wc-` prefix on the namespace is what makes a consumer key work.**
   `WC_REST_Authentication` reads a key and secret only after `is_request_to_rest_api()` finds `wc/`
