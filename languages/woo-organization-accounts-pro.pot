@@ -2,14 +2,14 @@
 # This file is distributed under the GPL-2.0-or-later.
 msgid ""
 msgstr ""
-"Project-Id-Version: WooCommerce Organization Accounts Pro 0.8.0\n"
+"Project-Id-Version: WooCommerce Organization Accounts Pro 0.9.0\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/woo-organization-accounts-pro\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-08-12T09:57:45+00:00\n"
+"POT-Creation-Date: 2026-08-13T05:31:14+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: woo-organization-accounts-pro\n"
@@ -824,7 +824,7 @@ msgstr ""
 #. translators: %s: name of the field, in bold.
 #: includes/Data/Organization.php:271
 #: includes/Data/Organization.php:282
-#: includes/Frontend/AddressFields.php:377
+#: includes/Frontend/AddressFields.php:439
 #, php-format
 msgid "%s is a required field."
 msgstr ""
@@ -835,78 +835,78 @@ msgstr ""
 msgid "\"%s\" is not a status we recognise."
 msgstr ""
 
-#: includes/Emails/InvitationEmail.php:54
+#: includes/Emails/InvitationEmail.php:56
 msgid "Organization invitation"
 msgstr ""
 
-#: includes/Emails/InvitationEmail.php:55
+#: includes/Emails/InvitationEmail.php:57
 msgid "Sent to somebody who has been invited to join an organization account. It carries the one-time join link."
 msgstr ""
 
 #. translators: %s: the name of the organization the recipient is invited to.
-#: includes/Emails/InvitationEmail.php:71
+#: includes/Emails/InvitationEmail.php:73
 msgid "You have been invited to join {organization}"
 msgstr ""
 
-#: includes/Emails/InvitationEmail.php:80
+#: includes/Emails/InvitationEmail.php:82
 msgid "Join {organization}"
 msgstr ""
 
-#: includes/Emails/NewOrganizationEmail.php:45
+#: includes/Emails/NewOrganizationEmail.php:47
 msgid "New organization registered"
 msgstr ""
 
-#: includes/Emails/NewOrganizationEmail.php:46
+#: includes/Emails/NewOrganizationEmail.php:48
 msgid "Sent to the shop when a new organization registers, so a pending account is not waiting unnoticed."
 msgstr ""
 
-#: includes/Emails/NewOrganizationEmail.php:63
+#: includes/Emails/NewOrganizationEmail.php:65
 msgid "[{site_title}] New registration: {organization}"
 msgstr ""
 
-#: includes/Emails/NewOrganizationEmail.php:72
+#: includes/Emails/NewOrganizationEmail.php:74
 msgid "New registration"
 msgstr ""
 
-#: includes/Emails/NewOrganizationEmail.php:87
+#: includes/Emails/NewOrganizationEmail.php:89
 msgid "Recipients"
 msgstr ""
 
 #. translators: %s: the site's admin email address.
-#: includes/Emails/NewOrganizationEmail.php:91
+#: includes/Emails/NewOrganizationEmail.php:93
 #, php-format
 msgid "Comma-separated addresses. Defaults to %s."
 msgstr ""
 
-#: includes/Emails/OrganizationApprovedEmail.php:25
+#: includes/Emails/OrganizationApprovedEmail.php:27
 msgid "Organization approved"
 msgstr ""
 
-#: includes/Emails/OrganizationApprovedEmail.php:26
+#: includes/Emails/OrganizationApprovedEmail.php:28
 msgid "Sent to an organization's administrators when the shop approves the account and it can start ordering."
 msgstr ""
 
-#: includes/Emails/OrganizationApprovedEmail.php:50
+#: includes/Emails/OrganizationApprovedEmail.php:52
 msgid "{organization} has been approved"
 msgstr ""
 
-#: includes/Emails/OrganizationApprovedEmail.php:59
+#: includes/Emails/OrganizationApprovedEmail.php:61
 msgid "You can start ordering"
 msgstr ""
 
-#: includes/Emails/OrganizationRejectedEmail.php:28
+#: includes/Emails/OrganizationRejectedEmail.php:30
 msgid "Organization rejected"
 msgstr ""
 
-#: includes/Emails/OrganizationRejectedEmail.php:29
+#: includes/Emails/OrganizationRejectedEmail.php:31
 msgid "Sent to an organization's administrators when the shop turns the account down."
 msgstr ""
 
-#: includes/Emails/OrganizationRejectedEmail.php:71
+#: includes/Emails/OrganizationRejectedEmail.php:73
 msgid "About your application for {organization}"
 msgstr ""
 
-#: includes/Emails/OrganizationRejectedEmail.php:80
+#: includes/Emails/OrganizationRejectedEmail.php:82
 msgid "We could not approve this account"
 msgstr ""
 
@@ -921,8 +921,8 @@ msgid "Billing address saved."
 msgstr ""
 
 #: includes/Frontend/AccountHandlers.php:288
-#: includes/Frontend/AccountHandlers.php:372
-#: includes/Frontend/AccountHandlers.php:398
+#: includes/Frontend/AccountHandlers.php:377
+#: includes/Frontend/AccountHandlers.php:403
 #: includes/Frontend/MyAccount.php:630
 msgid "That entry no longer exists."
 msgstr ""
@@ -935,126 +935,126 @@ msgid "Please give the %s a name."
 msgstr ""
 
 #. translators: %s: the singular location noun for the site's mode, for example "Branch".
-#: includes/Frontend/AccountHandlers.php:350
+#: includes/Frontend/AccountHandlers.php:355
 #, php-format
 msgid "%s saved."
 msgstr ""
 
 #. translators: %s: the name of the location that is now the default.
-#: includes/Frontend/AccountHandlers.php:382
+#: includes/Frontend/AccountHandlers.php:387
 #, php-format
 msgid "“%s” is now the default at checkout."
 msgstr ""
 
 #. translators: %s: the singular location noun for the site's mode, for example "Branch".
-#: includes/Frontend/AccountHandlers.php:407
+#: includes/Frontend/AccountHandlers.php:412
 #, php-format
 msgid "%s deleted."
 msgstr ""
 
-#: includes/Frontend/AccountHandlers.php:446
+#: includes/Frontend/AccountHandlers.php:451
 msgid "Invitation sent."
 msgstr ""
 
-#: includes/Frontend/AccountHandlers.php:459
+#: includes/Frontend/AccountHandlers.php:464
 msgid "That invitation could not be withdrawn."
 msgstr ""
 
-#: includes/Frontend/AccountHandlers.php:462
+#: includes/Frontend/AccountHandlers.php:467
 msgid "Invitation withdrawn."
 msgstr ""
 
-#: includes/Frontend/AccountHandlers.php:478
+#: includes/Frontend/AccountHandlers.php:483
 msgid "That invitation could not be sent again."
 msgstr ""
 
-#: includes/Frontend/AccountHandlers.php:492
+#: includes/Frontend/AccountHandlers.php:497
 msgid "Invitation sent again."
 msgstr ""
 
-#: includes/Frontend/AccountHandlers.php:505
-#: includes/Frontend/AccountHandlers.php:592
+#: includes/Frontend/AccountHandlers.php:510
+#: includes/Frontend/AccountHandlers.php:597
 #: includes/Frontend/MyAccount.php:541
 msgid "That member no longer exists."
 msgstr ""
 
 #. translators: 1: the organization noun, 2: the organization admin noun.
-#: includes/Frontend/AccountHandlers.php:522
-#: includes/Frontend/AccountHandlers.php:604
+#: includes/Frontend/AccountHandlers.php:527
+#: includes/Frontend/AccountHandlers.php:609
 #: includes/Rest/MembersController.php:748
 #, php-format
 msgid "A %1$s must keep at least one active %2$s. Promote somebody else first."
 msgstr ""
 
 #. translators: %s: the singular location noun for the site's mode, for example "Branch".
-#: includes/Frontend/AccountHandlers.php:539
+#: includes/Frontend/AccountHandlers.php:544
 #, php-format
 msgid "Choose at least one %s, or give access to all of them."
 msgstr ""
 
-#: includes/Frontend/AccountHandlers.php:574
+#: includes/Frontend/AccountHandlers.php:579
 msgid "Member updated."
 msgstr ""
 
-#: includes/Frontend/AccountHandlers.php:596
+#: includes/Frontend/AccountHandlers.php:601
 msgid "You cannot remove yourself."
 msgstr ""
 
-#: includes/Frontend/AccountHandlers.php:620
+#: includes/Frontend/AccountHandlers.php:625
 msgid "Member removed."
 msgstr ""
 
-#: includes/Frontend/AddressFields.php:212
+#: includes/Frontend/AddressFields.php:274
 msgid "Country / Region"
 msgstr ""
 
 #. translators: %s: the two-letter country code that was submitted.
-#: includes/Frontend/AddressFields.php:327
+#: includes/Frontend/AddressFields.php:389
 #, php-format
 msgid "\"%s\" is not a country we recognise."
 msgstr ""
 
 #. translators: %s: name of the field, in bold.
-#: includes/Frontend/AddressFields.php:350
+#: includes/Frontend/AddressFields.php:412
 #, php-format
 msgid "%s is not a valid postcode or ZIP."
 msgstr ""
 
 #. translators: %s: name of the field, in bold.
-#: includes/Frontend/AddressFields.php:359
+#: includes/Frontend/AddressFields.php:421
 #, php-format
 msgid "%s is not a valid phone number."
 msgstr ""
 
 #. translators: %s: name of the field, in bold.
-#: includes/Frontend/AddressFields.php:365
+#: includes/Frontend/AddressFields.php:427
 #, php-format
 msgid "%s is not a valid email address."
 msgstr ""
 
 #. translators: 1: name of the field, in bold. 2: comma-separated list of the values it accepts.
-#: includes/Frontend/AddressFields.php:422
+#: includes/Frontend/AddressFields.php:484
 #, php-format
 msgid "%1$s is not valid. Please choose one of: %2$s"
 msgstr ""
 
-#: includes/Frontend/AddressFields.php:509
+#: includes/Frontend/AddressFields.php:571
 msgid "Select an option…"
 msgstr ""
 
-#: includes/Frontend/AddressFields.php:510
+#: includes/Frontend/AddressFields.php:572
 msgid "No matches found"
 msgstr ""
 
-#: includes/Frontend/AddressFields.php:511
+#: includes/Frontend/AddressFields.php:573
 msgid "Searching…"
 msgstr ""
 
-#: includes/Frontend/AddressFields.php:524
+#: includes/Frontend/AddressFields.php:586
 msgid "required"
 msgstr ""
 
-#: includes/Frontend/AddressFields.php:525
+#: includes/Frontend/AddressFields.php:587
 msgid "optional"
 msgstr ""
 
@@ -1509,47 +1509,55 @@ msgstr ""
 msgid "You do not have permission to place orders."
 msgstr ""
 
-#: includes/Rest/AddressFormController.php:79
+#: includes/Rest/AddressFormController.php:88
 msgid "You are not allowed to read the address forms."
 msgstr ""
 
-#: includes/Rest/AddressFormController.php:164
+#: includes/Rest/AddressFormController.php:192
 msgid "The shop base country, for preselecting."
 msgstr ""
 
-#: includes/Rest/AddressFormController.php:169
+#: includes/Rest/AddressFormController.php:197
 msgid "The countries the shop ships to, code to name."
 msgstr ""
 
-#: includes/Rest/AddressFormController.php:174
-msgid "The shipping address form per country, fields in display order."
-msgstr ""
-
-#: includes/Rest/AddressFormController.php:183
-msgid "The field name, as the order API expects it."
-msgstr ""
-
-#: includes/Rest/AddressFormController.php:187
-msgid "The label, in the shop language and correct for the country."
-msgstr ""
-
-#: includes/Rest/AddressFormController.php:191
-msgid "Whether the country requires the field."
-msgstr ""
-
-#: includes/Rest/AddressFormController.php:195
-msgid "Whether the country hides the field entirely."
-msgstr ""
-
-#: includes/Rest/AddressFormController.php:199
-msgid "The control type WooCommerce renders for the field."
-msgstr ""
-
-#: includes/Rest/AddressFormController.php:203
-msgid "Placeholder text, when the field has one."
+#: includes/Rest/AddressFormController.php:202
+msgid "The countries the shop sells to, code to name."
 msgstr ""
 
 #: includes/Rest/AddressFormController.php:207
+msgid "The shipping address form per country, fields in display order."
+msgstr ""
+
+#: includes/Rest/AddressFormController.php:211
+msgid "The billing address form per country, fields in display order."
+msgstr ""
+
+#: includes/Rest/AddressFormController.php:236
+msgid "The field name, as the order API expects it."
+msgstr ""
+
+#: includes/Rest/AddressFormController.php:240
+msgid "The label, in the shop language and correct for the country."
+msgstr ""
+
+#: includes/Rest/AddressFormController.php:244
+msgid "Whether the country requires the field."
+msgstr ""
+
+#: includes/Rest/AddressFormController.php:248
+msgid "Whether the country hides the field entirely."
+msgstr ""
+
+#: includes/Rest/AddressFormController.php:252
+msgid "The control type WooCommerce renders for the field."
+msgstr ""
+
+#: includes/Rest/AddressFormController.php:256
+msgid "Placeholder text, when the field has one."
+msgstr ""
+
+#: includes/Rest/AddressFormController.php:260
 msgid "For the state field: the values the country accepts, code to name. Absent means free text."
 msgstr ""
 

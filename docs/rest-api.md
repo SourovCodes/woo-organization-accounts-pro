@@ -141,10 +141,10 @@ across the page boundary and drop it from the sync entirely.
         "id": 3,
         "name": "Warehouse North",
         "is_default": true,
-        "formatted": "Grace Hopper\n9 Lagerweg\n20095 Hamburg",
+        "formatted": "Grace Hopper\nAcme GmbH\n9 Lagerweg\n20095 Hamburg",
         "first_name": "Grace",
         "last_name": "Hopper",
-        "company": "",
+        "company": "Acme GmbH",
         "address_1": "9 Lagerweg",
         "address_2": "",
         "city": "Hamburg",
@@ -181,8 +181,8 @@ Field notes — the non-obvious ones:
   never an empty array — in storage an empty access list means *unrestricted*, and handing a
   device `[]` would tell it the opposite of the truth.
 - **`locations[]`** are WooCommerce shipping addresses column for column, plus `name` (the label a
-  location is chosen by) and `is_default`. A blank `company` is normal — the server fills in the
-  organization's name when it lands on an order.
+  location is chosen by) and `is_default`. `company` is served but never asked for — see
+  [no form ever asks for a company](#no-form-ever-asks-for-a-company).
 - **`billing_formatted` and `locations[].formatted`** are the addresses as WooCommerce prints them
   **for their country** — a German address puts the postcode before the city, an American one
   after, and the formatter knows every variant. Newline-separated. Show these; do not assemble an
@@ -213,21 +213,25 @@ GET /wp-json/wc-woap/v1/address-form
 WooCommerce handles addresses differently per country — which fields exist, which are required,
 what they are called, whether the state is a free text or a fixed list — and the app must not
 hand-write an address form, because a hand-written one is wrong in a different way in every
-country. This route serialises **WooCommerce's own shipping field definitions**, per country the
-shop ships to, with the shop's own checkout-field customisations already applied. Render from it
-and the till shows exactly the form the shop's checkout would.
+country. This route serialises **WooCommerce's own field definitions**, per country the shop ships
+to, with the shop's own checkout-field customisations already applied. Render from it and the till
+shows exactly the form the shop's checkout would.
 
-Only the shipping form is served, because a **one-off delivery address is the only address the
-till ever composes** — billing comes from the organization row and locations arrive pre-validated
-in the snapshot; the server writes both itself.
+**Two shapes are served, and they are not interchangeable.** `forms` is a delivery address — a
+one-off address on an order, or a location. `billing_forms` is the address an organization is
+billed at. Use the one that matches what is being edited.
 
-Two fields are deliberately **not** WooCommerce's answer, and the served form is the authority on
-both. `last_name` is never required: a delivery address belongs to a place at least as often as to
-a person, and "Warehouse North" has no surname — put a place name in `first_name` and leave
-`last_name` empty. `phone` is never required either, whatever the shop's checkout phone setting
-says, because that setting is a rule about the person buying. Both are still validated when they
-are filled in. Render required-ness from this response rather than from WooCommerce's published
-defaults, or the till will refuse an address the shop's own screens accept.
+The difference is required-ness, and it is deliberate. On a **delivery** address two fields are
+**not** WooCommerce's answer: `last_name` is never required, because such an address belongs to a
+place at least as often as to a person and "Warehouse North" has no surname — put the place name in
+`first_name` and leave `last_name` empty — and `phone` is never required either, whatever the
+shop's checkout phone setting says, because that setting is a rule about the person buying. Both
+are still validated when filled in. **Billing keeps WooCommerce's own rules for both.** Render a
+billing form from `forms` and the screen marks a surname optional that the write path then
+requires: a refusal at the counter, over a rule the operator was told did not apply.
+
+Render required-ness from this response rather than from WooCommerce's published defaults, or the
+till will refuse an address the shop's own screens accept.
 
 Sync it like the snapshot: the whole set in one response, `ETag`/`If-None-Match` for cheap
 revalidation. It changes when WooCommerce or the shop's settings change, which is rarely.
@@ -236,11 +240,11 @@ revalidation. It changes when WooCommerce or the shop's settings change, which i
 {
   "default_country": "CH",
   "countries": { "CH": "Switzerland", "LI": "Liechtenstein" },
+  "billing_countries": { "CH": "Switzerland", "LI": "Liechtenstein", "DE": "Germany" },
   "forms": {
     "CH": [
       { "name": "first_name", "label": "First name",       "required": true,  "hidden": false, "type": "text" },
       { "name": "last_name",  "label": "Last name",        "required": false, "hidden": false, "type": "text" },
-      { "name": "company",    "label": "Company name",     "required": false, "hidden": false, "type": "text" },
       { "name": "country",    "label": "Country / Region", "required": true,  "hidden": false, "type": "country" },
       { "name": "address_1",  "label": "Street address",   "required": true,  "hidden": false, "type": "text" },
       { "name": "postcode",   "label": "Postcode",         "required": true,  "hidden": false, "type": "text" },
@@ -250,9 +254,27 @@ revalidation. It changes when WooCommerce or the shop's settings change, which i
       { "name": "phone",      "label": "Phone",            "required": false, "hidden": false, "type": "tel" }
     ],
     "LI": [ "…" ]
+  },
+  "billing_forms": {
+    "CH": [
+      { "name": "first_name", "label": "First name",       "required": true,  "hidden": false, "type": "text" },
+      { "name": "last_name",  "label": "Last name",        "required": true,  "hidden": false, "type": "text" },
+      { "name": "country",    "label": "Country / Region", "required": true,  "hidden": false, "type": "country" },
+      { "name": "address_1",  "label": "Street address",   "required": true,  "hidden": false, "type": "text" },
+      { "name": "postcode",   "label": "Postcode",         "required": true,  "hidden": false, "type": "text" },
+      { "name": "city",       "label": "Town / City",      "required": true,  "hidden": false, "type": "text" },
+      { "name": "state",      "label": "Canton",           "required": false, "hidden": false, "type": "state",
+        "options": { "AG": "Aargau", "BE": "Bern", "…": "…" } },
+      { "name": "email",      "label": "Email address",    "required": true,  "hidden": false, "type": "email" },
+      { "name": "phone",      "label": "Phone",            "required": false, "hidden": false, "type": "tel" }
+    ],
+    "LI": [ "…" ]
   }
 }
 ```
+
+Note `last_name` above: optional under `forms`, required under `billing_forms`, same country, same
+shop. That is the whole reason both are served.
 
 How to render it:
 
@@ -263,12 +285,37 @@ How to render it:
 - **`options` appears only on the `state` field and only where the country has a list.** Present:
   render a picker and submit the *code* (the key). Absent: free text is correct — that is what the
   checkout renders too.
-- **`countries` is the shop's ship-to list**, not all the world's countries. `default_country` is
-  the shop's base, for preselecting.
-- Submit the values under the same `name`s in the order request's `shipping` block.
+- **Two country lists, one per shape.** `countries` is the shop's ship-to list and keys `forms`;
+  `billing_countries` is its sell-to list and keys `billing_forms`. WooCommerce keeps them
+  separately and they genuinely differ — a shop sells to more places than it ships to as soon as one
+  customer's invoices go somewhere its couriers do not. Offer the matching list in each picker, or a
+  billing country the shop's own admin can save becomes unselectable. `default_country` is the
+  shop's base, for preselecting.
+- **`billing_forms` carries an `email`**, which `forms` does not — a delivery address has no email
+  and an organization's billing address does. If the screen asks for it in a field of its own, drop
+  it from the rendered form rather than showing two boxes for one answer.
+- Submit the values under the same `name`s — a delivery form into the order request's `shipping`
+  block, a billing form into the organization request's `billing` block.
 
 Do not duplicate the validation client-side beyond required-marking: the server validates every
 one-off address with the same rules anyway (below), and its answers are authoritative.
+
+### No form ever asks for a company
+
+`company` is absent from every form this route serves, and from the billing fields the account
+screens render. It is not a shop setting you can switch back on — an organization *is* the company,
+so a second field asking for the name again is a second answer to a question already answered.
+
+It is still stored, still served, and still lands on orders. It is derived rather than typed:
+
+- **An organization's `billing_company` is its `name`**, written on every save. Rename the account
+  and its next invoice follows, because the column is derived rather than copied.
+- **A location's `company` is that same name**, filled in at save time and again when the order is
+  built, so what the screen shows is what the courier gets.
+
+Send `company` anyway and it is discarded — a submitted address is intersected with the fields the
+country actually has, and this is not one of them. There is no need to strip it client-side; there
+is also no point sending it.
 
 ---
 
@@ -409,8 +456,9 @@ curl -u ck_xxx:cs_xxx -X POST \
   ("Warehouse North" has no surname), and a rule fair to apply to somebody typing at a checkout is
   not automatically fair applied retroactively to records the shop has already saved. Both are
   still validated when present.
-- **A blank `company` becomes the organization's name**, stored rather than resolved later — a
-  parcel with no company on the label is one nobody at a loading bay recognises.
+- **`company` is the organization's name**, filled in here rather than asked for and stored rather
+  than resolved later — a parcel with no company on the label is one nobody at a loading bay
+  recognises. See [no form ever asks for a company](#no-form-ever-asks-for-a-company).
 - **`is_default` is the location new orders start at.** Setting it on one clears it on the others.
 - **Deleting takes the location out of every member's access list** as it goes. It is allowed even
   for the last one — the shop's own screens allow it — but the response says what that means:
@@ -562,7 +610,8 @@ applied to the **customer**, never to the API key:
   from another organization or outside the member's list refuses with
   `400 woap_rest_shipping_destination` — the resolution does not loosen because the caller holds
   the shop's key, because the till acts *for* the member and must be refused exactly where the
-  member would be. A location with a blank `company` ships under the organization's name.
+  member would be. Every location ships under the organization's name, which is the only company
+  name there is.
 - **A one-off address needs the organization's permission — and is validated per country.** When
   `allow_custom_shipping` is true in the snapshot, omit `woap_location_id` and post a `shipping`
   block, built from [the address forms](#the-address-forms). It is then held to **the same rules

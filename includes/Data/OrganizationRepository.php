@@ -147,6 +147,35 @@ class OrganizationRepository extends Repository {
 	}
 
 	/**
+	 * Persist an organization, with its billing company derived from its name.
+	 *
+	 * The billing company is not collected anywhere — see
+	 * `Frontend\AddressFields::strip_company()` — because an organization already is
+	 * the company, and two fields for one answer produced an invoice whose company
+	 * line disagreed with the account it was billed to.
+	 *
+	 * Applied on every save rather than only when the column is empty, which is the
+	 * difference between a copy and a derived value: a blank-only fallback fills the
+	 * column once and then lets it rot, so renaming an account leaves its old name on
+	 * every invoice it is billed for afterwards. Set here, at the one door every write
+	 * goes through — the admin screens, all three REST routes, registration and the
+	 * importer — rather than at each of them, because a rule enforced in five places
+	 * is a rule with five chances to be forgotten.
+	 *
+	 * Rows written before this existed are corrected the next time they are saved.
+	 *
+	 * @param Entity $entity Organization to persist.
+	 * @return int The row ID, or 0 when the write failed.
+	 */
+	public static function save( Entity $entity ) {
+		if ( $entity instanceof Organization ) {
+			$entity->set( 'billing_company', $entity->get_name() );
+		}
+
+		return parent::save( $entity );
+	}
+
+	/**
 	 * Move an organization to a new status.
 	 *
 	 * @param int    $organization_id Organization ID.

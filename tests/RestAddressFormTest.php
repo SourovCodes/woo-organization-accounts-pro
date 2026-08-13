@@ -52,11 +52,34 @@ class RestAddressFormTest extends TestCase {
 	 * @return array Map of field name to definition.
 	 */
 	private function form( array $data, $country ) {
-		$this->assertArrayHasKey( $country, $data['forms'] );
+		return $this->form_of( $data, 'forms', $country );
+	}
+
+	/**
+	 * Index one country's billing form by field name.
+	 *
+	 * @param array  $data    The payload.
+	 * @param string $country Two-letter country code.
+	 * @return array Map of field name to definition.
+	 */
+	private function billing_form( array $data, $country ) {
+		return $this->form_of( $data, 'billing_forms', $country );
+	}
+
+	/**
+	 * Index one country's form of one shape by field name.
+	 *
+	 * @param array  $data    The payload.
+	 * @param string $key     'forms' or 'billing_forms'.
+	 * @param string $country Two-letter country code.
+	 * @return array Map of field name to definition.
+	 */
+	private function form_of( array $data, $key, $country ) {
+		$this->assertArrayHasKey( $country, $data[ $key ] );
 
 		$fields = array();
 
-		foreach ( $data['forms'][ $country ] as $field ) {
+		foreach ( $data[ $key ][ $country ] as $field ) {
 			$fields[ $field['name'] ] = $field;
 		}
 
@@ -130,6 +153,92 @@ class RestAddressFormTest extends TestCase {
 
 				$this->assertSame( ! empty( $field['required'] ), $form[ $name ]['required'], $country . ' disagrees on ' . $name );
 			}
+		}
+	}
+
+	/**
+	 * A billing form is served for every country, beside the shipping one.
+	 */
+	public function testABillingFormIsServedForEveryCountry() {
+		$this->act_as_shop_manager();
+
+		$data = $this->fetch()->get_data();
+
+		$this->assertArrayHasKey( 'billing_forms', $data );
+		$this->assertNotEmpty( $this->billing_form( $data, 'DE' ) );
+	}
+
+	/**
+	 * Each shape is keyed over its own country list, and both lists are WooCommerce's.
+	 *
+	 * A shop sells to more places than it ships to as soon as one customer's invoices go
+	 * somewhere its couriers do not. Keying the billing forms over the *shipping* list
+	 * would offer that organization's country in no picker and serve no form behind it,
+	 * so the till could not record an address the shop's own admin can.
+	 */
+	public function testEachShapeIsKeyedOverItsOwnCountryList() {
+		$this->act_as_shop_manager();
+
+		$data = $this->fetch()->get_data();
+
+		$this->assertSame( WC()->countries->get_shipping_countries(), $data['countries'] );
+		$this->assertSame( WC()->countries->get_allowed_countries(), $data['billing_countries'] );
+		$this->assertSame( array_keys( $data['countries'] ), array_keys( $data['forms'] ) );
+		$this->assertSame( array_keys( $data['billing_countries'] ), array_keys( $data['billing_forms'] ) );
+	}
+
+	/**
+	 * Billing keeps WooCommerce's requirements where shipping relaxes them.
+	 *
+	 * This is the whole reason two forms are served rather than one. A till rendering a
+	 * billing address from the *shipping* definitions marks `last_name` optional,
+	 * because `AddressFields::delivery_fields()` relaxes it for a delivery address that
+	 * belongs to a place rather than a person. Billing has no such relaxation, so the
+	 * operator leaves the field blank on a screen that told them it was optional and
+	 * the write refuses it. The two shapes have to be able to disagree, and here they
+	 * do.
+	 */
+	public function testBillingKeepsTheRequirementsShippingRelaxes() {
+		$this->act_as_shop_manager();
+
+		$data = $this->fetch()->get_data();
+
+		foreach ( array( 'US', 'DE' ) as $country ) {
+			$expected = WC()->countries->get_address_fields( $country, 'billing_' );
+			$billing  = $this->billing_form( $data, $country );
+			$shipping = $this->form( $data, $country );
+
+			foreach ( $expected as $key => $field ) {
+				$name = substr( $key, strlen( 'billing_' ) );
+
+				$this->assertArrayHasKey( $name, $billing, $country . ' is missing billing ' . $name );
+				$this->assertSame(
+					! empty( $field['required'] ),
+					$billing[ $name ]['required'],
+					$country . ' disagrees with WooCommerce on billing ' . $name
+				);
+			}
+
+			$this->assertTrue( $billing['last_name']['required'], $country . ' lets a billing surname go unasked.' );
+			$this->assertFalse( $shipping['last_name']['required'], $country . ' requires a delivery surname.' );
+		}
+	}
+
+	/**
+	 * Neither form asks for a company.
+	 *
+	 * An organization already is the company — see `AddressFields::strip_company()`. A
+	 * field served here is a field the app draws, so this is where a second box asking
+	 * for the name again would come back.
+	 */
+	public function testNeitherFormAsksForACompany() {
+		$this->act_as_shop_manager();
+
+		$data = $this->fetch()->get_data();
+
+		foreach ( array( 'US', 'DE' ) as $country ) {
+			$this->assertArrayNotHasKey( 'company', $this->form( $data, $country ) );
+			$this->assertArrayNotHasKey( 'company', $this->billing_form( $data, $country ) );
 		}
 	}
 

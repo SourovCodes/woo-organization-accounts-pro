@@ -326,8 +326,13 @@ class AccountHandlers {
 		 * end recognises, so a blank company falls back to the organization's name
 		 * rather than being left empty. It is stored rather than resolved at checkout,
 		 * so what the screen shows is what the courier will get.
+		 *
+		 * The key is absent rather than empty: the form offers no company field for
+		 * `AddressFields::posted()` to have read — see `AddressFields::strip_company()`.
+		 * Coalesced rather than assumed missing so this still reads as the fallback it
+		 * is if the field is ever offered again.
 		 */
-		if ( '' === trim( (string) $address['company'] ) ) {
+		if ( '' === trim( (string) ( isset( $address['company'] ) ? $address['company'] : '' ) ) ) {
 			$address['company'] = $organization->get_name();
 		}
 

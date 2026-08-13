@@ -18,6 +18,7 @@ use WooOrgAccounts\Checkout\Gate;
 use WooOrgAccounts\Checkout\ShippingSelector;
 use WooOrgAccounts\Emails\Emails;
 use WooOrgAccounts\Frontend\AccountHandlers;
+use WooOrgAccounts\Frontend\AddressFields;
 use WooOrgAccounts\Frontend\MyAccount;
 use WooOrgAccounts\Frontend\OrderDetails;
 use WooOrgAccounts\Frontend\Registration;
@@ -117,6 +118,13 @@ final class Plugin {
 		 * and the Store API as readily as from the My Account form.
 		 */
 		( new LoginGate() )->register();
+
+		/*
+		 * Before anything that builds an address form, and outside the is_admin()
+		 * branch: the option it forces is read by the checkout, by the admin screens and
+		 * by the REST route a till asks for its form definitions.
+		 */
+		AddressFields::register();
 
 		( new Registration() )->register();
 		( new MyAccount() )->register();

@@ -43,6 +43,33 @@ final class AddressFields {
 	const SHIPPING = 'shipping';
 
 	/**
+	 * Register the rules this class enforces on WooCommerce's own surfaces.
+	 *
+	 * @return void
+	 */
+	public static function register() {
+		add_filter( 'pre_option_woocommerce_checkout_company_field', array( __CLASS__, 'hide_company_field' ) );
+	}
+
+	/**
+	 * Force WooCommerce's company field off, shop-wide.
+	 *
+	 * A `pre_option` filter rather than a saved setting, the same way
+	 * `Checkout\Gate::disable_guest_checkout()` does it, so it cannot be switched back
+	 * on from the Customizer while the plugin is active. See `strip_company()` for why
+	 * an organization has no use for the field.
+	 *
+	 * This covers WooCommerce's own screens — the checkout it builds itself, the
+	 * address forms under My Account. The plugin's own forms are handled in `fields()`
+	 * instead, and deliberately do not depend on this.
+	 *
+	 * @return string Always 'hidden'.
+	 */
+	public static function hide_company_field() {
+		return 'hidden';
+	}
+
+	/**
 	 * WooCommerce's field definitions for one address, for one country.
 	 *
 	 * @param string $type    self::BILLING or self::SHIPPING.
@@ -52,6 +79,7 @@ final class AddressFields {
 	public static function fields( $type, $country = '' ) {
 		$country = '' !== $country ? $country : WC()->countries->get_base_country();
 		$fields  = WC()->countries->get_address_fields( $country, $type . '_' );
+		$fields  = self::strip_company( $type, $fields );
 		$fields  = self::delivery_fields( $type, $fields );
 
 		/**
@@ -69,6 +97,40 @@ final class AddressFields {
 		$fields = apply_filters( 'woo_org_accounts_address_fields', $fields, $type, $country );
 
 		uasort( $fields, 'wc_checkout_fields_uasort_comparison' );
+
+		return $fields;
+	}
+
+	/**
+	 * Drop the company field. An organization already is the company.
+	 *
+	 * Every address this plugin collects belongs to an organization — `Checkout\Gate`
+	 * refuses a checkout that is not an active member of one, and turns guest checkout
+	 * off so that stays true. The organization's name *is* the company name, so a
+	 * second field asking for it again is a second answer to a question already
+	 * answered: two boxes labelled "Company name" on one screen, and an invoice whose
+	 * company line disagrees with the account it was billed to.
+	 *
+	 * So it is not collected anywhere, and is derived instead:
+	 *
+	 * - the billing company is set from the organization's name on every save, in
+	 *   `Data\OrganizationRepository::save()`, so renaming an account moves its
+	 *   invoices with it;
+	 * - a location's shipping company falls back to the same name, which is the
+	 *   behaviour that was already here — see `Rest\LocationsController`.
+	 *
+	 * Removed here rather than only through `hide_company_field()` because that filter
+	 * leaves WooCommerce to decide what "hidden" means to `get_address_fields()`, and
+	 * everything downstream of this method — what is rendered, what `posted()` reads,
+	 * what `keys()` lets `Rest\Writes::address()` keep — has to agree exactly. The
+	 * columns still exist and are still written; it is the input that is gone.
+	 *
+	 * @param string $type   self::BILLING or self::SHIPPING.
+	 * @param array  $fields WooCommerce's definitions, keyed by prefixed field name.
+	 * @return array The definitions, without a company field.
+	 */
+	private static function strip_company( $type, array $fields ) {
+		unset( $fields[ $type . '_company' ] );
 
 		return $fields;
 	}

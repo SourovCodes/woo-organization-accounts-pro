@@ -378,9 +378,19 @@ checkout then rejected.
   1.0.0 stored a single `contact_name` and split it on whitespace when an order was placed, which
   gave every one-word contact an empty surname; `Install` migrates those once and drops the old
   columns.
-- **A blank company falls back to the organization's name**, at save time and again when the order
-  is built, because a parcel with no company on the label is one nobody at a loading bay
-  recognises.
+- **No form anywhere asks for a company**, and the field is removed rather than made optional —
+  `AddressFields::strip_company()` unsets it from every definition, and
+  `AddressFields::hide_company_field()` forces WooCommerce's own setting off through `pre_option`
+  so the two cannot disagree. An organization *is* the company; a second field asking for the name
+  again put two boxes labelled "Company name" on one screen and let an invoice's company line
+  disagree with the account it was billed to. The columns stay, and are derived:
+  `OrganizationRepository::save()` sets `billing_company` from the organization's name on **every**
+  save — not only when it is blank, which is the difference between a derived value and a copy that
+  rots the first time somebody renames an account — and a location's company falls back to that
+  same name at save time and again when the order is built, because a parcel with no company on the
+  label is one nobody at a loading bay recognises. There is no exception for a sole trader whose
+  account is named after them: their invoice repeats their name on its company line, which is the
+  price of never having two answers to which name an order is billed to.
 - **Two shipping fields are relaxed, and only these two**, in `AddressFields::delivery_fields()`.
   WooCommerce's shipping fields describe an address somebody is typing at a checkout; these
   describe one the shop has kept on file, and a rule that is fair to apply to a keystroke is not
@@ -656,15 +666,29 @@ address merge and the refusal.
   per location, newline-separated), through `WC()->countries->get_formatted_address()` — postcode
   before the city in Germany, after it in the US — so the device never invents an envelope layout.
 
-**`Rest\AddressFormController` serves `GET /wc-woap/v1/address-form`** — WooCommerce's shipping
-field definitions per ship-to country, serialised from the same `AddressFields::fields()` every
-web form here renders from, shop checkout customisations included (the
-`woo_org_accounts_address_fields` filter applies). It exists because a one-off delivery address is
-the one address a till composes, and a hand-written address form is wrong in a different way in
-every country — the founding lesson of `AddressFields`. Only the shipping form: billing comes from
-the organization row and locations arrive pre-validated in the snapshot. The state field carries
-its `options` where the country has a list; absence means free text, which is what the checkout
-renders too. ETag'd like the snapshot; `Rest\Etag` is the shared revalidation helper.
+**`Rest\AddressFormController` serves `GET /wc-woap/v1/address-form`** — WooCommerce's field
+definitions per ship-to country, serialised from the same `AddressFields::fields()` every web form
+here renders from, shop checkout customisations included (the `woo_org_accounts_address_fields`
+filter applies). It exists because a hand-written address form is wrong in a different way in every
+country — the founding lesson of `AddressFields`. The state field carries its `options` where the
+country has a list; absence means free text, which is what the checkout renders too. ETag'd like
+the snapshot; `Rest\Etag` is the shared revalidation helper.
+
+**Both shapes are served — `forms` for delivery, `billing_forms` for billing — and the app must not
+substitute one for the other.** It did, when only the shipping form existed, on the reasoning that
+billing is the same shape plus an email. It is not: `delivery_fields()` relaxes `last_name` and
+`phone` for a delivery address and billing keeps WooCommerce's rules for both, so the app marked a
+surname optional that the write path required and the operator met a refusal for a rule the screen
+had told them did not apply. A client older than `billing_forms` falls back to `forms` — wrong in
+exactly that known way, which beats an empty form. `RestAddressFormTest` asserts the two disagree
+about `last_name` rather than asserting each in isolation, because the disagreement is the point.
+
+**Each shape is keyed over its own country list**: `countries` is `get_shipping_countries()` and
+keys `forms`; `billing_countries` is `get_allowed_countries()` and keys `billing_forms`. WooCommerce
+keeps both because a shop sells to more places than it ships to as soon as one customer's invoices
+go somewhere its couriers do not. Keying billing over the shipping list would leave that
+organization's country in no picker and with no form behind it — an address the shop's own admin can
+save and the till cannot.
 
 **`Rest\Orders` is the write side, on WooCommerce's own orders route.** Left alone, `/wc/v3/orders`
 was the documented way around everything this plugin enforces: an order created there carried

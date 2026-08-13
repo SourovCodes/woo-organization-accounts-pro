@@ -360,6 +360,12 @@ class ImportTest extends TestCase {
 	 * this person an account, and the alternative to naming it after them is not
 	 * importing them at all.
 	 *
+	 * Their billing company is that same name rather than the empty column the CSV
+	 * carried, because it is derived from the account name on every save and that rule
+	 * has no exception for a person — see `Data\OrganizationRepository::save()`. Their
+	 * invoice repeats them on its company line, which is the price of never having two
+	 * answers to which name an order is billed to.
+	 *
 	 * @return void
 	 */
 	public function testACustomerWithNoCompanyBecomesAnOrganizationOfTheirOwn() {
@@ -369,7 +375,7 @@ class ImportTest extends TestCase {
 
 		$this->assertNotNull( $organization );
 		$this->assertSame( 1, MemberRepository::count_for_organization( $organization->get_id() ) );
-		$this->assertSame( '', $organization->get( 'billing_company' ), 'A company name nobody gave is not invented to fill the column.' );
+		$this->assertSame( 'Roberta Bianda', $organization->get( 'billing_company' ), 'The billing company is the account name, for a person as much as for a company.' );
 	}
 
 	/**

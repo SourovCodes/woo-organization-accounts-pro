@@ -90,8 +90,12 @@ final class OrganizationKey {
 	 * The company name falls back to the person's, because a shop selling to sole
 	 * traders and to schools has customers with no company name at all and they still
 	 * have to become an organization — 72 of the 647 rows this was written against.
-	 * Nothing is invented to fill the column: the fallback happens here, in the key,
-	 * and the organization's `billing_company` is left as empty as it arrived.
+	 *
+	 * The organization's own `billing_company` no longer survives the import as empty
+	 * as it arrived: it is derived from the organization's name on every save, so a
+	 * sole trader's invoice carries their own name on its company line. See
+	 * `Data\OrganizationRepository::save()` for why that is one rule with no exception
+	 * rather than a column somebody has to keep in step.
 	 *
 	 * @param array $address Billing address keyed as WooCommerce names its fields.
 	 * @param bool  $ignore_legal_form Whether to strip the company's legal form first.
