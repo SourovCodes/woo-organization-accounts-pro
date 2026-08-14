@@ -819,6 +819,227 @@ class RestWritesTest extends TestCase {
 	}
 
 	/**
+	 * A name and an address are edited through the membership, like everything else.
+	 *
+	 * Neither is stored on the membership row, so this asserts the whole way down: the
+	 * payload the route answers with, the WordPress account behind it, and the display
+	 * name every screen in this plugin actually prints.
+	 */
+	public function testAMembersNameAndAddressAreEditedThroughTheMembership() {
+		$organization = $this->make_organization();
+		$member       = $this->make_member( $organization, Member::ROLE_MEMBER );
+
+		$this->act_as_shop_manager();
+
+		$response = $this->send(
+			'PATCH',
+			$this->members_route( $organization, $member->get_id() ),
+			array(
+				'first_name' => 'Karl',
+				'last_name'  => 'Schmidt',
+				'email'      => 'karl@acme.test',
+			)
+		);
+
+		$data = $response->get_data();
+
+		$this->assertSame( 200, $response->get_status() );
+		$this->assertSame( 'Karl', $data['first_name'] );
+		$this->assertSame( 'Schmidt', $data['last_name'] );
+		$this->assertSame( 'karl@acme.test', $data['email'] );
+		$this->assertSame( 'Karl Schmidt', $data['name'] );
+
+		$user = get_userdata( $member->get_user_id() );
+
+		$this->assertSame( 'karl@acme.test', $user->user_email );
+		$this->assertSame( 'Karl', $user->first_name );
+		$this->assertSame( 'Schmidt', $user->last_name );
+		$this->assertSame( 'Karl Schmidt', $user->display_name );
+	}
+
+	/**
+	 * An edit that says nothing about the name does not blank it.
+	 *
+	 * The trap is WordPress's own: a declared argument default is filled into the request
+	 * before the callback sees it, so `'default' => ''` on either name would empty the
+	 * surname of everybody whose role was changed through this route.
+	 */
+	public function testAnEditThatSaysNothingAboutTheNameLeavesItAlone() {
+		$organization = $this->make_organization();
+		$member       = $this->make_member( $organization, Member::ROLE_MEMBER );
+
+		wp_update_user(
+			array(
+				'ID'         => $member->get_user_id(),
+				'first_name' => 'Karl',
+				'last_name'  => 'Schmidt',
+			)
+		);
+
+		$this->act_as_shop_manager();
+
+		$response = $this->send(
+			'PATCH',
+			$this->members_route( $organization, $member->get_id() ),
+			array( 'role' => Member::ROLE_ADMIN )
+		);
+
+		$user = get_userdata( $member->get_user_id() );
+
+		$this->assertSame( 200, $response->get_status() );
+		$this->assertSame( 'Karl', $user->first_name );
+		$this->assertSame( 'Schmidt', $user->last_name );
+	}
+
+	/**
+	 * An address that already has an account cannot be moved onto another membership.
+	 *
+	 * And the refusal leaves the rest of the request unwritten: the account is changed
+	 * before the membership row precisely so that the failure a client will actually meet
+	 * happens while nothing has been written yet. A member promoted to admin by a request
+	 * that was then refused would be the worst of both answers.
+	 */
+	public function testMovingAMemberOntoAnAddressThatIsTakenIsRefused() {
+		$organization = $this->make_organization();
+		$member       = $this->make_member( $organization, Member::ROLE_MEMBER );
+
+		self::factory()->user->create(
+			array(
+				'role'       => 'customer',
+				'user_email' => 'taken@acme.test',
+			)
+		);
+
+		$this->act_as_shop_manager();
+
+		$response = $this->send(
+			'PATCH',
+			$this->members_route( $organization, $member->get_id() ),
+			array(
+				'email' => 'taken@acme.test',
+				'role'  => Member::ROLE_ADMIN,
+			)
+		);
+
+		$this->assertSame( 409, $response->get_status() );
+		$this->assertSame( 'woap_rest_email_taken', $response->get_data()['code'] );
+		$this->assertSame( Member::ROLE_MEMBER, MemberRepository::find( $member->get_id() )->get_role() );
+	}
+
+	/**
+	 * An address on another organization's account is the same refusal as adding one.
+	 *
+	 * It is the same rule — a person belongs to one organization at a time — so it is the
+	 * same code and carries the same pointer to where they already are.
+	 */
+	public function testMovingAMemberOntoAnotherOrganizationsAddressIsRefused() {
+		$theirs        = $this->make_organization( array( 'name' => 'Beta AG' ) );
+		$ours          = $this->make_organization( array( 'name' => 'Acme GmbH' ) );
+		$member        = $this->make_member( $ours, Member::ROLE_MEMBER );
+		$theirs_member = $this->make_member( $theirs, Member::ROLE_MEMBER );
+
+		$this->act_as_shop_manager();
+
+		$response = $this->send(
+			'PATCH',
+			$this->members_route( $ours, $member->get_id() ),
+			array( 'email' => get_userdata( $theirs_member->get_user_id() )->user_email )
+		);
+
+		$data = $response->get_data();
+
+		$this->assertSame( 409, $response->get_status() );
+		$this->assertSame( 'woap_rest_already_member', $data['code'] );
+		$this->assertSame( $theirs->get_id(), $data['data']['organization_id'] );
+	}
+
+	/**
+	 * A display name the shop set by hand survives a rename.
+	 *
+	 * The display name is derived, so an edit to the names has to move it or the rename
+	 * would be invisible on every screen. It is only ever overwritten when it is still one
+	 * of the values it could have been derived from — a shop that has written something
+	 * else there has answered the question already.
+	 */
+	public function testADisplayNameSetByHandSurvivesARename() {
+		$organization = $this->make_organization();
+		$member       = $this->make_member( $organization, Member::ROLE_MEMBER );
+
+		wp_update_user(
+			array(
+				'ID'           => $member->get_user_id(),
+				'display_name' => 'Karl from the warehouse',
+			)
+		);
+
+		$this->act_as_shop_manager();
+
+		$response = $this->send(
+			'PATCH',
+			$this->members_route( $organization, $member->get_id() ),
+			array(
+				'first_name' => 'Karl',
+				'last_name'  => 'Schmidt',
+			)
+		);
+
+		$this->assertSame( 200, $response->get_status() );
+		$this->assertSame( 'Karl from the warehouse', $response->get_data()['name'] );
+		$this->assertSame( 'Karl', get_userdata( $member->get_user_id() )->first_name );
+	}
+
+	/**
+	 * An address WordPress would not accept is refused, and nothing is written.
+	 */
+	public function testAMemberIsRefusedAnAddressThatIsNotOne() {
+		$organization = $this->make_organization();
+		$member       = $this->make_member( $organization, Member::ROLE_MEMBER );
+		$before       = get_userdata( $member->get_user_id() )->user_email;
+
+		$this->act_as_shop_manager();
+
+		$response = $this->send(
+			'PATCH',
+			$this->members_route( $organization, $member->get_id() ),
+			array( 'email' => 'not-an-address' )
+		);
+
+		$this->assertSame( 400, $response->get_status() );
+		$this->assertSame( 'rest_invalid_param', $response->get_data()['code'] );
+		$this->assertSame( $before, get_userdata( $member->get_user_id() )->user_email );
+	}
+
+	/**
+	 * An employee entered by staff is listed under their name, not their address.
+	 *
+	 * The derivation is WordPress's own — `wp_insert_user()` builds a display name out of
+	 * the two names, and falls back to the login only when there are none, which here would
+	 * be the address. It is asserted because this plugin depends on it: `display_name` is
+	 * what the members list, the organization orders list and wp-admin's order column all
+	 * print, and an update re-derives nothing, which is why `update_identity()` has to.
+	 */
+	public function testACreatedEmployeeIsListedUnderTheirName() {
+		$organization = $this->make_organization();
+
+		$this->act_as_shop_manager();
+
+		$response = $this->send(
+			'POST',
+			$this->members_route( $organization ),
+			array(
+				'email'      => 'karl@acme.test',
+				'method'     => 'create',
+				'first_name' => 'Karl',
+				'last_name'  => 'Schmidt',
+			)
+		);
+
+		$this->assertSame( 201, $response->get_status() );
+		$this->assertSame( 'Karl Schmidt', $response->get_data()['name'] );
+		$this->assertSame( 'Karl Schmidt', get_user_by( 'email', 'karl@acme.test' )->display_name );
+	}
+
+	/**
 	 * Promoting somebody to admin gives them an admin's permissions.
 	 *
 	 * The overrides are a diff against the role's defaults, so a client sending back the

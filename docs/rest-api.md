@@ -129,6 +129,8 @@ across the page boundary and drop it from the sync entirely.
         "member_id": 7,
         "user_id": 45,
         "name": "Grace Hopper",
+        "first_name": "Grace",
+        "last_name": "Hopper",
         "email": "grace@acme.example",
         "role": "admin",
         "status": "active",
@@ -170,6 +172,9 @@ Field notes — the non-obvious ones:
   any order call.
 - **`members[].role`** is the *organization* role, `admin` or `member` — not a WordPress role
   name.
+- **`members[].name` is the display name; `first_name` and `last_name` are the fields you edit.**
+  Show `name` — it is what every screen on the shop prints, and it is what a shop that has written
+  something else there wants shown. Fill a form from the other two.
 - **`members[].can_place_orders`** is the resolved answer to "may this person buy right now?",
   computed server-side from membership status, organization status and the member's capability
   set. **Use it, do not re-derive it.** The inputs are deliberately not exposed: the underlying
@@ -526,11 +531,38 @@ curl -u ck_xxx:cs_xxx -X PATCH \
 
 | Field | Values |
 |---|---|
+| `first_name` | their first name, on the WordPress account behind the membership |
+| `last_name` | their surname |
+| `email` | the address they sign in with and the shop writes to |
 | `role` | `admin` or `member` — the *organization* role, not a WordPress role name |
 | `status` | `active` or `inactive` |
 | `capabilities` | `"role_default"`, or an object of capability → boolean |
 | `location_access` | `"all"`, or a non-empty array of location IDs of this organization |
 
+- **An edit is partial, and a field you do not send is not touched.** There is no way to say "blank
+  the surname" other than sending `"last_name": ""`.
+- **The name and the address live on the WordPress account, not on the membership**, which is why
+  they are edited here rather than through `/wp/v2/users`: one route, one set of rules, one answer
+  about a person. Four things follow, and each is asserted by `RestWritesTest`:
+  - **The login name never changes.** An account created from an address keeps that address as its
+    WordPress `user_login` for good — WordPress does not allow a rename. It is of no consequence:
+    WordPress signs somebody in by either their login or their email address, so after this edit
+    they use the new one.
+  - **`name` follows the names you send**, because the display name is what every screen on the
+    shop prints and a rename nothing displayed would be no rename at all. A display name a shop has
+    set by hand — anything that is not the old name or the old address — is left exactly as it is.
+  - **WordPress emails the *old* address** to say it was changed, as it does for any account. That
+    is core's notice, not one of this plugin's four; a shop that does not want it filters
+    `send_email_change_email`. Nothing else is sent, and the member is not signed out.
+  - **An address belongs to one account.** Moving somebody onto one that already exists is
+    `409`, never a merge: `woap_rest_already_member` when it belongs to another organization (with
+    `organization_id` and `member_id` in `data`, as when adding somebody), and
+    `woap_rest_email_taken` with `user_id` when it is an account with no membership. To join two
+    accounts, remove the member and add the other address instead.
+- **Nothing is written when an edit is refused.** The account is changed before the membership row
+  for exactly this reason: a refusal a client will actually meet — an address that is somebody
+  else's — happens while both are still untouched, rather than leaving somebody promoted to admin
+  by a request that failed.
 - **Permissions are a diff against the role, and this route does the arithmetic.** Send what should
   be *true* of the member; anything you do not mention follows the role, and only what differs is
   stored. So `{"role": "admin", "capabilities": "role_default"}` produces an admin with an admin's
@@ -565,6 +597,7 @@ curl -u ck_xxx:cs_xxx -X PATCH \
 | 400 | `woap_rest_status_has_its_own_route` | A `status` in the body of an organization edit. |
 | 400 | `woap_rest_invitation_extras` | Membership fields on an invitation. |
 | 409 | `woap_rest_already_member` | That address belongs to an organization already. |
+| 409 | `woap_rest_email_taken` | Editing a member onto an address that has a WordPress account of its own. `data.user_id` is the account holding it. |
 | 409 | `woap_rest_last_admin` | Removing the last active organization admin. |
 | 400 | `rest_invalid_param` / `rest_missing_callback_param` | WordPress's own validation: unknown `role`, `status` or `method`, a missing required `name` or `email`. |
 | 500 | `woap_rest_not_saved` | The write failed at the database. Nothing partial is left behind. |

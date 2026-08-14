@@ -688,6 +688,15 @@ final class OrganizationsController {
 	 * *before* a promotion is how an organization admin was once created who could manage
 	 * nothing.
 	 *
+	 * **The name is sent three ways, and they answer different questions.** `name` is the
+	 * display name — what every screen prints and the only one fit to show a person — while
+	 * `first_name` and `last_name` are the fields `MembersController` edits, and a client
+	 * that could write them but not read them back would have nothing to fill its own form
+	 * from. They are in the snapshot too rather than only where they are edited, because a
+	 * member is one thing and two routes describing it differently is the fault this one
+	 * method exists to prevent. Neither is a secret; the permissions are, which is what the
+	 * flag below is for.
+	 *
 	 * @param Member $member      The membership.
 	 * @param array  $permitted   The location IDs this member is restricted to, empty for all.
 	 * @param bool   $permissions Whether to include the resolved permissions.
@@ -704,6 +713,8 @@ final class OrganizationsController {
 			'member_id'        => $member->get_id(),
 			'user_id'          => $member->get_user_id(),
 			'name'             => $user->display_name,
+			'first_name'       => $user->first_name,
+			'last_name'        => $user->last_name,
 			'email'            => $user->user_email,
 			'role'             => $member->get_role(),
 			'status'           => $member->is_active() ? Member::STATUS_ACTIVE : Member::STATUS_INACTIVE,

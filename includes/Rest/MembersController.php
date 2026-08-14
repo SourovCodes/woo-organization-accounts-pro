@@ -49,6 +49,22 @@ defined( 'ABSPATH' ) || exit;
  * since moved away from — and promoting somebody to admin while sending the map drawn
  * for their old role is exactly how the account screen once produced an organization
  * admin who could manage nothing.
+ *
+ * **An edit reaches the WordPress account as well as the membership row**, because a name
+ * and an address are what a person *is* and neither is stored here: `woap_members` has no
+ * column for either. A back office correcting a misspelt surname or moving an employee to
+ * the address they now read mail at is doing the same act as changing their role, and
+ * having to reach for `/wp/v2/users` for half of it is how an app comes to hold two
+ * answers about one person. Three consequences are worth knowing, and each is asserted:
+ *
+ * - **The login name never changes.** WordPress does not allow it, so an account created
+ *   from an address keeps that address as its `user_login` — a fact of no consequence,
+ *   because WordPress signs somebody in by either.
+ * - **The display name follows the names, unless a shop has set one by hand.** Every
+ *   screen in this plugin prints `display_name`, so a rename nothing displayed would be a
+ *   field with no destination.
+ * - **An address belongs to one account.** Moving somebody onto one that already has an
+ *   account is refused rather than merged, the same answer and the same 409 as adding one.
  */
 final class MembersController {
 
@@ -285,7 +301,7 @@ final class MembersController {
 			$existing = MemberRepository::find_by_user( $user->ID );
 
 			if ( null !== $existing ) {
-				return $this->already_a_member( $existing, $organization );
+				return $this->already_a_member( $existing, $organization->get_id() );
 			}
 		}
 
@@ -329,7 +345,14 @@ final class MembersController {
 	}
 
 	/**
-	 * Change a member's role, status, permissions or location access.
+	 * Change a member's name, address, role, status, permissions or location access.
+	 *
+	 * The order of the writes is deliberate. Everything that can be refused is settled
+	 * before anything is written, and the WordPress account goes first of the two — a
+	 * refusal there is an ordinary thing a client will meet (the address is somebody
+	 * else's), whereas a repository answering 0 is a database anomaly. Doing it the other
+	 * way round would leave a member promoted to admin by a request that then failed on
+	 * the address it also carried.
 	 *
 	 * @param \WP_REST_Request $request The request.
 	 * @return \WP_REST_Response|\WP_Error The member, or an error.
@@ -356,6 +379,12 @@ final class MembersController {
 
 		if ( $errors->has_errors() ) {
 			return Writes::refuse( 'woap_rest_invalid_member', $errors );
+		}
+
+		$refusal = $this->update_identity( $member, $request );
+
+		if ( is_wp_error( $refusal ) ) {
+			return $refusal;
 		}
 
 		$member->set( 'role', $role );
@@ -461,6 +490,149 @@ final class MembersController {
 	}
 
 	/**
+	 * Write the name and the address an edit carries onto the WordPress account.
+	 *
+	 * Neither is stored on the membership row, so this is the whole of it: `wp_update_user()`
+	 * rather than a direct meta write, because WooCommerce keeps its own customer record in
+	 * step by listening to `profile_update` and a member is a customer of the shop.
+	 *
+	 * The fields an edit does not mention are read back off the account rather than left
+	 * out, because the display name is derived from all three together and deriving it from
+	 * half of them would blank a surname the request never mentioned.
+	 *
+	 * @param Member           $member  The membership being edited.
+	 * @param \WP_REST_Request $request The request.
+	 * @return \WP_Error|null A refusal, or null when there was nothing to do or it is done.
+	 */
+	private function update_identity( Member $member, $request ) {
+		$submitted = array();
+
+		foreach ( array( 'first_name', 'last_name', 'email' ) as $field ) {
+			if ( $request->has_param( $field ) ) {
+				$submitted[ $field ] = (string) $request[ $field ];
+			}
+		}
+
+		if ( empty( $submitted ) ) {
+			return null;
+		}
+
+		$user = get_userdata( $member->get_user_id() );
+
+		if ( ! $user instanceof \WP_User ) {
+			return $this->no_user_behind_it();
+		}
+
+		$identity = array_merge(
+			array(
+				'first_name' => (string) $user->first_name,
+				'last_name'  => (string) $user->last_name,
+				'email'      => (string) $user->user_email,
+			),
+			$submitted
+		);
+
+		$conflict = $this->address_conflict( $user, $identity['email'], $member->get_organization_id() );
+
+		if ( $conflict instanceof \WP_Error ) {
+			return $conflict;
+		}
+
+		$updated = wp_update_user(
+			array(
+				'ID'           => $user->ID,
+				'user_email'   => $identity['email'],
+				'first_name'   => $identity['first_name'],
+				'last_name'    => $identity['last_name'],
+				'display_name' => $this->display_name( $user, $identity ),
+			)
+		);
+
+		if ( is_wp_error( $updated ) ) {
+			$updated->add_data( array( 'status' => 400 ), $updated->get_error_code() );
+
+			return $updated;
+		}
+
+		return null;
+	}
+
+	/**
+	 * Whether an address an edit asks for belongs to somebody else.
+	 *
+	 * WordPress refuses the write itself, with `existing_user_email` and nothing to act on.
+	 * Asking first is what lets the answer say *where* that address already is, which for
+	 * an address on another organization's account is the one fact the app needs to resolve
+	 * it — and it is the same 409 as adding somebody who already belongs to an organization,
+	 * because it is the same rule.
+	 *
+	 * @param \WP_User $user            The account being edited.
+	 * @param string   $email           The address the edit asks for.
+	 * @param int      $organization_id The organization the membership belongs to.
+	 * @return \WP_Error|null A 409, or null when the address is free.
+	 */
+	private function address_conflict( \WP_User $user, $email, $organization_id ) {
+		if ( 0 === strcasecmp( $email, (string) $user->user_email ) ) {
+			return null;
+		}
+
+		$owner = get_user_by( 'email', $email );
+
+		if ( ! $owner instanceof \WP_User || $owner->ID === $user->ID ) {
+			return null;
+		}
+
+		$existing = MemberRepository::find_by_user( $owner->ID );
+
+		if ( null !== $existing ) {
+			return $this->already_a_member( $existing, $organization_id );
+		}
+
+		return new \WP_Error(
+			'woap_rest_email_taken',
+			__( 'That address already has an account on this shop. One address belongs to one account, so it cannot be moved onto this one.', 'woo-organization-accounts-pro' ),
+			array(
+				'status'  => 409,
+				'user_id' => $owner->ID,
+				'params'  => array( 'email' => __( 'Already in use.', 'woo-organization-accounts-pro' ) ),
+			)
+		);
+	}
+
+	/**
+	 * The display name an account should hold once an edit has landed.
+	 *
+	 * Every screen in this plugin prints `display_name` — the members list, the member
+	 * form, the organization orders list, the order column in wp-admin — so a rename that
+	 * left it alone would be a field with no destination: stored, served back, and visible
+	 * nowhere anybody looks.
+	 *
+	 * **A display name somebody has set by hand is left exactly as it is.** It is only
+	 * overwritten when it is still one of the things this plugin or WordPress would have
+	 * derived it from, which is what keeps a shop's own correction from being undone by a
+	 * routine edit to a surname.
+	 *
+	 * @param \WP_User $user     The account as it stands.
+	 * @param array    $identity The name and address it is about to hold.
+	 * @return string The display name to store.
+	 */
+	private function display_name( \WP_User $user, array $identity ) {
+		$derived = trim( $identity['first_name'] . ' ' . $identity['last_name'] );
+		$derived = '' !== $derived ? $derived : $identity['email'];
+		$stored  = (string) $user->display_name;
+
+		$derivable = array_filter(
+			array(
+				trim( $user->first_name . ' ' . $user->last_name ),
+				(string) $user->user_email,
+				(string) $user->user_login,
+			)
+		);
+
+		return in_array( $stored, $derivable, true ) ? $derived : $stored;
+	}
+
+	/**
 	 * Give a user the WordPress role their membership needs, unless they run the shop.
 	 *
 	 * `set_role()` replaces every role a user holds, so an administrator or a shop
@@ -487,12 +659,12 @@ final class MembersController {
 	/**
 	 * The refusal for an address that already belongs to an organization.
 	 *
-	 * @param Member       $existing     The membership that address already has.
-	 * @param Organization $organization The organization it was being added to.
+	 * @param Member $existing        The membership that address already has.
+	 * @param int    $organization_id The organization it was being added to, or edited on.
 	 * @return \WP_Error A 409.
 	 */
-	private function already_a_member( Member $existing, Organization $organization ) {
-		$message = $existing->get_organization_id() === $organization->get_id()
+	private function already_a_member( Member $existing, $organization_id ) {
+		$message = $existing->get_organization_id() === (int) $organization_id
 			? sprintf(
 				/* translators: %s: the organization noun for the site's mode, for example "Company". */
 				__( 'That address already belongs to this %s.', 'woo-organization-accounts-pro' ),
@@ -707,14 +879,23 @@ final class MembersController {
 		$payload = OrganizationsController::member_payload( $member, MemberRepository::location_ids( $member->get_id() ), true );
 
 		if ( null === $payload ) {
-			return new \WP_Error(
-				'woap_rest_member_has_no_user',
-				__( 'That membership has no WordPress account behind it.', 'woo-organization-accounts-pro' ),
-				array( 'status' => 500 )
-			);
+			return $this->no_user_behind_it();
 		}
 
 		return new \WP_REST_Response( $payload, $status );
+	}
+
+	/**
+	 * The refusal for a membership whose WordPress account has been deleted.
+	 *
+	 * @return \WP_Error A 500.
+	 */
+	private function no_user_behind_it() {
+		return new \WP_Error(
+			'woap_rest_member_has_no_user',
+			__( 'That membership has no WordPress account behind it.', 'woo-organization-accounts-pro' ),
+			array( 'status' => 500 )
+		);
 	}
 
 	/**
@@ -814,10 +995,33 @@ final class MembersController {
 	 * Every one of them is optional: an edit that names only a status changes only the
 	 * status, and the fields it did not mention are left where they were.
 	 *
+	 * **None of them declares a default**, which is what makes that true. WordPress fills a
+	 * declared default into the request itself, so `'default' => ''` on a name would blank
+	 * the surname of every member whose role was changed through this route — the same trap
+	 * `tax_id` presented on the organization edit, and the reason both are read with
+	 * `has_param()` rather than by truthiness.
+	 *
 	 * @return array Argument definitions.
 	 */
 	private function update_params() {
 		return array(
+			'first_name'      => array(
+				'description'       => __( 'Their first name, on the WordPress account behind the membership.', 'woo-organization-accounts-pro' ),
+				'type'              => 'string',
+				'sanitize_callback' => 'sanitize_text_field',
+			),
+			'last_name'       => array(
+				'description'       => __( 'Their surname, on the WordPress account behind the membership.', 'woo-organization-accounts-pro' ),
+				'type'              => 'string',
+				'sanitize_callback' => 'sanitize_text_field',
+			),
+			'email'           => array(
+				'description'       => __( 'The address they sign in with and the shop writes to. The login name they were created with does not change.', 'woo-organization-accounts-pro' ),
+				'type'              => 'string',
+				'format'            => 'email',
+				'sanitize_callback' => 'sanitize_email',
+				'validate_callback' => 'rest_validate_request_arg',
+			),
 			'role'            => array(
 				'description'       => __( 'The role they hold within the organization.', 'woo-organization-accounts-pro' ),
 				'type'              => 'string',

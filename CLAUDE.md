@@ -632,6 +632,21 @@ address merge and the refusal.
   the *resolved* map and a `capabilities_follow_role` flag, never the stored diff. `MembersController`
   does the diff arithmetic on the way in, against the role *being saved*, which is
   `testPromotingToAdminGrantsTheAdminDefaults` asked of a REST client.
+- **A member's name and email address are edited on the membership route**, and they are the one
+  thing there that is not stored on the membership row — `woap_members` has no column for either,
+  so `MembersController::update_identity()` is a `wp_update_user()` call, which is also what keeps
+  WooCommerce's customer record in step through `profile_update`. Three things fall out of it.
+  **The display name is derived**, because every screen in this plugin prints `display_name` and a
+  rename that moved only the meta would be a field with no destination — the account screens, the
+  organization orders list and wp-admin's order column all show it. It is only overwritten when it
+  still equals something it could have been derived from, so a name a shop wrote by hand survives.
+  **`user_login` is never touched** — WordPress does not allow it, and it does not matter, because
+  WordPress signs somebody in by either. And **the account is written before the membership row**:
+  the refusal a client will actually meet is an address that is somebody else's, and meeting it
+  after the membership had been saved would leave somebody promoted by a request that failed.
+  Moving a member onto an address that already has an account is a 409 either way — the same
+  `woap_rest_already_member` as adding them when it belongs to an organization, and
+  `woap_rest_email_taken` when it does not.
 - **Adding somebody is two acts, and the request says which.** `invite` issues an invitation and
   cannot carry membership fields — there is no row for them to land on, so they are refused rather
   than dropped; `create` makes the account outright, the importer's shape, random password and no
