@@ -46,6 +46,21 @@
 	cursor: not-allowed;
 }
 
+/*
+ * "Ship to a different address?" is locked on, so it reports a fact rather than
+ * offering a choice. The label keeps the theme's own colour — a whole heading dimmed
+ * to browser-grey reads as broken — and only the control it can no longer accept a
+ * click on says so.
+ */
+#ship-to-different-address.woap-ship-locked label {
+	cursor: default;
+	color: var(--wd-entities-title-color, #333);
+}
+
+#ship-to-different-address.woap-ship-locked input[type="checkbox"] {
+	cursor: not-allowed;
+}
+
 .woap-blocks-panel {
 	margin: 0 0 1.5em;
 }

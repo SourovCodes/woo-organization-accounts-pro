@@ -552,6 +552,16 @@ which is a public REST route reachable whatever the site's pages happen to rende
 - `ShippingSelector` resolves a location **by ID, scoped to the member's own organization and their
   access list**, and writes that address onto the order. A one-off address is allowed only when the
   organization's own switch is on.
+- **"Ship to a different address?" is locked on, not merely pre-ticked.** The filter
+  (`always_ship_separately()`) only decides how WooCommerce first renders the checkbox; leaving it
+  clickable let the customer answer a question this plugin has already answered, and unchecking it
+  slides the location selector out of sight and posts an order WooCommerce then addresses to the
+  billing address. `checkout.js` disables the control and carries the value in a hidden input — one
+  placed *after* `#ship-to-different-address` rather than inside it, because WooCommerce fires
+  `change` on every input within that heading as it initialises and a hidden input is never
+  `:checked`, so one inside would hide the shipping fields the checkbox had just opened. Locking is
+  driven by the `lockShipTo` flag, which is `Context::can_purchase()`, so a visitor this plugin has
+  no opinion about keeps the shop's own answer.
 - `OrderMeta` records `_woap_organization_id`, `_woap_location_id`, `_woap_member_user_id` and the
   names of the first two. Both the IDs and the names are needed: the IDs link back to the live
   records, the names are what an order says it was for after a rename or a deletion, and an order

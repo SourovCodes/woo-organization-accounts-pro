@@ -289,6 +289,38 @@ class CheckoutTest extends TestCase {
 	}
 
 	/**
+	 * "Ship to a different address?" is answered for the member, not asked of them.
+	 *
+	 * Billing is the organization's registered address and shipping is a location, so
+	 * they are never the same address and there is nothing here to decide. WooCommerce
+	 * renders the checkbox from this filter and `checkout.js` then locks the control
+	 * itself, which is why the flag that turns the lock on rides with the script.
+	 *
+	 * A visitor who is not buying on an organization's account is left alone: the shop
+	 * keeps its own answer for anybody this plugin has no opinion about.
+	 */
+	public function testTheShippingAddressIsAlwaysSeparateFromBilling() {
+		// The suite's shop has no shipping zones, so the cart is told it has a parcel.
+		add_filter( 'woocommerce_cart_needs_shipping_address', '__return_true' );
+
+		$selector = new ShippingSelector();
+		$selector->register();
+
+		$this->assertNotFalse(
+			has_filter( 'woocommerce_ship_to_different_address_checked', array( $selector, 'always_ship_separately' ) ),
+			'Nothing decides how the checkbox renders.'
+		);
+
+		$this->assertSame( 0, $selector->always_ship_separately( 0 ), 'A visitor with no organization had the shop\'s answer overruled.' );
+
+		$this->act_as( $this->make_member( $this->make_organization() ) );
+
+		$this->assertTrue( $selector->always_ship_separately( 0 ) );
+
+		remove_filter( 'woocommerce_cart_needs_shipping_address', '__return_true' );
+	}
+
+	/**
 	 * The chosen location replaces whatever shipping address was posted.
 	 */
 	public function testPostedShippingIsReplacedByTheLocation() {

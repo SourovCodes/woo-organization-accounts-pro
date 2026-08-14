@@ -88,6 +88,45 @@
 	}
 
 	/**
+	 * Lock "Ship to a different address?" on.
+	 *
+	 * The two addresses are never the same one here — billing is the organization's
+	 * registered address and shipping is a location — so this is not a question the
+	 * customer has to answer, and unchecking it slides the location selector out of
+	 * sight and posts the order without a destination.
+	 *
+	 * The checkbox is disabled rather than hidden, so the heading still reads as the
+	 * heading of the delivery section. A disabled control posts nothing, so the value
+	 * is carried by a hidden input placed *after* the heading rather than inside it:
+	 * WooCommerce fires `change` on every input within `#ship-to-different-address` as
+	 * it initialises, and a hidden input is never `:checked`, so one inside would hide
+	 * the shipping fields the checkbox had just opened.
+	 */
+	function lockShipToDifferentAddress() {
+		var $checkbox = $( '#ship-to-different-address-checkbox' );
+		var $heading = $( '#ship-to-different-address' );
+
+		if ( ! settings.lockShipTo || ! $checkbox.length || $checkbox.prop( 'disabled' ) ) {
+			return;
+		}
+
+		$checkbox
+			.prop( 'checked', true )
+			.prop( 'disabled', true )
+			.attr( 'aria-disabled', 'true' );
+
+		$heading.addClass( 'woap-ship-locked' );
+
+		$( '<input>' )
+			.attr( {
+				type: 'hidden',
+				name: 'ship_to_different_address',
+				value: '1'
+			} )
+			.insertAfter( $heading );
+	}
+
+	/**
 	 * Apply whatever the select currently says.
 	 */
 	function apply() {
@@ -122,8 +161,12 @@
 	$( document.body ).on( 'updated_checkout', function () {
 		var value = $( '#woap-location' ).val();
 
+		lockShipToDifferentAddress();
 		setEditable( value === settings.custom || ! findLocation( value ) );
 	} );
 
-	$( apply );
+	$( function () {
+		lockShipToDifferentAddress();
+		apply();
+	} );
 }( window.jQuery, window.woapCheckout ) );

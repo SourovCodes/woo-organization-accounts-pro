@@ -477,25 +477,25 @@ msgid "The organization location this order is being delivered to."
 msgstr "Der Standort der Organisation, an den diese Bestellung geliefert wird."
 
 #. translators: 1: plural location noun, 2: the organization admin noun.
-#: includes/Checkout/ShippingSelector.php:402
+#: includes/Checkout/ShippingSelector.php:409
 #, php-format
 msgid "No %1$s have been set up to deliver to, and one-off addresses are not allowed. Ask your %2$s to add one."
 msgstr "Es sind keine %1$s als Lieferziel hinterlegt, und einmalige Adressen sind nicht erlaubt. Bitte deinen %2$s, eine anzulegen."
 
 #. translators: %s: the singular location noun, for example "Branch".
-#: includes/Checkout/ShippingSelector.php:410
+#: includes/Checkout/ShippingSelector.php:417
 #, php-format
 msgid "Please choose the %s this order is going to."
 msgstr "Bitte wähle die %s, an die diese Bestellung geht."
 
 #. translators: %s: the singular location noun, for example "Branch".
-#: includes/Checkout/ShippingSelector.php:420
+#: includes/Checkout/ShippingSelector.php:427
 #, php-format
 msgid "Please choose a %s you have access to."
 msgstr "Bitte wähle eine %s, auf die du Zugriff hast."
 
 #. translators: 1: the location's name, 2: comma-separated list of the missing fields, 3: the organization admin noun.
-#: includes/Checkout/ShippingSelector.php:437
+#: includes/Checkout/ShippingSelector.php:444
 #, php-format
 msgid "“%1$s” is missing %2$s, so it cannot be delivered to. Ask your %3$s to complete it, or choose somewhere else."
 msgstr "Bei „%1$s“ fehlt %2$s, deshalb ist dorthin keine Lieferung möglich. Bitte deinen %3$s, die Angaben zu vervollständigen, oder wähle ein anderes Ziel."

@@ -68,6 +68,12 @@ class ShippingSelector {
 	 * shipping is a location. Copying one to the other would be wrong in both
 	 * directions.
 	 *
+	 * This only decides how WooCommerce renders the checkbox the first time. Leaving
+	 * it clickable would let the customer answer a question the plugin has already
+	 * answered for them — and unchecking it hides the location selector and sends the
+	 * parcel to the billing address — so `checkout.js` locks the control on, from the
+	 * `lockShipTo` flag `enqueue_assets()` sends it.
+	 *
 	 * @param bool $checked WooCommerce's answer.
 	 * @return bool True when the cart needs shipping at all.
 	 */
@@ -117,9 +123,10 @@ class ShippingSelector {
 			'woap-checkout',
 			'woapCheckout',
 			array(
-				'field'     => self::FIELD,
-				'custom'    => self::CUSTOM,
-				'locations' => self::location_payload(),
+				'field'      => self::FIELD,
+				'custom'     => self::CUSTOM,
+				'lockShipTo' => Context::can_purchase(),
+				'locations'  => self::location_payload(),
 			)
 		);
 	}
