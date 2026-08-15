@@ -188,6 +188,42 @@ Organization ── Members ── (WordPress users)
      └── Orders (WooCommerce, tagged with the organization)
 ```
 
+### Three surfaces, one set of rules
+
+An organization, a member and a location are each written from **three** places: the account
+screens a customer uses, the REST routes an app uses, and wp-admin. Each rule therefore has
+three chances to be written differently, and the ones that matter here are not cosmetic —
+whether the last organization admin can be demoted, what a permission diff is measured
+against, whether somebody who runs the shop keeps their WordPress role.
+
+So the rules live in services, in the shape `Members\Invitations` already had: **statics taking
+scalars and arrays, returning the entity or a `WP_Error`, with no opinion about presentation**.
+
+| Service | Holds |
+|---|---|
+| `Membership\Members` | adding, editing and removing a member; the capability diff; the last-admin guard |
+| `Locations\Locations` | saving and deleting a location; the company fallback |
+| `Members\Invitations` | issuing, accepting and revoking an invitation |
+
+- **Presence is how a partial edit is expressed.** A key absent from the array means "leave it
+  alone", which is `has_param()` carried across a boundary that has no request object.
+- **Errors are keyed by the canonical field name** — `email`, `role`, `location_access` — and
+  carry no HTTP status. `Rest\MembersController` renames them onto the documented wire codes;
+  a screen prefixes them `woap_` and marks the field. Neither shape belongs in a service.
+- **What is *not* in them is the question a form asks and an API does not**: whether somebody
+  who ticked "only these branches" ticked any. That is a question about a control, its wording
+  depends on the control, and each caller asks it before calling in. The rule underneath — an
+  empty stored list means *every* location, so an empty list is never what gets stored — is in
+  the service.
+- The extraction found a live divergence: the account screens called `set_role()` directly
+  where the REST route knew to leave anybody holding `manage_woocommerce` alone, so an
+  administrator who joined an organization to see what a customer sees was demoted out of
+  wp-admin by a routine membership edit.
+
+`AddressFields::merge()` belongs to the same clean-up — it was `Rest\Writes::address()`, a pure
+address merge sitting in the REST namespace, which a service then had to reach into.
+`Writes::address()` remains as the name a route looks for.
+
 ### Designed for Woodmart
 
 Because the theme is a hard requirement, the frontend is built as part of Woodmart rather than
@@ -434,6 +470,70 @@ location, so an account with fifty employees shipped fifty forms to answer *who 
 the answer was inside them rather than on the page. The list is now a row per person reporting role,
 delivery access, whether permissions follow the role, and status; `?woap_member=<id>` is where any
 of that changes.
+
+**wp-admin follows the same shape, for the same reasons.** `?woap_member=<id>`,
+`?woap_location=<id>|new` and the invite-or-create form are screens, not blocks folded into a
+list, and each posts its ID back.
+
+### The back office
+
+The plugin has **one top-level menu**, `Admin\Menu`, and every screen registers against it.
+`Labels::organizations()` names it, so it reads *Companies* or *Institutes*.
+
+- **Every page slug is kept from when these sat under WooCommerce.** A slug is a URL: the
+  order-list column, the Woodmart panel and anybody's bookmarks all address a screen by
+  `admin.php?page=<slug>`, and a wrong `page` argument renders an empty screen rather than a
+  404. Reparenting is invisible; renaming is silent breakage.
+- **The registration order is load-bearing.** `add_submenu_page()` copies the parent into its
+  own submenu — taking the parent's *menu* title, count bubble included — the first time a
+  submenu arrives whose slug differs from the parent's. So the parent registers at priority 8,
+  the organizations list (which shares its slug) at 9, and everything else at 10. With Settings
+  first the menu carried two entries for one screen, and
+  `AdminMenuTest::testTheOrganizationsListAppearsOnceInTheMenu` is that bug.
+- **Approvals is a screen for deciding, not a filter on a list.** Approving is the one act a
+  shop performs about a customer it has never dealt with, on evidence it has to read, and it
+  sends mail. A card carries the billing address, the tax ID and — the point of it — *who
+  signed up*. Both buttons are the existing nonced `Organizations::status_url()`, so
+  `OrganizationRepository::set_status()` stays the one write that fires
+  `woo_org_accounts_organization_status_changed`; a second path here would be a second answer
+  to what approving means, and the email would be the first thing to drift.
+- **What is approved is a customer account.** The status lives on the organization row — one
+  approval, no per-member state to keep in step — but every sentence the customer reads says
+  *account*, with the company named as what the account is for. `LoginGate::message()`,
+  `Context::purchase_blocked_reason()` and `registration/pending-approval.php` all follow it.
+- **`Admin\Notices` is the handover across a redirect.** `admin-post.php` prints nothing, so a
+  handler parks its message — and, on a refusal, **the whole submission** — in a one-minute
+  per-user transient. Parking only the messages is how somebody loses a fourteen-field address
+  to one mistyped postcode.
+- **Every write goes through the services**, never straight to a repository, so the last-admin
+  guard, the capability diff against the role *being saved* and the rule that shop staff are
+  never demoted out of wp-admin exist once rather than three times.
+
+### The users list
+
+`Admin\UserColumn`. On a shop whose customers are all organizations, every account on
+`users.php` belongs to one and the screen said so nowhere — a search for a company name
+returned "no users found", which was correct and useless.
+
+- **The search is a union, resolved to IDs.** WordPress's own answer plus the members of every
+  organization matching the term (name, `billing_email` or `tax_id` — the same three columns
+  the organizations list searches). There is no hook that ORs a condition into
+  `WP_User_Query` safely: appending to `query_where` from `pre_user_query` looks obvious and is
+  wrong, because `OR` binds looser than the `AND`s core has assembled, so a search made from
+  inside a role filter breaks straight out of it — and bracketing does not help, because the
+  bracket goes around the same expression. WordPress's search is therefore run as its own
+  query, with the same term and so the same rules, and both sets are handed back as `include`.
+  A re-entry guard stops the nested query firing `pre_get_users` forever.
+- **An empty `include` means *no restriction*.** Filtering to an organization with no members
+  has to pass `array( 0 )`, or the screen lists every user on the site — the same
+  empty-means-the-opposite trap as an empty location-access list, in another table.
+- **Only the users screen is touched.** `pre_get_users` fires for every `WP_User_Query` on the
+  request, including other plugins'; widening one of those is this plugin answering a question
+  it was not asked.
+- **The profile panel is read-only and reports the *resolved* permissions**, never the stored
+  diff — an empty `capabilities` column means "whatever the role allows", not "nothing".
+  Editing stays on the plugin's own member screen, so there is one write path and it is the
+  one with the guards on it.
 
 ### One set of components across the five screens
 
@@ -1011,6 +1111,14 @@ approve, and refusing everybody without one would close the site to its own staf
 The plugin ships English (the source strings) and German, and German is a requirement rather than a
 courtesy: `tests/I18nTest.php` fails the build on a string that is in the catalogue but untranslated.
 WordPress falls back to English silently, one label at a time, so nothing else would notice.
+
+**That guard did not work until 0.11.0, and the way it failed is worth knowing.** POMO drops
+`msgstr ""` on import, so an entry nobody has touched carries an **empty** `translations` array
+rather than an array holding an empty string — and the loop looking for an empty string never
+ran for exactly the entries it was written to catch. The assertion passed over 77 untranslated
+strings without a word. The empty case has to be tested *before* iterating. Anything asserting
+"every X is translated" should be checked against a deliberately untranslated string once,
+because a guard of this shape passes just as quietly when it is inspecting nothing.
 
 - **Two German catalogues, not one.** WordPress treats `de_DE` (informal, *du* — the register
   WordPress core itself uses) and `de_DE_formal` (*Sie*) as unrelated locales, so both are
