@@ -193,19 +193,27 @@ final class Context {
 			);
 		}
 
+		/*
+		 * The customer's account is what is awaiting approval, not their company. The
+		 * status is stored on the organization row, but the person reading this at a
+		 * checkout is a person who cannot buy — and the company is named as what the
+		 * account is for rather than as the thing under review.
+		 */
 		if ( Organization::STATUS_PENDING === $organization->get_status() ) {
 			return sprintf(
-				/* translators: %s: the organization noun for the site's mode, for example "Company". */
-				__( 'Your %s is still awaiting approval. You will be able to order as soon as it is approved.', 'woo-organization-accounts-pro' ),
-				\WooOrgAccounts\Labels::organization()
+				/* translators: 1: the organization noun for the site's mode, for example "Company", 2: the organization's name. */
+				__( 'Your account is still awaiting approval. You will be able to order as soon as it is approved. (%1$s: %2$s)', 'woo-organization-accounts-pro' ),
+				\WooOrgAccounts\Labels::organization(),
+				$organization->get_name()
 			);
 		}
 
 		if ( ! $organization->is_active() ) {
 			return sprintf(
-				/* translators: %s: the organization noun for the site's mode, for example "Company". */
-				__( 'Your %s cannot place orders at the moment. Please contact the shop.', 'woo-organization-accounts-pro' ),
-				\WooOrgAccounts\Labels::organization()
+				/* translators: 1: the organization noun for the site's mode, for example "Company", 2: the organization's name. */
+				__( 'Your account cannot place orders at the moment. Please contact the shop. (%1$s: %2$s)', 'woo-organization-accounts-pro' ),
+				\WooOrgAccounts\Labels::organization(),
+				$organization->get_name()
 			);
 		}
 

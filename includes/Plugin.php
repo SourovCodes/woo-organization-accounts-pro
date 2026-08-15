@@ -9,6 +9,8 @@ namespace WooOrgAccounts;
 
 use WooOrgAccounts\Admin\Approvals;
 use WooOrgAccounts\Admin\Import;
+use WooOrgAccounts\Admin\InvitationScreen;
+use WooOrgAccounts\Admin\LocationScreen;
 use WooOrgAccounts\Admin\Members;
 use WooOrgAccounts\Admin\Menu;
 use WooOrgAccounts\Admin\Organizations;
@@ -156,13 +158,21 @@ final class Plugin {
 		( new Analytics() )->register();
 
 		if ( is_admin() ) {
-			// The parent first: it registers on admin_menu at priority 9, ahead of the rest.
+			/*
+			 * Order matters twice over. The parent goes on first (priority 8) and the
+			 * organizations list next (9), which is what stops WordPress copying the parent
+			 * into its own submenu — see `Menu::register()`. Everything after that shares
+			 * priority 10, so this order is the order of the menu itself: the screens a
+			 * shop uses daily first, settings last.
+			 */
 			( new Menu() )->register();
-			( new Settings() )->register();
 			( new Organizations() )->register();
 			( new Approvals() )->register();
 			( new Members() )->register();
+			( new Settings() )->register();
 			( new Import() )->register();
+			( new LocationScreen() )->register();
+			( new InvitationScreen() )->register();
 			( new OrderColumn() )->register();
 			( new UserColumn() )->register();
 			( new ThemeSettings() )->register();

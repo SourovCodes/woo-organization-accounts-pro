@@ -63,13 +63,21 @@ class Menu {
 	/**
 	 * Register the hooks.
 	 *
-	 * Priority 9, ahead of every screen that registers a submenu against this parent. A
+	 * Priority 8, ahead of every screen that registers a submenu against this parent. A
 	 * submenu registered before its parent exists is dropped by WordPress without a word.
+	 *
+	 * `Organizations` then registers at 9, ahead of the others, and that ordering is
+	 * load-bearing rather than tidy. `add_submenu_page()` inserts the parent into its own
+	 * submenu — copying the parent's *menu* title, count bubble included — the first time a
+	 * submenu arrives whose slug differs from the parent's. Registering Settings first
+	 * therefore produced two entries for one screen: an auto-copied "Companies 1" and the
+	 * real "All Companies" below it. Letting the same-slug entry land first skips the copy,
+	 * because WordPress only inserts one when the submenu is still empty.
 	 *
 	 * @return void
 	 */
 	public function register() {
-		add_action( 'admin_menu', array( $this, 'register_menu' ), 9 );
+		add_action( 'admin_menu', array( $this, 'register_menu' ), 8 );
 	}
 
 	/**

@@ -293,13 +293,19 @@ class Registration {
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Reading an argument this page put in its own redirect, to decide which message to print; nothing is written.
 		$pending = isset( $_GET[ self::PENDING_VAR ] ) ? sanitize_key( wp_unslash( $_GET[ self::PENDING_VAR ] ) ) : '';
 
+		/*
+		 * The bare message, without the name appended: this template prints the name in a
+		 * line of its own, and passing it here as well would say it twice.
+		 */
 		if ( '' !== LoginGate::message( $pending ) ) {
 			return Templates::get(
 				'registration/pending-approval.php',
 				array(
-					'message'     => LoginGate::message( $pending ),
-					'account_url' => wc_get_page_permalink( 'myaccount' ),
-					'shop_url'    => wc_get_page_permalink( 'shop' ),
+					'message'           => LoginGate::message( $pending ),
+					'organization_name' => self::signed_in_organization_name(),
+					'signed_in'         => is_user_logged_in(),
+					'account_url'       => wc_get_page_permalink( 'myaccount' ),
+					'shop_url'          => wc_get_page_permalink( 'shop' ),
 				)
 			);
 		}
@@ -332,13 +338,39 @@ class Registration {
 		return Templates::get(
 			'registration/organization-form.php',
 			array(
-				'errors'    => self::$errors,
-				'submitted' => self::$submitted,
-				'billing'   => $billing,
-				'action'    => self::REGISTER_ACTION,
-				'honeypot'  => self::HONEYPOT_FIELD,
+				'errors'            => self::$errors,
+				'submitted'         => self::$submitted,
+				'billing'           => $billing,
+				'action'            => self::REGISTER_ACTION,
+				'honeypot'          => self::HONEYPOT_FIELD,
+				'approval_required' => (bool) Settings::get( 'require_approval', true ),
+				'sign_in_gated'     => LoginGate::is_enabled(),
 			)
 		);
+	}
+
+	/**
+	 * The name of the organization the signed-in visitor belongs to.
+	 *
+	 * Read from the membership rather than carried in the URL: a name in a query string is
+	 * a name anybody can put there, and this one is printed back to the visitor.
+	 *
+	 * @return string The name, or an empty string when nobody is signed in.
+	 */
+	private static function signed_in_organization_name() {
+		if ( ! is_user_logged_in() ) {
+			return '';
+		}
+
+		$member = MemberRepository::find_by_user( get_current_user_id() );
+
+		if ( null === $member ) {
+			return '';
+		}
+
+		$organization = OrganizationRepository::find( $member->get_organization_id() );
+
+		return null === $organization ? '' : $organization->get_name();
 	}
 
 	/**
@@ -449,6 +481,17 @@ class Registration {
 
 		wp_set_current_user( $result['user_id'] );
 		wp_set_auth_cookie( $result['user_id'], true );
+
+		/*
+		 * Signed in, and still waiting. This is the *default* configuration — approval
+		 * required to order, not to sign in — and until now it said nothing at all: a
+		 * twenty-field form, then My Account, with no word that anything was pending. The
+		 * screen that says so already existed and only the sign-in gate ever reached it.
+		 */
+		if ( Organization::STATUS_PENDING === $result['status'] ) {
+			wp_safe_redirect( self::pending_url( LoginGate::REASON_AWAITING ) );
+			exit;
+		}
 
 		wp_safe_redirect( wc_get_page_permalink( 'myaccount' ) );
 		exit;

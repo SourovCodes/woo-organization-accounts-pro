@@ -757,7 +757,7 @@ class Members {
 			);
 
 			if ( is_wp_error( $saved ) ) {
-				$errors = self::prefixed( $saved );
+				$errors = self::prefixed( self::keyed_to_email( $saved ) );
 			}
 		}
 

@@ -8,6 +8,7 @@
 namespace WooOrgAccounts\Admin;
 
 use WooOrgAccounts\Checkout\OrderMeta;
+use WooOrgAccounts\Data\Invitation;
 use WooOrgAccounts\Data\InvitationRepository;
 use WooOrgAccounts\Data\LocationRepository;
 use WooOrgAccounts\Data\Member;
@@ -54,7 +55,13 @@ class Organizations {
 	 * @return void
 	 */
 	public function register() {
-		add_action( 'admin_menu', array( $this, 'register_menu' ) );
+		/*
+		 * Priority 9: after the parent at 8, before every other submenu at 10. This screen
+		 * shares the parent's slug, and letting it land first is what stops WordPress
+		 * auto-inserting a second copy of the parent — bubble and all — above it. See
+		 * `Menu::register()`.
+		 */
+		add_action( 'admin_menu', array( $this, 'register_menu' ), 9 );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 		add_action( 'admin_post_woap_admin_set_status', array( $this, 'handle_set_status' ) );
 		add_action( 'admin_post_woap_admin_delete', array( $this, 'handle_delete' ) );
@@ -113,6 +120,7 @@ class Organizations {
 		}
 
 		wp_enqueue_style( 'woap-admin', WOAP_PLUGIN_URL . 'assets/css/admin.css', array(), WOAP_VERSION );
+		wp_enqueue_script( 'woap-admin', WOAP_PLUGIN_URL . 'assets/js/admin.js', array(), WOAP_VERSION, true );
 
 		/*
 		 * The same country and state behaviour the customer gets. WooCommerce registers
@@ -233,6 +241,13 @@ class Organizations {
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Choosing which read-only screen to show.
 		$organization_id = isset( $_GET['organization_id'] ) ? absint( wp_unslash( $_GET['organization_id'] ) ) : 0;
 
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- As above.
+		if ( isset( $_GET['woap_new'] ) ) {
+			$this->render_new();
+
+			return;
+		}
+
 		if ( $organization_id > 0 ) {
 			$this->render_detail( $organization_id );
 
@@ -240,6 +255,62 @@ class Organizations {
 		}
 
 		$this->render_list();
+	}
+
+	/**
+	 * The URL of the add-an-organization screen.
+	 *
+	 * @return string URL.
+	 */
+	public static function new_url() {
+		return add_query_arg(
+			array(
+				'page'     => self::PAGE_SLUG,
+				'woap_new' => '1',
+			),
+			admin_url( 'admin.php' )
+		);
+	}
+
+	/**
+	 * Render the add-an-organization screen.
+	 *
+	 * There has never been one in wp-admin: an account arrived by registration, by
+	 * invitation or through the importer, and a shop opening one on somebody's behalf — the
+	 * phone call that starts a trade account — had nowhere to do it. The REST surface could,
+	 * which is the gap this closes.
+	 *
+	 * The same form as the detail screen, against an empty organization, posting to the same
+	 * handler with an ID of 0. One form means the two cannot ask for different things.
+	 *
+	 * @return void
+	 */
+	private function render_new() {
+		list( $rejected, $submitted ) = self::render_notices();
+
+		$organization = new Organization();
+
+		echo '<div class="wrap woap-organization-detail">';
+
+		printf(
+			'<h1>%s</h1>',
+			esc_html(
+				sprintf(
+					/* translators: %s: the singular organization noun for the site's mode, for example "Company". */
+					__( 'Add a %s', 'woo-organization-accounts-pro' ),
+					strtolower( Labels::organization() )
+				)
+			)
+		);
+
+		printf(
+			'<p>%s</p>',
+			esc_html__( 'The account is created with nobody on it. Add or invite somebody afterwards — until then there is nobody to order with it.', 'woo-organization-accounts-pro' )
+		);
+
+		$this->render_detail_form( $organization, $rejected, $submitted );
+
+		echo '</div>';
 	}
 
 	/**
@@ -253,6 +324,12 @@ class Organizations {
 
 		echo '<div class="wrap woap-organizations">';
 		printf( '<h1 class="wp-heading-inline">%s</h1>', esc_html( Labels::organizations() ) );
+
+		printf(
+			'<a href="%1$s" class="page-title-action">%2$s</a>',
+			esc_url( self::new_url() ),
+			esc_html__( 'Add new', 'woo-organization-accounts-pro' )
+		);
 
 		/*
 		 * The only way to reach the import screen. It is registered under this menu and
@@ -318,8 +395,6 @@ class Organizations {
 			return;
 		}
 
-		$orders = MyAccount::organization_orders( $organization->get_id(), 20, 1 );
-
 		echo '<div class="wrap woap-organization-detail">';
 
 		list( $rejected, $submitted ) = self::render_notices();
@@ -343,13 +418,102 @@ class Organizations {
 			)
 		);
 
-		$this->render_detail_form( $organization, $rejected, $submitted );
-		$this->render_members( $organization );
-		$this->render_locations( $organization );
-		$this->render_invitations( $organization );
-		$this->render_orders( $organization, $orders['orders'] );
+		$tab = self::current_tab();
+
+		$this->render_tabs( $organization, $tab );
+
+		switch ( $tab ) {
+			case 'members':
+				$this->render_members( $organization );
+				break;
+
+			case 'locations':
+				$this->render_locations( $organization );
+				break;
+
+			case 'invitations':
+				$this->render_invitations( $organization );
+				break;
+
+			case 'orders':
+				$orders = MyAccount::organization_orders( $organization->get_id(), 20, 1 );
+
+				$this->render_orders( $organization, $orders['orders'] );
+				break;
+
+			default:
+				$this->render_detail_form( $organization, $rejected, $submitted );
+		}
 
 		echo '</div>';
+	}
+
+	/**
+	 * The tab the detail screen is showing.
+	 *
+	 * Validated against the list rather than trusted, so an unknown tab is the details
+	 * rather than a screen showing nothing.
+	 *
+	 * @return string A tab key.
+	 */
+	public static function current_tab() {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Choosing which read-only view of one record to show.
+		$tab = isset( $_GET['woap_tab'] ) ? sanitize_key( wp_unslash( $_GET['woap_tab'] ) ) : 'details';
+
+		return array_key_exists( $tab, self::tabs() ) ? $tab : 'details';
+	}
+
+	/**
+	 * The tabs, in order.
+	 *
+	 * Five stacked sections down one page was how this screen started, which meant scrolling
+	 * past a billing address to reach an order list and no way to link anybody to either.
+	 * A tab is a URL, so every one of these is now somewhere a handler can send somebody
+	 * back to.
+	 *
+	 * @return array Map of tab key to label.
+	 */
+	public static function tabs() {
+		return array(
+			'details'     => __( 'Details', 'woo-organization-accounts-pro' ),
+			'members'     => Labels::members(),
+			'locations'   => Labels::locations(),
+			'invitations' => __( 'Invitations', 'woo-organization-accounts-pro' ),
+			'orders'      => __( 'Orders', 'woo-organization-accounts-pro' ),
+		);
+	}
+
+	/**
+	 * The URL of one tab of one organization.
+	 *
+	 * @param int    $organization_id Organization ID.
+	 * @param string $tab             Tab key.
+	 * @return string URL.
+	 */
+	public static function tab_url( $organization_id, $tab ) {
+		return add_query_arg( array( 'woap_tab' => sanitize_key( $tab ) ), self::edit_url( $organization_id ) );
+	}
+
+	/**
+	 * Render the tab bar.
+	 *
+	 * @param Organization $organization The organization.
+	 * @param string       $current      The tab being shown.
+	 * @return void
+	 */
+	private function render_tabs( Organization $organization, $current ) {
+		echo '<nav class="nav-tab-wrapper woap-organization-tabs">';
+
+		foreach ( self::tabs() as $tab => $label ) {
+			printf(
+				'<a href="%1$s" class="nav-tab%2$s">%3$s</a>',
+				esc_url( self::tab_url( $organization->get_id(), $tab ) ),
+				$tab === $current ? ' nav-tab-active' : '',
+				esc_html( $label )
+			);
+		}
+
+		echo '</nav>';
 	}
 
 	/**
@@ -439,12 +603,25 @@ class Organizations {
 	 * @return void
 	 */
 	private function render_members( Organization $organization ) {
-		printf( '<h2>%s</h2>', esc_html( Labels::members() ) );
+		$this->section_header(
+			Labels::members(),
+			__( 'Add somebody', 'woo-organization-accounts-pro' ),
+			Members::add_url( $organization->get_id() )
+		);
 
 		$members = MemberRepository::for_organization( $organization->get_id() );
 
 		if ( empty( $members ) ) {
-			printf( '<p>%s</p>', esc_html__( 'Nobody yet.', 'woo-organization-accounts-pro' ) );
+			$this->render_empty(
+				sprintf(
+					/* translators: %s: the plural member noun for the site's mode, for example "Employees". */
+					__( 'No %s yet', 'woo-organization-accounts-pro' ),
+					strtolower( Labels::members() )
+				),
+				__( 'Nobody can order on this account until somebody is on it. Invite them, or create the account yourself.', 'woo-organization-accounts-pro' ),
+				__( 'Add somebody', 'woo-organization-accounts-pro' ),
+				Members::add_url( $organization->get_id() )
+			);
 
 			return;
 		}
@@ -453,21 +630,52 @@ class Organizations {
 		printf( '<th>%s</th>', esc_html__( 'Name', 'woo-organization-accounts-pro' ) );
 		printf( '<th>%s</th>', esc_html__( 'Email address', 'woo-organization-accounts-pro' ) );
 		printf( '<th>%s</th>', esc_html__( 'Role', 'woo-organization-accounts-pro' ) );
+		printf( '<th>%s</th>', esc_html( Labels::locations() ) );
 		printf( '<th>%s</th>', esc_html__( 'Status', 'woo-organization-accounts-pro' ) );
 		echo '</tr></thead><tbody>';
 
 		foreach ( $members as $member ) {
-			$user = get_user_by( 'id', $member->get_user_id() );
+			$user    = get_user_by( 'id', $member->get_user_id() );
+			$access  = MemberRepository::location_ids( $member->get_id() );
+			$actions = array(
+				sprintf(
+					'<a href="%s">%s</a>',
+					esc_url( Members::edit_url( $member->get_id() ) ),
+					esc_html__( 'Edit', 'woo-organization-accounts-pro' )
+				),
+				sprintf(
+					'<a href="%s" class="submitdelete">%s</a>',
+					esc_url( Members::remove_url( $member->get_id() ) ),
+					esc_html__( 'Remove', 'woo-organization-accounts-pro' )
+				),
+			);
 
 			echo '<tr>';
 			printf(
-				'<td>%s</td>',
+				'<td><strong>%1$s</strong><div class="row-actions">%2$s</div></td>',
 				$user instanceof \WP_User
-					? sprintf( '<a href="%1$s">%2$s</a>', esc_url( get_edit_user_link( $user->ID ) ), esc_html( $user->display_name ) )
-					: esc_html__( '(deleted account)', 'woo-organization-accounts-pro' )
+					? sprintf( '<a href="%1$s">%2$s</a>', esc_url( Members::edit_url( $member->get_id() ) ), esc_html( $user->display_name ) )
+					: esc_html__( '(deleted account)', 'woo-organization-accounts-pro' ),
+				wp_kses_post( implode( ' | ', $actions ) )
 			);
 			printf( '<td>%s</td>', esc_html( $user instanceof \WP_User ? $user->user_email : '' ) );
 			printf( '<td>%s</td>', esc_html( $member->is_admin() ? Labels::organization_admin() : Labels::member() ) );
+			printf(
+				'<td>%s</td>',
+				esc_html(
+					empty( $access )
+						? sprintf(
+							/* translators: %s: the plural location noun for the site's mode, for example "Branches". */
+							__( 'All %s', 'woo-organization-accounts-pro' ),
+							strtolower( Labels::locations() )
+						)
+						: sprintf(
+							/* translators: %d: how many locations this person may ship to. */
+							_n( '%d only', '%d only', count( $access ), 'woo-organization-accounts-pro' ),
+							count( $access )
+						)
+				)
+			);
 			printf(
 				'<td>%s</td>',
 				esc_html( $member->is_active() ? __( 'Active', 'woo-organization-accounts-pro' ) : __( 'Inactive', 'woo-organization-accounts-pro' ) )
@@ -479,18 +687,90 @@ class Organizations {
 	}
 
 	/**
+	 * A section heading with its primary action beside it.
+	 *
+	 * @param string $title  What the section is.
+	 * @param string $action What the button says.
+	 * @param string $url    Where it goes.
+	 * @return void
+	 */
+	private function section_header( $title, $action, $url ) {
+		printf(
+			'<h2 class="woap-section__title">%1$s <a href="%2$s" class="page-title-action">%3$s</a></h2>',
+			esc_html( $title ),
+			esc_url( $url ),
+			esc_html( $action )
+		);
+	}
+
+	/**
+	 * Nothing here yet.
+	 *
+	 * Names what is missing, says what cannot happen until it exists, and carries the button
+	 * that fixes it — the shape the account screens use, and the reason is the same: with no
+	 * locations nobody on the account can check out at all, and a bare "None yet." does not
+	 * say so.
+	 *
+	 * @param string $title       What is missing.
+	 * @param string $consequence What cannot happen until it exists.
+	 * @param string $action      What the button says.
+	 * @param string $url         Where it goes.
+	 * @return void
+	 */
+	private function render_empty( $title, $consequence, $action, $url ) {
+		echo '<div class="woap-empty">';
+		printf( '<h3>%s</h3>', esc_html( $title ) );
+		printf( '<p>%s</p>', esc_html( $consequence ) );
+		printf(
+			'<p><a href="%1$s" class="button button-primary">%2$s</a></p>',
+			esc_url( $url ),
+			esc_html( $action )
+		);
+		echo '</div>';
+	}
+
+	/**
 	 * The organization's locations.
 	 *
 	 * @param Organization $organization The organization.
 	 * @return void
 	 */
 	private function render_locations( Organization $organization ) {
-		printf( '<h2>%s</h2>', esc_html( Labels::locations() ) );
+		$requested = LocationScreen::requested();
+
+		if ( '' !== $requested ) {
+			( new LocationScreen() )->render_form( $organization, $requested );
+
+			return;
+		}
+
+		$this->section_header(
+			Labels::locations(),
+			sprintf(
+				/* translators: %s: the singular location noun for the site's mode, for example "Branch". */
+				__( 'Add a %s', 'woo-organization-accounts-pro' ),
+				strtolower( Labels::location() )
+			),
+			LocationScreen::edit_url( $organization->get_id() )
+		);
 
 		$locations = LocationRepository::for_organization( $organization->get_id() );
 
 		if ( empty( $locations ) ) {
-			printf( '<p>%s</p>', esc_html__( 'None yet.', 'woo-organization-accounts-pro' ) );
+			$this->render_empty(
+				sprintf(
+					/* translators: %s: the plural location noun for the site's mode, for example "Branches". */
+					__( 'No %s yet', 'woo-organization-accounts-pro' ),
+					strtolower( Labels::locations() )
+				),
+				__( 'This account has nowhere to ship to, so nobody on it can check out at all. Add the first address.', 'woo-organization-accounts-pro' ),
+				sprintf(
+					/* translators: %s: the singular location noun for the site's mode, for example "Branch". */
+					__( 'Add a %s', 'woo-organization-accounts-pro' ),
+					strtolower( Labels::location() )
+				),
+				LocationScreen::edit_url( $organization->get_id() )
+			);
 
 			return;
 		}
@@ -502,8 +782,29 @@ class Organizations {
 		echo '</tr></thead><tbody>';
 
 		foreach ( $locations as $location ) {
+			$actions = array(
+				sprintf(
+					'<a href="%s">%s</a>',
+					esc_url( LocationScreen::edit_url( $organization->get_id(), $location->get_id() ) ),
+					esc_html__( 'Edit', 'woo-organization-accounts-pro' )
+				),
+				sprintf(
+					'<a href="%s" class="submitdelete" onclick="return confirm(\'%s\');">%s</a>',
+					esc_url( LocationScreen::delete_url( $location->get_id() ) ),
+					esc_js( __( 'Delete this address? Anybody restricted to it will be able to ship to every other one instead.', 'woo-organization-accounts-pro' ) ),
+					esc_html__( 'Delete', 'woo-organization-accounts-pro' )
+				),
+			);
+
 			echo '<tr>';
-			printf( '<td>%s</td>', esc_html( $location->get_name() ) );
+			printf(
+				'<td><strong>%1$s</strong>%2$s<div class="row-actions">%3$s</div></td>',
+				esc_html( $location->get_name() ),
+				$location->is_default()
+					? ' <span class="woap-status woap-status--active">' . esc_html__( 'Default', 'woo-organization-accounts-pro' ) . '</span>'
+					: '',
+				wp_kses_post( implode( ' | ', $actions ) )
+			);
 			printf( '<td>%s</td>', wp_kses_post( $location->get_formatted_address() ) );
 			printf( '<td>%s</td>', esc_html( $location->get_contact_name() ) );
 			echo '</tr>';
@@ -519,12 +820,21 @@ class Organizations {
 	 * @return void
 	 */
 	private function render_invitations( Organization $organization ) {
-		printf( '<h2>%s</h2>', esc_html__( 'Invitations', 'woo-organization-accounts-pro' ) );
+		$this->section_header(
+			__( 'Invitations', 'woo-organization-accounts-pro' ),
+			__( 'Invite somebody', 'woo-organization-accounts-pro' ),
+			Members::add_url( $organization->get_id() )
+		);
 
 		$invitations = InvitationRepository::for_organization( $organization->get_id() );
 
 		if ( empty( $invitations ) ) {
-			printf( '<p>%s</p>', esc_html__( 'None sent.', 'woo-organization-accounts-pro' ) );
+			$this->render_empty(
+				__( 'No invitations', 'woo-organization-accounts-pro' ),
+				__( 'Nothing is outstanding. Somebody invited here receives a one-time link and joins when they accept it.', 'woo-organization-accounts-pro' ),
+				__( 'Invite somebody', 'woo-organization-accounts-pro' ),
+				Members::add_url( $organization->get_id() )
+			);
 
 			return;
 		}
@@ -532,18 +842,64 @@ class Organizations {
 		echo '<table class="widefat striped"><thead><tr>';
 		printf( '<th>%s</th>', esc_html__( 'Email address', 'woo-organization-accounts-pro' ) );
 		printf( '<th>%s</th>', esc_html__( 'Role', 'woo-organization-accounts-pro' ) );
+		printf( '<th>%s</th>', esc_html__( 'Sent by', 'woo-organization-accounts-pro' ) );
 		printf( '<th>%s</th>', esc_html__( 'Status', 'woo-organization-accounts-pro' ) );
 		echo '</tr></thead><tbody>';
 
 		foreach ( $invitations as $invitation ) {
+			$pending = Invitation::STATUS_PENDING === (string) $invitation->get( 'status' );
+			$actions = array();
+
+			/*
+			 * Only a pending invitation can be sent again or withdrawn. One that has been
+			 * accepted is a membership now, and one already revoked has nothing left to
+			 * revoke — offering either would be a control that reports an error for the
+			 * only thing it can do.
+			 */
+			if ( $pending ) {
+				$actions[] = sprintf(
+					'<a href="%s">%s</a>',
+					esc_url( InvitationScreen::resend_url( $invitation->get_id() ) ),
+					esc_html__( 'Send again', 'woo-organization-accounts-pro' )
+				);
+
+				$actions[] = sprintf(
+					'<a href="%s" class="submitdelete" onclick="return confirm(\'%s\');">%s</a>',
+					esc_url( InvitationScreen::revoke_url( $invitation->get_id() ) ),
+					esc_js( __( 'Withdraw this invitation? The link already sent stops working.', 'woo-organization-accounts-pro' ) ),
+					esc_html__( 'Withdraw', 'woo-organization-accounts-pro' )
+				);
+			}
+
 			echo '<tr>';
-			printf( '<td>%s</td>', esc_html( $invitation->get_email() ) );
+			printf(
+				'<td><strong>%1$s</strong><div class="row-actions">%2$s</div></td>',
+				esc_html( $invitation->get_email() ),
+				wp_kses_post( implode( ' | ', $actions ) )
+			);
 			printf( '<td>%s</td>', esc_html( Member::ROLE_ADMIN === $invitation->get_role() ? Labels::organization_admin() : Labels::member() ) );
+			printf( '<td>%s</td>', esc_html( self::invited_by( $invitation->get_invited_by() ) ) );
 			printf( '<td>%s</td>', esc_html( $invitation->get_status_label() ) );
 			echo '</tr>';
 		}
 
 		echo '</tbody></table>';
+	}
+
+	/**
+	 * Who sent an invitation.
+	 *
+	 * An organization can have several people holding `woap_invite_members`, so an
+	 * invitation somebody did not send is worth being able to place before deciding whether
+	 * to withdraw it.
+	 *
+	 * @param int $user_id The sender.
+	 * @return string A name, or a dash.
+	 */
+	private static function invited_by( $user_id ) {
+		$user = $user_id > 0 ? get_user_by( 'id', $user_id ) : false;
+
+		return $user instanceof \WP_User ? $user->display_name : '—';
 	}
 
 	/**
@@ -683,13 +1039,19 @@ class Organizations {
 		check_admin_referer( 'woap_admin_save_' . $organization_id );
 		self::require_capability();
 
-		$organization = OrganizationRepository::find( $organization_id );
+		/*
+		 * An ID of 0 is the add screen. It shares this handler and the same form, so the
+		 * two cannot come to ask for different things or validate them differently — the
+		 * only difference is that there is no stored status to compare against yet.
+		 */
+		$creating     = 0 === $organization_id;
+		$organization = $creating ? new Organization() : OrganizationRepository::find( $organization_id );
 
 		if ( null === $organization ) {
 			self::go_back( 0 );
 		}
 
-		$previous = $organization->get_status();
+		$previous = $creating ? '' : $organization->get_status();
 
 		$details = array(
 			'name'   => self::posted( 'woap_name' ),
@@ -733,6 +1095,12 @@ class Organizations {
 				MINUTE_IN_SECONDS
 			);
 
+			// Back to the form that was rejected, which for a create is the add screen.
+			if ( $creating ) {
+				wp_safe_redirect( self::new_url() );
+				exit;
+			}
+
 			self::go_back( $organization_id );
 		}
 
@@ -742,6 +1110,8 @@ class Organizations {
 		$organization->set_props(
 			array_merge(
 				$details,
+				// A create carries its status here, because set_status() below skips it.
+				$creating ? array( 'status' => $status ) : array(),
 				// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Verified by check_admin_referer() above.
 				array( 'allow_custom_shipping' => ! empty( $_POST['woap_allow_custom_shipping'] ) )
 			)
@@ -750,12 +1120,20 @@ class Organizations {
 		$organization->set_billing_address( $address );
 		OrganizationRepository::save( $organization );
 
+		// After a create this is the row that was just written, not the 0 that was posted.
+		$organization_id = $organization->get_id();
+
 		/*
 		 * The status is applied through the repository rather than with the rest of the
 		 * form, because a status change fires the hook the approval and rejection emails
 		 * hang off, and a plain save must not.
+		 *
+		 * A create is the exception that proves it: the row is written carrying whatever
+		 * status the form chose, so `$previous` is empty and this never fires for one. That
+		 * is deliberate — an account a shop opens by hand and marks active did not just get
+		 * approved, and nobody should be emailed to say it was.
 		 */
-		if ( $status !== $previous ) {
+		if ( $status !== $previous && ! $creating ) {
 			OrganizationRepository::set_status( $organization_id, $status );
 		}
 

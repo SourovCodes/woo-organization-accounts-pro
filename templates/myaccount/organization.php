@@ -103,13 +103,7 @@ $woap_detail_error = static function ( $woap_field ) use ( $woap_errors ) {
 	<?php if ( Organization::STATUS_PENDING === $organization->get_status() ) : ?>
 		<p class="woocommerce-info woap-account__info">
 			<?php
-			echo esc_html(
-				sprintf(
-					/* translators: %s: the organization noun for the site's mode, for example "Company". */
-					__( 'This %s is awaiting approval. Orders can be placed once it is approved.', 'woo-organization-accounts-pro' ),
-					Labels::organization()
-				)
-			);
+			echo esc_html__( 'This account is awaiting approval. Orders can be placed once it has been approved.', 'woo-organization-accounts-pro' );
 			?>
 		</p>
 	<?php endif; ?>
