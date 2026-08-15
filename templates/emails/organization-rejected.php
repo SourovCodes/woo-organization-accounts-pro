@@ -21,11 +21,16 @@ do_action( 'woocommerce_email_header', $email_heading, $email );
 
 ?>
 <p>
+	<?php esc_html_e( 'We are not able to open your account at the moment.', 'woo-organization-accounts-pro' ); ?>
+</p>
+
+<p>
 	<?php
 	echo esc_html(
 		sprintf(
-			/* translators: %s: organization name. */
-			__( 'We are not able to open a trade account for %s at the moment.', 'woo-organization-accounts-pro' ),
+			/* translators: 1: the organization noun for the site's mode, for example "Company", 2: organization name. */
+			__( '%1$s: %2$s', 'woo-organization-accounts-pro' ),
+			$organization_noun,
 			$organization_name
 		)
 	);

@@ -264,6 +264,49 @@ final class Members {
 	}
 
 	/**
+	 * Register the hooks the membership rules need outside a request of their own.
+	 *
+	 * @return void
+	 */
+	public static function register() {
+		add_action( 'deleted_user', array( __CLASS__, 'forget_user' ) );
+	}
+
+	/**
+	 * End a membership whose WordPress account has been deleted.
+	 *
+	 * Deleting a user is the one way a membership can be orphaned, and until this existed
+	 * that is exactly what happened: the row stayed, pointing at an ID with nothing behind
+	 * it, and every screen that listed it had to carry a "(deleted account)" case. Worse,
+	 * `woap_members.user_id` is UNIQUE, so the abandoned row went on reserving an ID that
+	 * WordPress will eventually hand to somebody else — and that person would have arrived
+	 * already a member of an organization they had never heard of.
+	 *
+	 * `MemberRepository::delete()` clears the location-access rows first, so nothing is left
+	 * pointing at the membership either.
+	 *
+	 * **The orders are untouched**, and that is the point of doing it this way: an order
+	 * carries its own `_woap_organization_id` stamp and its own address snapshot, so the
+	 * organization's order history is complete whether or not the person who placed it still
+	 * has a login. Nothing about the shop's records depends on this row surviving.
+	 *
+	 * Registered outside the `is_admin()` branch, because a user is deleted from wp-cli and
+	 * over REST at least as often as from the users screen.
+	 *
+	 * @param int $user_id The account that has gone.
+	 * @return void
+	 */
+	public static function forget_user( $user_id ) {
+		$member = MemberRepository::find_by_user( (int) $user_id );
+
+		if ( null === $member ) {
+			return;
+		}
+
+		MemberRepository::delete( $member->get_id() );
+	}
+
+	/**
 	 * Reduce an absolute permission map to the overrides worth storing.
 	 *
 	 * Overrides are a **diff against the role's defaults**, so they are meaningless without

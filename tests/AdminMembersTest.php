@@ -14,6 +14,7 @@ use WooOrgAccounts\Data\InvitationRepository;
 use WooOrgAccounts\Data\Member;
 use WooOrgAccounts\Data\MemberRepository;
 use WooOrgAccounts\Data\Organization;
+use WooOrgAccounts\Membership\Members as MemberService;
 use WooOrgAccounts\Roles;
 
 /**
@@ -90,6 +91,27 @@ class AdminMembersTest extends TestCase {
 		}
 
 		return $errors;
+	}
+
+	/**
+	 * Delete the account behind a membership without cascading, leaving the row orphaned.
+	 *
+	 * The cascade means this can no longer happen by deleting a user — which is the point of
+	 * it — but the state is still real: every membership orphaned before the hook existed is
+	 * still in the table, and a direct database delete makes another. The screens have to go
+	 * on handling it, so the tests build it deliberately rather than pretending it is gone.
+	 *
+	 * @param Member $member The membership to orphan.
+	 * @return void
+	 */
+	private function orphan( Member $member ) {
+		require_once ABSPATH . 'wp-admin/includes/user.php';
+
+		remove_action( 'deleted_user', array( MemberService::class, 'forget_user' ) );
+
+		wp_delete_user( $member->get_user_id() );
+
+		add_action( 'deleted_user', array( MemberService::class, 'forget_user' ) );
 	}
 
 	/**
@@ -491,11 +513,9 @@ class AdminMembersTest extends TestCase {
 
 		$this->make_member( $organization, Member::ROLE_ADMIN );
 
-		$member  = $this->make_member( $organization, Member::ROLE_MEMBER );
-		$user_id = $member->get_user_id();
+		$member = $this->make_member( $organization, Member::ROLE_MEMBER );
 
-		require_once ABSPATH . 'wp-admin/includes/user.php';
-		wp_delete_user( $user_id );
+		$this->orphan( $member );
 
 		$this->handle(
 			'handle_save',
@@ -517,6 +537,74 @@ class AdminMembersTest extends TestCase {
 	}
 
 	/**
+	 * Deleting a WordPress account ends the membership with it.
+	 *
+	 * Nothing did this before, so the row stayed behind pointing at an ID with nothing
+	 * behind it. `woap_members.user_id` is UNIQUE, so it also went on reserving an ID
+	 * WordPress will eventually hand to somebody else — who would then arrive already a
+	 * member of an organization they had never heard of.
+	 *
+	 * @return void
+	 */
+	public function testDeletingAUserEndsTheirMembership() {
+		$organization = $this->make_organization();
+
+		$this->make_member( $organization, Member::ROLE_ADMIN );
+
+		$member   = $this->make_member( $organization, Member::ROLE_MEMBER );
+		$location = $this->make_location( $organization );
+
+		MemberRepository::set_location_ids( $member->get_id(), array( $location->get_id() ) );
+
+		require_once ABSPATH . 'wp-admin/includes/user.php';
+		wp_delete_user( $member->get_user_id() );
+
+		$this->assertNull(
+			MemberRepository::find( $member->get_id() ),
+			'A membership must not outlive the account it belongs to.'
+		);
+
+		$this->assertSame(
+			array(),
+			MemberRepository::location_ids( $member->get_id() ),
+			'The location access has to go with it, or it points at a membership that is gone.'
+		);
+	}
+
+	/**
+	 * The organization keeps the orders that person placed.
+	 *
+	 * This is what makes cascading safe: an order carries its own organization stamp and its
+	 * own address snapshot, so the account's history is complete whether or not whoever
+	 * placed it still has a login.
+	 *
+	 * @return void
+	 */
+	public function testDeletingAUserKeepsTheirOrders() {
+		$organization = $this->make_organization();
+
+		$this->make_member( $organization, Member::ROLE_ADMIN );
+
+		$member = $this->make_member( $organization, Member::ROLE_MEMBER );
+
+		$order = wc_create_order( array( 'customer_id' => $member->get_user_id() ) );
+		$order->update_meta_data( '_woap_organization_id', $organization->get_id() );
+		$order->save();
+
+		require_once ABSPATH . 'wp-admin/includes/user.php';
+		wp_delete_user( $member->get_user_id() );
+
+		$reloaded = wc_get_order( $order->get_id() );
+
+		$this->assertInstanceOf( \WC_Order::class, $reloaded );
+		$this->assertSame(
+			(string) $organization->get_id(),
+			(string) $reloaded->get_meta( '_woap_organization_id' ),
+			'The order must still say which account it was for.'
+		);
+	}
+
+	/**
 	 * An orphaned membership is listed, so somebody can find it and remove it.
 	 *
 	 * The list sorts by name by default, which took the users-table join — and an INNER one
@@ -532,8 +620,7 @@ class AdminMembersTest extends TestCase {
 
 		$member = $this->make_member( $organization, Member::ROLE_MEMBER );
 
-		require_once ABSPATH . 'wp-admin/includes/user.php';
-		wp_delete_user( $member->get_user_id() );
+		$this->orphan( $member );
 
 		$listed = array_map(
 			static function ( Member $found ) {
@@ -558,8 +645,7 @@ class AdminMembersTest extends TestCase {
 		$organization = $this->make_organization();
 		$member       = $this->make_member( $organization, Member::ROLE_MEMBER );
 
-		require_once ABSPATH . 'wp-admin/includes/user.php';
-		wp_delete_user( $member->get_user_id() );
+		$this->orphan( $member );
 
 		$this->assertSame(
 			array(),

@@ -598,10 +598,6 @@ msgstr "Organisation freigegeben"
 msgid "Sent to an organization's administrators when the shop approves the account and it can start ordering."
 msgstr "Geht an die Administratoren einer Organisation, wenn der Shop das Konto freigibt und bestellt werden kann."
 
-#: includes/Emails/OrganizationApprovedEmail.php:52
-msgid "{organization} has been approved"
-msgstr "{organization} wurde freigegeben"
-
 #: includes/Emails/OrganizationApprovedEmail.php:61
 msgid "You can start ordering"
 msgstr "Du kannst jetzt bestellen"
@@ -613,14 +609,6 @@ msgstr "Organisation abgelehnt"
 #: includes/Emails/OrganizationRejectedEmail.php:31
 msgid "Sent to an organization's administrators when the shop turns the account down."
 msgstr "Geht an die Administratoren einer Organisation, wenn der Shop das Konto ablehnt."
-
-#: includes/Emails/OrganizationRejectedEmail.php:73
-msgid "About your application for {organization}"
-msgstr "Zu deinem Antrag für {organization}"
-
-#: includes/Emails/OrganizationRejectedEmail.php:82
-msgid "We could not approve this account"
-msgstr "Wir konnten dieses Konto nicht freigeben"
 
 #. translators: %s: the organization noun for the site's mode, for example "Company".
 #: includes/Frontend/AccountHandlers.php:245
@@ -690,7 +678,7 @@ msgid "That member no longer exists."
 msgstr "Dieses Mitglied gibt es nicht mehr."
 
 #. translators: 1: the organization noun, 2: the organization admin noun.
-#: includes/Membership/Members.php:304
+#: includes/Membership/Members.php:347
 #, php-format
 msgid "A %1$s must keep at least one active %2$s. Promote somebody else first."
 msgstr "Eine %1$s braucht mindestens einen aktiven %2$s. Befördere zuerst jemand anderen."
@@ -930,7 +918,7 @@ msgstr "Das ist keine gültige E-Mail-Adresse."
 
 #. translators: %s: the organization noun for the site's mode, for example "Company".
 #: includes/Members/Invitations.php:93
-#: includes/Membership/Members.php:627
+#: includes/Membership/Members.php:670
 #, php-format
 msgid "That address already belongs to this %s."
 msgstr "Diese Adresse gehört bereits zu dieser %s."
@@ -1083,32 +1071,18 @@ msgstr "E-Mail-Adresse:"
 msgid "Review the account"
 msgstr "Konto prüfen"
 
-#. translators: 1: organization name, 2: the organization noun for the site's mode.
-#: templates/emails/organization-approved.php:28
-#: templates/emails/plain/organization-approved.php:24
-#, php-format
-msgid "%1$s has been approved. Everyone on the %2$s account can now place orders."
-msgstr "%1$s wurde freigegeben. Alle im Konto der %2$s können jetzt bestellen."
-
-#: templates/emails/organization-approved.php:38
+#: templates/emails/organization-approved.php:49
 msgid "Start shopping"
 msgstr "Jetzt einkaufen"
 
 #. translators: 1: opening link tag, 2: closing link tag.
-#: templates/emails/organization-approved.php:46
+#: templates/emails/organization-approved.php:57
 #, php-format
 msgid "You can invite colleagues and manage delivery addresses from %1$syour account%2$s."
 msgstr "Kolleginnen und Kollegen einladen und Lieferadressen verwalten kannst du in %1$sdeinem Konto%2$s."
 
-#. translators: %s: organization name.
-#: templates/emails/organization-rejected.php:28
-#: templates/emails/plain/organization-rejected.php:24
-#, php-format
-msgid "We are not able to open a trade account for %s at the moment."
-msgstr "Wir können derzeit kein Geschäftskonto für %s eröffnen."
-
-#: templates/emails/organization-rejected.php:36
-#: templates/emails/plain/organization-rejected.php:29
+#: templates/emails/organization-rejected.php:41
+#: templates/emails/plain/organization-rejected.php:32
 msgid "If you think this is a mistake, or you would like to know more, please get in touch with us and we will look at it again."
 msgstr "Wenn du das für einen Fehler hältst oder mehr wissen möchtest, melde dich bei uns — wir schauen es uns noch einmal an."
 
@@ -1120,11 +1094,11 @@ msgstr "Zum Annehmen diesen Link öffnen:"
 msgid "Review the account:"
 msgstr "Konto prüfen:"
 
-#: templates/emails/plain/organization-approved.php:30
+#: templates/emails/plain/organization-approved.php:32
 msgid "Shop:"
 msgstr "Shop:"
 
-#: templates/emails/plain/organization-approved.php:31
+#: templates/emails/plain/organization-approved.php:33
 msgid "Your account:"
 msgstr "Dein Konto:"
 
@@ -2292,8 +2266,13 @@ msgid "The email address is not one WordPress will accept."
 msgstr "Diese E-Mail-Adresse akzeptiert WordPress nicht."
 
 #. translators: 1: which address, for example "Billing address". 2: what is wrong with it.
+#. translators: 1: the organization noun for the site's mode, for example "Company", 2: organization name.
 #. translators: 1: the organization noun for the site's mode, for example "Company", 2: the organization's name.
 #: includes/Import/Record.php:198
+#: templates/emails/organization-approved.php:39
+#: templates/emails/organization-rejected.php:32
+#: templates/emails/plain/organization-approved.php:26
+#: templates/emails/plain/organization-rejected.php:26
 #: templates/registration/pending-approval.php:48
 #, php-format
 msgid "%1$s: %2$s"
@@ -2425,31 +2404,31 @@ msgid "That %s could not be removed."
 msgstr "%s konnte nicht entfernt werden."
 
 #. translators: %1$s: the organization noun for the site's mode, for example "Company".
-#: includes/Membership/Members.php:632
+#: includes/Membership/Members.php:675
 #, php-format
 msgid "That address already belongs to another %1$s. Remove them from it first: a person belongs to one %1$s at a time, and every order they have placed is scoped by that membership."
 msgstr "Diese Adresse gehört bereits zu einer anderen %1$s. Entferne die Person zuerst dort: Eine Person gehört immer nur zu einer %1$s, und jede von ihr aufgegebene Bestellung hängt an dieser Mitgliedschaft."
 
 #. translators: %s: the literal string "role_default".
-#: includes/Membership/Members.php:358
+#: includes/Membership/Members.php:401
 #, php-format
 msgid "Send \"%s\", or an object naming capabilities that should differ from the role."
 msgstr "Sende „%s“ oder ein Objekt mit den Berechtigungen, die von der Rolle abweichen sollen."
 
 #. translators: 1: comma-separated list of capability names, 2: comma-separated list of the capabilities that exist.
-#: includes/Membership/Members.php:373
+#: includes/Membership/Members.php:416
 #, php-format
 msgid "No such capability: %1$s. The capabilities are %2$s."
 msgstr "Unbekannte Berechtigung: %1$s. Verfügbar sind: %2$s."
 
 #. translators: 1: the literal string "all", 2: the plural location noun for the site's mode.
-#: includes/Membership/Members.php:418
+#: includes/Membership/Members.php:461
 #, php-format
 msgid "Send \"%1$s\", or a non-empty list of %2$s to restrict this person to."
 msgstr "Sende „%1$s“ oder eine nicht leere Liste von %2$s, auf die diese Person beschränkt wird."
 
 #. translators: 1: the singular location noun, for example "Branch", 2: the organization noun, 3: a location ID.
-#: includes/Membership/Members.php:437
+#: includes/Membership/Members.php:480
 #, php-format
 msgid "No %1$s of this %2$s has the identifier %3$d."
 msgstr "Kein %1$s dieser %2$s hat die Kennung %3$d."
@@ -2531,11 +2510,11 @@ msgstr "Das Rechnungsadressformular je Land, Felder in Anzeigereihenfolge."
 msgid "The countries the shop sells to, code to name."
 msgstr "Die Länder, in die der Shop verkauft, Code zu Name."
 
-#: includes/Membership/Members.php:575
+#: includes/Membership/Members.php:618
 msgid "That address already has an account on this shop. One address belongs to one account, so it cannot be moved onto this one."
 msgstr "Diese Adresse hat bereits ein Konto in diesem Shop. Eine Adresse gehört zu genau einem Konto und kann deshalb nicht auf dieses übertragen werden."
 
-#: includes/Membership/Members.php:578
+#: includes/Membership/Members.php:621
 msgid "Already in use."
 msgstr "Wird bereits verwendet."
 
@@ -2903,7 +2882,7 @@ msgstr "Mit deinem Konto sind derzeit keine Bestellungen möglich. Bitte wende d
 msgid "Please enter a valid email address."
 msgstr "Bitte gib eine gültige E-Mail-Adresse ein."
 
-#: includes/Membership/Members.php:510
+#: includes/Membership/Members.php:553
 msgid "The account behind this membership no longer exists."
 msgstr "Das Konto hinter dieser Mitgliedschaft existiert nicht mehr."
 
@@ -2926,3 +2905,25 @@ msgstr "Danke — dein Konto wurde angelegt"
 #: templates/registration/pending-approval.php:62
 msgid "We will email you at the address you registered with as soon as it has been reviewed."
 msgstr "Wir schreiben dir an die Adresse, mit der du dich registriert hast, sobald es geprüft wurde."
+
+#: includes/Emails/OrganizationApprovedEmail.php:52
+msgid "Your account for {organization} has been approved"
+msgstr "Dein Konto für {organization} wurde freigegeben"
+
+#: includes/Emails/OrganizationRejectedEmail.php:73
+msgid "About your account for {organization}"
+msgstr "Zu deinem Konto für {organization}"
+
+#: includes/Emails/OrganizationRejectedEmail.php:82
+msgid "We could not approve your account"
+msgstr "Wir konnten dein Konto nicht freigeben"
+
+#: templates/emails/organization-approved.php:31
+#: templates/emails/plain/organization-approved.php:21
+msgid "Your account has been approved. Everyone on it can now place orders."
+msgstr "Dein Konto wurde freigegeben. Alle darauf können jetzt bestellen."
+
+#: templates/emails/organization-rejected.php:24
+#: templates/emails/plain/organization-rejected.php:21
+msgid "We are not able to open your account at the moment."
+msgstr "Wir können dein Konto derzeit nicht eröffnen."

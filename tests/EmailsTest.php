@@ -164,6 +164,34 @@ class EmailsTest extends TestCase {
 	}
 
 	/**
+	 * The approval email is about the customer's account, with the company as context.
+	 *
+	 * The screens say *account* and the emails said *company*, which is the one place the
+	 * framing could still disagree with itself — and the email is what the customer keeps.
+	 * The company is still named, because "your account has been approved" on a shop where
+	 * one person may hold one account is not, on its own, enough to place.
+	 */
+	public function testTheApprovalEmailIsAboutTheAccount() {
+		$organization = $this->make_organization( array( 'status' => Organization::STATUS_PENDING ) );
+
+		$this->make_member( $organization, Member::ROLE_ADMIN );
+
+		$this->sent = array();
+
+		OrganizationRepository::set_status( $organization->get_id(), Organization::STATUS_ACTIVE );
+
+		$this->assertCount( 1, $this->sent );
+		$this->assertStringContainsString( 'Your account', $this->sent[0]['subject'] );
+		$this->assertStringContainsString( 'Acme GmbH', $this->sent[0]['subject'] );
+		$this->assertStringContainsString( 'Your account has been approved', $this->sent[0]['message'] );
+		$this->assertStringContainsString(
+			'Acme GmbH',
+			$this->sent[0]['message'],
+			'The company is named as what the account is for.'
+		);
+	}
+
+	/**
 	 * The rejection email is off by default: telling somebody no is the shop's call.
 	 */
 	public function testRejectionEmailIsOffByDefault() {

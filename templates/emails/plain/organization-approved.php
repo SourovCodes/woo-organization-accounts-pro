@@ -18,12 +18,14 @@ defined( 'ABSPATH' ) || exit;
 
 echo '= ' . esc_html( $email_heading ) . " =\n\n";
 
+echo esc_html__( 'Your account has been approved. Everyone on it can now place orders.', 'woo-organization-accounts-pro' ) . "\n\n";
+
 echo esc_html(
 	sprintf(
-		/* translators: 1: organization name, 2: the organization noun for the site's mode. */
-		__( '%1$s has been approved. Everyone on the %2$s account can now place orders.', 'woo-organization-accounts-pro' ),
-		$organization_name,
-		$organization_noun
+		/* translators: 1: the organization noun for the site's mode, for example "Company", 2: organization name. */
+		__( '%1$s: %2$s', 'woo-organization-accounts-pro' ),
+		$organization_noun,
+		$organization_name
 	)
 ) . "\n\n";
 

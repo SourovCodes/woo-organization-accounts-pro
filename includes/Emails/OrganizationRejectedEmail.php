@@ -70,7 +70,7 @@ class WooOrgAccounts_Organization_Rejected_Email extends StatusEmail {
 	 * @return string Subject.
 	 */
 	public function get_default_subject() {
-		return __( 'About your application for {organization}', 'woo-organization-accounts-pro' );
+		return __( 'About your account for {organization}', 'woo-organization-accounts-pro' );
 	}
 
 	/**
@@ -79,6 +79,6 @@ class WooOrgAccounts_Organization_Rejected_Email extends StatusEmail {
 	 * @return string Heading.
 	 */
 	public function get_default_heading() {
-		return __( 'We could not approve this account', 'woo-organization-accounts-pro' );
+		return __( 'We could not approve your account', 'woo-organization-accounts-pro' );
 	}
 }

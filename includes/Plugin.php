@@ -28,6 +28,7 @@ use WooOrgAccounts\Frontend\AddressFields;
 use WooOrgAccounts\Frontend\MyAccount;
 use WooOrgAccounts\Frontend\OrderDetails;
 use WooOrgAccounts\Frontend\Registration;
+use WooOrgAccounts\Membership\Members as MemberService;
 use WooOrgAccounts\Rest\RestApi;
 
 defined( 'ABSPATH' ) || exit;
@@ -131,6 +132,13 @@ final class Plugin {
 		 * by the REST route a till asks for its form definitions.
 		 */
 		AddressFields::register();
+
+		/*
+		 * Outside the is_admin() branch: a user is deleted from wp-cli and over REST at
+		 * least as often as from the users screen, and a membership that outlives its
+		 * account goes on reserving a UNIQUE user_id that WordPress will hand out again.
+		 */
+		MemberService::register();
 
 		( new Registration() )->register();
 		( new MyAccount() )->register();
