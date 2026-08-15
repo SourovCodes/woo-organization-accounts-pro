@@ -49,7 +49,7 @@ class WooOrgAccounts_Organization_Approved_Email extends StatusEmail {
 	 * @return string Subject.
 	 */
 	public function get_default_subject() {
-		return __( '{organization} has been approved', 'woo-organization-accounts-pro' );
+		return __( 'Your account for {organization} has been approved', 'woo-organization-accounts-pro' );
 	}
 
 	/**

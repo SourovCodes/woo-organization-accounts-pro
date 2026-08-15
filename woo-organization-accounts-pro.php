@@ -4,7 +4,7 @@
  * Plugin URI:           https://github.com/SourovCodes/woo-organization-accounts-pro
  * Update URI:           https://github.com/SourovCodes/woo-organization-accounts-pro
  * Description:          Turns WooCommerce into a strict organization-based B2B system: organization accounts, members, locations, centralised billing and organization-scoped orders.
- * Version:              0.10.0
+ * Version:              0.11.0
  * Requires at least:    7.0
  * Requires PHP:         8.2
  * Requires Plugins:     woocommerce
@@ -23,7 +23,7 @@ namespace WooOrgAccounts;
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'WOAP_VERSION', '0.10.0' );
+define( 'WOAP_VERSION', '0.11.0' );
 define( 'WOAP_PLUGIN_FILE', __FILE__ );
 define( 'WOAP_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'WOAP_PLUGIN_URL', plugin_dir_url( __FILE__ ) );

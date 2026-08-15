@@ -221,15 +221,19 @@ class Settings {
 	}
 
 	/**
-	 * Add the settings screen under the WooCommerce menu.
+	 * Add the settings screen under the plugin's own menu.
+	 *
+	 * The slug is unchanged from when this sat under WooCommerce. It is the address the
+	 * Woodmart theme panel links to and the one a shop is likely to have bookmarked, and a
+	 * screen's parent is not part of its URL.
 	 *
 	 * @return void
 	 */
 	public function register_menu() {
 		$this->hook_suffix = add_submenu_page(
-			'woocommerce',
-			__( 'Organization Accounts', 'woo-organization-accounts-pro' ),
-			__( 'Organization Accounts', 'woo-organization-accounts-pro' ),
+			Menu::PAGE_SLUG,
+			__( 'Settings', 'woo-organization-accounts-pro' ),
+			__( 'Settings', 'woo-organization-accounts-pro' ),
 			self::CAPABILITY,
 			self::PAGE_SLUG,
 			array( $this, 'render_page' )

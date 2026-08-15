@@ -16,6 +16,7 @@ use WooOrgAccounts\Data\Organization;
 use WooOrgAccounts\Emails\Emails;
 use WooOrgAccounts\Frontend\Registration;
 use WooOrgAccounts\Labels;
+use WooOrgAccounts\LoginGate;
 use WooOrgAccounts\Members\Invitations;
 use WooOrgAccounts\Roles;
 
@@ -639,5 +640,107 @@ class RegistrationSurfaceTest extends TestCase {
 				sprintf( '%s carries a capability of its own.', $role_name )
 			);
 		}
+	}
+
+	/**
+	 * A pending registrant is told so, even when they are signed straight in.
+	 *
+	 * This is the *default* configuration — approval required to order, not to sign in —
+	 * and it said nothing at all: a twenty-field form, then My Account, with no word that
+	 * anything was pending. The screen that says so already existed and only the sign-in
+	 * gate ever reached it, so nothing failed and nobody was told.
+	 */
+	public function testAPendingRegistrantIsToldWhileStillBeingSignedIn() {
+		$this->make_registration_page();
+		$this->set_setting( 'require_approval', true );
+		$this->set_setting( LoginGate::SETTING, false );
+
+		$landed = $this->register();
+
+		$this->assertStringContainsString(
+			Registration::PENDING_VAR . '=' . LoginGate::REASON_AWAITING,
+			$landed,
+			'A registration held for approval must say so, whatever the sign-in gate is set to.'
+		);
+
+		$this->assertTrue(
+			is_user_logged_in(),
+			'With the sign-in gate off they are signed in as before; only the silence is fixed.'
+		);
+	}
+
+	/**
+	 * That screen says the account is being reviewed, and names the company underneath.
+	 *
+	 * What the shop approves is a customer account. The company is what the account is
+	 * *for* — the customer has just typed its name into a form and does not need telling
+	 * that a second record exists and is under review.
+	 */
+	public function testTheWaitingScreenIsAboutTheAccountNotTheCompany() {
+		$this->make_registration_page();
+		$this->set_setting( 'require_approval', true );
+		$this->set_setting( LoginGate::SETTING, false );
+
+		$this->register();
+
+		$_GET[ Registration::PENDING_VAR ] = LoginGate::REASON_AWAITING;
+
+		$markup = ( new Registration() )->render();
+
+		$this->assertStringContainsString( 'woap-registration--pending', $markup );
+		$this->assertStringContainsString( 'your account has been created', $markup );
+		$this->assertStringContainsString(
+			'Acme Holdings AG',
+			$markup,
+			'The company is named as what the account is for.'
+		);
+		$this->assertStringNotContainsString(
+			'cannot sign in',
+			$markup,
+			'They are signed in; this screen must not read as a refusal.'
+		);
+	}
+
+	/**
+	 * A shop that approves nothing says nothing.
+	 */
+	public function testAnUngatedRegistrationGoesStraightToTheAccount() {
+		$this->make_registration_page();
+		$this->set_setting( 'require_approval', false );
+		$this->set_setting( LoginGate::SETTING, false );
+
+		$this->assertStringNotContainsString(
+			Registration::PENDING_VAR,
+			$this->register(),
+			'With approval switched off there is nothing to wait for and nothing to say.'
+		);
+	}
+
+	/**
+	 * The form warns about the review before it is filled in, not after.
+	 *
+	 * A shop that reviews registrations is asking for twenty fields and a password in
+	 * exchange for an account that cannot buy anything yet. Finding that out on the
+	 * confirmation screen is finding it out too late to have decided anything.
+	 */
+	public function testTheFormSaysNewAccountsAreReviewed() {
+		$this->set_setting( 'require_approval', true );
+
+		$this->assertStringContainsString(
+			'New accounts are reviewed',
+			( new Registration() )->render()
+		);
+	}
+
+	/**
+	 * And says nothing where a shop approves nothing.
+	 */
+	public function testTheFormIsSilentWhenNothingIsReviewed() {
+		$this->set_setting( 'require_approval', false );
+
+		$this->assertStringNotContainsString(
+			'New accounts are reviewed',
+			( new Registration() )->render()
+		);
 	}
 }

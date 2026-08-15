@@ -8,13 +8,12 @@
 namespace WooOrgAccounts\Rest;
 
 use WooOrgAccounts\Data\Invitation;
-use WooOrgAccounts\Data\LocationRepository;
 use WooOrgAccounts\Data\Member;
 use WooOrgAccounts\Data\MemberRepository;
 use WooOrgAccounts\Data\Organization;
 use WooOrgAccounts\Labels;
 use WooOrgAccounts\Members\Invitations;
-use WooOrgAccounts\Roles;
+use WooOrgAccounts\Membership\Members;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -85,13 +84,17 @@ final class MembersController {
 
 	/**
 	 * The value of `capabilities` that means "whatever the role allows".
+	 *
+	 * Named after the service rather than repeated, because this is one value with two
+	 * audiences — a documented wire literal and the way every screen says the same thing —
+	 * and two copies is how a rename reaches one of them.
 	 */
-	const ROLE_DEFAULT = 'role_default';
+	const ROLE_DEFAULT = Members::ROLE_DEFAULT;
 
 	/**
 	 * The value of `location_access` that means every location the organization has.
 	 */
-	const ACCESS_ALL = 'all';
+	const ACCESS_ALL = Members::ACCESS_ALL;
 
 	/**
 	 * Register the routes.
@@ -285,61 +288,19 @@ final class MembersController {
 	 * @return \WP_REST_Response|\WP_Error The member, or a refusal.
 	 */
 	private function enrol( Organization $organization, $request, $role ) {
-		$email  = (string) $request['email'];
-		$errors = new \WP_Error();
-
-		$capabilities = $this->requested_capabilities( $request, $role, $errors );
-		$locations    = $this->requested_locations( $request, $organization->get_id(), $errors );
-
-		if ( $errors->has_errors() ) {
-			return Writes::refuse( 'woap_rest_invalid_member', $errors );
-		}
-
-		$user = get_user_by( 'email', $email );
-
-		if ( $user instanceof \WP_User ) {
-			$existing = MemberRepository::find_by_user( $user->ID );
-
-			if ( null !== $existing ) {
-				return $this->already_a_member( $existing, $organization->get_id() );
-			}
-		}
-
-		$user_id = $user instanceof \WP_User ? $user->ID : $this->create_user( $request, $email, $role );
-
-		if ( is_wp_error( $user_id ) ) {
-			$user_id->add_data( array( 'status' => 400 ), $user_id->get_error_code() );
-
-			return $user_id;
-		}
-
-		$member = new Member();
-		$member->set_props(
+		$values = array_merge(
+			$this->submitted( $request, array( 'first_name', 'last_name', 'capabilities', 'location_access' ) ),
 			array(
-				'organization_id' => $organization->get_id(),
-				'user_id'         => $user_id,
-				'role'            => $role,
-				'status'          => Member::STATUS_ACTIVE,
+				'email' => (string) $request['email'],
+				'role'  => $role,
 			)
 		);
 
-		$member->set_capabilities( null === $capabilities ? array() : $capabilities );
+		$member = Members::add( $organization, $values );
 
-		if ( 0 === MemberRepository::save( $member ) ) {
-			return Writes::not_saved(
-				sprintf(
-					/* translators: %s: the singular member noun for the site's mode, for example "Employee". */
-					__( 'That %s could not be saved.', 'woo-organization-accounts-pro' ),
-					Labels::member()
-				)
-			);
+		if ( is_wp_error( $member ) ) {
+			return $this->refusal( $member );
 		}
-
-		if ( null !== $locations ) {
-			MemberRepository::set_location_ids( $member->get_id(), $locations );
-		}
-
-		$this->apply_wordpress_role( $user_id, Roles::wordpress_role( $role ) );
 
 		return $this->respond( $member, 201 );
 	}
@@ -364,53 +325,18 @@ final class MembersController {
 			return $member;
 		}
 
-		$role   = $this->requested_role( $request, $member->get_role() );
-		$status = $request->has_param( 'status' ) ? (string) $request['status'] : (string) $member->get( 'status' );
-		$errors = new \WP_Error();
+		$changes = $this->submitted(
+			$request,
+			array( 'first_name', 'last_name', 'email', 'role', 'status', 'capabilities', 'location_access' )
+		);
 
-		$capabilities = $this->requested_capabilities( $request, $role, $errors );
-		$locations    = $this->requested_locations( $request, $member->get_organization_id(), $errors );
+		$saved = Members::update( $member, $changes );
 
-		$losing_admin = $member->is_admin() && ( Member::ROLE_ADMIN !== $role || Member::STATUS_ACTIVE !== $status );
-
-		if ( $losing_admin && ! MemberRepository::has_other_admin( $member->get_organization_id(), $member->get_id() ) ) {
-			$errors->add( 'role', $this->last_admin_message() );
+		if ( is_wp_error( $saved ) ) {
+			return $this->refusal( $saved );
 		}
 
-		if ( $errors->has_errors() ) {
-			return Writes::refuse( 'woap_rest_invalid_member', $errors );
-		}
-
-		$refusal = $this->update_identity( $member, $request );
-
-		if ( is_wp_error( $refusal ) ) {
-			return $refusal;
-		}
-
-		$member->set( 'role', $role );
-		$member->set( 'status', $status );
-
-		if ( null !== $capabilities ) {
-			$member->set_capabilities( $capabilities );
-		}
-
-		if ( 0 === MemberRepository::save( $member ) ) {
-			return Writes::not_saved(
-				sprintf(
-					/* translators: %s: the singular member noun for the site's mode, for example "Employee". */
-					__( 'That %s could not be saved.', 'woo-organization-accounts-pro' ),
-					Labels::member()
-				)
-			);
-		}
-
-		if ( null !== $locations ) {
-			MemberRepository::set_location_ids( $member->get_id(), $locations );
-		}
-
-		$this->apply_wordpress_role( $member->get_user_id(), Roles::wordpress_role( $role ) );
-
-		return $this->respond( $member, 200 );
+		return $this->respond( $saved, 200 );
 	}
 
 	/**
@@ -430,28 +356,12 @@ final class MembersController {
 			return $member;
 		}
 
-		if ( $member->is_admin() && ! MemberRepository::has_other_admin( $member->get_organization_id(), $member->get_id() ) ) {
-			return new \WP_Error(
-				'woap_rest_last_admin',
-				$this->last_admin_message(),
-				array( 'status' => 409 )
-			);
-		}
-
 		$previous = OrganizationsController::member_payload( $member, MemberRepository::location_ids( $member->get_id() ), true );
-		$user_id  = $member->get_user_id();
+		$removed  = Members::remove( $member );
 
-		if ( ! MemberRepository::delete( $member->get_id() ) ) {
-			return Writes::not_saved(
-				sprintf(
-					/* translators: %s: the singular member noun for the site's mode, for example "Employee". */
-					__( 'That %s could not be removed.', 'woo-organization-accounts-pro' ),
-					Labels::member()
-				)
-			);
+		if ( is_wp_error( $removed ) ) {
+			return $this->refusal( $removed );
 		}
-
-		$this->apply_wordpress_role( $user_id, 'customer' );
 
 		return new \WP_REST_Response(
 			array(
@@ -463,227 +373,65 @@ final class MembersController {
 	}
 
 	/**
-	 * Create the WordPress account for somebody being entered by staff.
+	 * What the request asked for, keyed the way the service reads it.
 	 *
-	 * The password is random and nobody is told it: the account exists, orders attach to
-	 * it, and the person sets a password through the shop's lost-password form. Nothing
-	 * is emailed from here — `wp_insert_user()` sends nothing on its own, and a route
-	 * that quietly triggered the shop's new-account mail would make "add an employee"
-	 * mean something different depending on which plugins the shop runs.
+	 * Only the fields the request actually carried are included, because presence is how
+	 * the service tells "set this to empty" from "leave it alone" — the same distinction
+	 * `has_param()` draws, carried across a boundary that has no request object. It is also
+	 * why none of the arguments this route declares has a `default`: WordPress fills a
+	 * declared default into the request, so `'default' => ''` on a name would make every
+	 * edit that never mentioned one blank it.
 	 *
 	 * @param \WP_REST_Request $request The request.
-	 * @param string           $email   The address to create the account for.
-	 * @param string           $role    Membership role, which decides the WordPress role.
-	 * @return int|\WP_Error User ID, or an error.
+	 * @param array            $fields  The fields to carry across if they are there.
+	 * @return array Submitted values.
 	 */
-	private function create_user( $request, $email, $role ) {
-		return wp_insert_user(
-			array(
-				'user_login' => $email,
-				'user_email' => $email,
-				'user_pass'  => wp_generate_password( 32, true, true ),
-				'first_name' => (string) $request['first_name'],
-				'last_name'  => (string) $request['last_name'],
-				'role'       => Roles::wordpress_role( $role ),
-			)
-		);
-	}
-
-	/**
-	 * Write the name and the address an edit carries onto the WordPress account.
-	 *
-	 * Neither is stored on the membership row, so this is the whole of it: `wp_update_user()`
-	 * rather than a direct meta write, because WooCommerce keeps its own customer record in
-	 * step by listening to `profile_update` and a member is a customer of the shop.
-	 *
-	 * The fields an edit does not mention are read back off the account rather than left
-	 * out, because the display name is derived from all three together and deriving it from
-	 * half of them would blank a surname the request never mentioned.
-	 *
-	 * @param Member           $member  The membership being edited.
-	 * @param \WP_REST_Request $request The request.
-	 * @return \WP_Error|null A refusal, or null when there was nothing to do or it is done.
-	 */
-	private function update_identity( Member $member, $request ) {
+	private function submitted( $request, array $fields ) {
 		$submitted = array();
 
-		foreach ( array( 'first_name', 'last_name', 'email' ) as $field ) {
+		foreach ( $fields as $field ) {
 			if ( $request->has_param( $field ) ) {
-				$submitted[ $field ] = (string) $request[ $field ];
+				$submitted[ $field ] = $request[ $field ];
 			}
 		}
 
-		if ( empty( $submitted ) ) {
-			return null;
-		}
-
-		$user = get_userdata( $member->get_user_id() );
-
-		if ( ! $user instanceof \WP_User ) {
-			return $this->no_user_behind_it();
-		}
-
-		$identity = array_merge(
-			array(
-				'first_name' => (string) $user->first_name,
-				'last_name'  => (string) $user->last_name,
-				'email'      => (string) $user->user_email,
-			),
-			$submitted
-		);
-
-		$conflict = $this->address_conflict( $user, $identity['email'], $member->get_organization_id() );
-
-		if ( $conflict instanceof \WP_Error ) {
-			return $conflict;
-		}
-
-		$updated = wp_update_user(
-			array(
-				'ID'           => $user->ID,
-				'user_email'   => $identity['email'],
-				'first_name'   => $identity['first_name'],
-				'last_name'    => $identity['last_name'],
-				'display_name' => $this->display_name( $user, $identity ),
-			)
-		);
-
-		if ( is_wp_error( $updated ) ) {
-			$updated->add_data( array( 'status' => 400 ), $updated->get_error_code() );
-
-			return $updated;
-		}
-
-		return null;
+		return $submitted;
 	}
 
 	/**
-	 * Whether an address an edit asks for belongs to somebody else.
+	 * Put a service refusal on the wire.
 	 *
-	 * WordPress refuses the write itself, with `existing_user_email` and nothing to act on.
-	 * Asking first is what lets the answer say *where* that address already is, which for
-	 * an address on another organization's account is the one fact the app needs to resolve
-	 * it — and it is the same 409 as adding somebody who already belongs to an organization,
-	 * because it is the same rule.
+	 * The service names its refusals after the rule that was broken, and knows nothing about
+	 * HTTP; this is where they become the codes and statuses `docs/rest-api.md` documents and
+	 * a client keys on. Anything not in the map is a validation error keyed by field name,
+	 * which is what `Writes::refuse()` turns into a `params` map.
 	 *
-	 * @param \WP_User $user            The account being edited.
-	 * @param string   $email           The address the edit asks for.
-	 * @param int      $organization_id The organization the membership belongs to.
-	 * @return \WP_Error|null A 409, or null when the address is free.
+	 * @param \WP_Error $error The refusal the service gave.
+	 * @return \WP_Error The refusal a client receives.
 	 */
-	private function address_conflict( \WP_User $user, $email, $organization_id ) {
-		if ( 0 === strcasecmp( $email, (string) $user->user_email ) ) {
-			return null;
+	private function refusal( \WP_Error $error ) {
+		$conflicts = array(
+			Members::ERROR_ALREADY_MEMBER => array( 'woap_rest_already_member', 409 ),
+			Members::ERROR_EMAIL_TAKEN    => array( 'woap_rest_email_taken', 409 ),
+			Members::ERROR_LAST_ADMIN     => array( 'woap_rest_last_admin', 409 ),
+			Members::ERROR_NO_USER        => array( 'woap_rest_no_user', 500 ),
+			Members::ERROR_NOT_SAVED      => array( 'woap_rest_not_saved', 500 ),
+		);
+
+		$code = (string) $error->get_error_code();
+
+		if ( ! isset( $conflicts[ $code ] ) ) {
+			return Writes::refuse( 'woap_rest_invalid_member', $error );
 		}
 
-		$owner = get_user_by( 'email', $email );
+		list( $wire_code, $status ) = $conflicts[ $code ];
 
-		if ( ! $owner instanceof \WP_User || $owner->ID === $user->ID ) {
-			return null;
-		}
-
-		$existing = MemberRepository::find_by_user( $owner->ID );
-
-		if ( null !== $existing ) {
-			return $this->already_a_member( $existing, $organization_id );
-		}
+		$data = (array) $error->get_error_data( $code );
 
 		return new \WP_Error(
-			'woap_rest_email_taken',
-			__( 'That address already has an account on this shop. One address belongs to one account, so it cannot be moved onto this one.', 'woo-organization-accounts-pro' ),
-			array(
-				'status'  => 409,
-				'user_id' => $owner->ID,
-				'params'  => array( 'email' => __( 'Already in use.', 'woo-organization-accounts-pro' ) ),
-			)
-		);
-	}
-
-	/**
-	 * The display name an account should hold once an edit has landed.
-	 *
-	 * Every screen in this plugin prints `display_name` — the members list, the member
-	 * form, the organization orders list, the order column in wp-admin — so a rename that
-	 * left it alone would be a field with no destination: stored, served back, and visible
-	 * nowhere anybody looks.
-	 *
-	 * **A display name somebody has set by hand is left exactly as it is.** It is only
-	 * overwritten when it is still one of the things this plugin or WordPress would have
-	 * derived it from, which is what keeps a shop's own correction from being undone by a
-	 * routine edit to a surname.
-	 *
-	 * @param \WP_User $user     The account as it stands.
-	 * @param array    $identity The name and address it is about to hold.
-	 * @return string The display name to store.
-	 */
-	private function display_name( \WP_User $user, array $identity ) {
-		$derived = trim( $identity['first_name'] . ' ' . $identity['last_name'] );
-		$derived = '' !== $derived ? $derived : $identity['email'];
-		$stored  = (string) $user->display_name;
-
-		$derivable = array_filter(
-			array(
-				trim( $user->first_name . ' ' . $user->last_name ),
-				(string) $user->user_email,
-				(string) $user->user_login,
-			)
-		);
-
-		return in_array( $stored, $derivable, true ) ? $derived : $stored;
-	}
-
-	/**
-	 * Give a user the WordPress role their membership needs, unless they run the shop.
-	 *
-	 * `set_role()` replaces every role a user holds, so an administrator or a shop
-	 * manager who also buys on an organization's account would be demoted out of
-	 * wp-admin by a routine membership edit. They are left exactly as they are; their
-	 * capabilities within the organization come from the membership row regardless.
-	 *
-	 * @param int    $user_id User to move.
-	 * @param string $role    WordPress role name.
-	 * @return void
-	 */
-	private function apply_wordpress_role( $user_id, $role ) {
-		if ( user_can( $user_id, 'manage_woocommerce' ) ) {
-			return;
-		}
-
-		$user = get_user_by( 'id', $user_id );
-
-		if ( $user instanceof \WP_User ) {
-			$user->set_role( $role );
-		}
-	}
-
-	/**
-	 * The refusal for an address that already belongs to an organization.
-	 *
-	 * @param Member $existing        The membership that address already has.
-	 * @param int    $organization_id The organization it was being added to, or edited on.
-	 * @return \WP_Error A 409.
-	 */
-	private function already_a_member( Member $existing, $organization_id ) {
-		$message = $existing->get_organization_id() === (int) $organization_id
-			? sprintf(
-				/* translators: %s: the organization noun for the site's mode, for example "Company". */
-				__( 'That address already belongs to this %s.', 'woo-organization-accounts-pro' ),
-				Labels::organization()
-			)
-			: sprintf(
-				/* translators: %1$s: the organization noun for the site's mode, for example "Company". */
-				__( 'That address already belongs to another %1$s. Remove them from it first: a person belongs to one %1$s at a time, and every order they have placed is scoped by that membership.', 'woo-organization-accounts-pro' ),
-				Labels::organization()
-			);
-
-		return new \WP_Error(
-			'woap_rest_already_member',
-			$message,
-			array(
-				'status'          => 409,
-				'organization_id' => $existing->get_organization_id(),
-				'member_id'       => $existing->get_id(),
-			)
+			$wire_code,
+			$error->get_error_message( $code ),
+			array_merge( $data, array( 'status' => $status ) )
 		);
 	}
 
@@ -702,140 +450,6 @@ final class MembersController {
 		return ( Member::ROLE_ADMIN === $request['role'] ) ? Member::ROLE_ADMIN : Member::ROLE_MEMBER;
 	}
 
-	/**
-	 * The capability overrides a request asks for, reduced to a diff.
-	 *
-	 * The map is read as "what should be true of this member", so a capability the
-	 * request does not mention falls back to what the role gives — and only what differs
-	 * from the role is stored. That is what keeps `"role": "admin"` with no capabilities
-	 * meaning an admin with an admin's permissions, rather than an admin pinned to
-	 * whatever their previous role happened to allow.
-	 *
-	 * @param \WP_REST_Request $request The request.
-	 * @param string           $role    The role being saved, which the diff is against.
-	 * @param \WP_Error        $errors  Errors to add to.
-	 * @return array|null Overrides to store, or null to leave them as they are.
-	 */
-	private function requested_capabilities( $request, $role, \WP_Error $errors ) {
-		if ( ! $request->has_param( 'capabilities' ) ) {
-			return null;
-		}
-
-		$requested = $request['capabilities'];
-
-		if ( self::ROLE_DEFAULT === $requested ) {
-			return array();
-		}
-
-		if ( ! is_array( $requested ) ) {
-			$errors->add(
-				'capabilities',
-				sprintf(
-					/* translators: %s: the literal string "role_default". */
-					__( 'Send "%s", or an object naming capabilities that should differ from the role.', 'woo-organization-accounts-pro' ),
-					self::ROLE_DEFAULT
-				)
-			);
-
-			return null;
-		}
-
-		$defaults = Roles::role_capabilities( $role );
-		$unknown  = array_diff( array_keys( $requested ), Roles::capabilities() );
-
-		if ( ! empty( $unknown ) ) {
-			$errors->add(
-				'capabilities',
-				sprintf(
-					/* translators: 1: comma-separated list of capability names, 2: comma-separated list of the capabilities that exist. */
-					__( 'No such capability: %1$s. The capabilities are %2$s.', 'woo-organization-accounts-pro' ),
-					implode( ', ', $unknown ),
-					implode( ', ', Roles::capabilities() )
-				)
-			);
-
-			return null;
-		}
-
-		$overrides = array();
-
-		foreach ( Roles::capabilities() as $capability ) {
-			$wanted = array_key_exists( $capability, $requested )
-				? (bool) $requested[ $capability ]
-				: (bool) $defaults[ $capability ];
-
-			if ( $wanted !== (bool) $defaults[ $capability ] ) {
-				$overrides[ $capability ] = $wanted;
-			}
-		}
-
-		return $overrides;
-	}
-
-	/**
-	 * The location access a request asks for.
-	 *
-	 * An empty list is refused rather than stored, because the stored form of "every
-	 * location" *is* an empty list — so a client sending `[]` meaning "none" would get
-	 * the opposite of what it asked for, silently. `"all"` is the way to say every
-	 * location, and there is deliberately no way to say none: a member who may order but
-	 * may ship nowhere cannot check out, and that is what the member's status is for.
-	 *
-	 * @param \WP_REST_Request $request         The request.
-	 * @param int              $organization_id The organization the locations must belong to.
-	 * @param \WP_Error        $errors          Errors to add to.
-	 * @return array|null Location IDs, an empty array for "all", or null to leave them as they are.
-	 */
-	private function requested_locations( $request, $organization_id, \WP_Error $errors ) {
-		if ( ! $request->has_param( 'location_access' ) ) {
-			return null;
-		}
-
-		$requested = $request['location_access'];
-
-		if ( self::ACCESS_ALL === $requested ) {
-			return array();
-		}
-
-		if ( ! is_array( $requested ) || empty( $requested ) ) {
-			$errors->add(
-				'location_access',
-				sprintf(
-					/* translators: 1: the literal string "all", 2: the plural location noun for the site's mode. */
-					__( 'Send "%1$s", or a non-empty list of %2$s to restrict this person to.', 'woo-organization-accounts-pro' ),
-					self::ACCESS_ALL,
-					Labels::locations()
-				)
-			);
-
-			return null;
-		}
-
-		$ids = array();
-
-		foreach ( $requested as $id ) {
-			$id = absint( $id );
-
-			if ( null === LocationRepository::find_for_organization( $id, $organization_id ) ) {
-				$errors->add(
-					'location_access',
-					sprintf(
-						/* translators: 1: the singular location noun, for example "Branch", 2: the organization noun, 3: a location ID. */
-						__( 'No %1$s of this %2$s has the identifier %3$d.', 'woo-organization-accounts-pro' ),
-						Labels::location(),
-						Labels::organization(),
-						$id
-					)
-				);
-
-				return null;
-			}
-
-			$ids[] = $id;
-		}
-
-		return array_values( array_unique( $ids ) );
-	}
 
 	/**
 	 * The member a request names, scoped to the organization in its path.
@@ -915,20 +529,6 @@ final class MembersController {
 			'status'        => (string) $invitation->get( 'status' ),
 			'expires_at'    => $invitation->get( 'expires_at' ),
 			'invited_by'    => $invitation->get_invited_by(),
-		);
-	}
-
-	/**
-	 * The one message for an edit that would leave an organization unadministered.
-	 *
-	 * @return string Translated message.
-	 */
-	private function last_admin_message() {
-		return sprintf(
-			/* translators: 1: the organization noun, 2: the organization admin noun. */
-			__( 'A %1$s must keep at least one active %2$s. Promote somebody else first.', 'woo-organization-accounts-pro' ),
-			Labels::organization(),
-			Labels::organization_admin()
 		);
 	}
 

@@ -20,14 +20,25 @@ defined( 'ABSPATH' ) || exit;
 do_action( 'woocommerce_email_header', $email_heading, $email );
 
 ?>
+<?php
+/*
+ * The account is what was approved, and the company is what it is for. The recipient is a
+ * person who signed up and has been waiting to buy something; leading with the company name
+ * answers a question they did not ask, about a record they may not know exists.
+ */
+?>
+<p>
+	<?php esc_html_e( 'Your account has been approved. Everyone on it can now place orders.', 'woo-organization-accounts-pro' ); ?>
+</p>
+
 <p>
 	<?php
 	echo esc_html(
 		sprintf(
-			/* translators: 1: organization name, 2: the organization noun for the site's mode. */
-			__( '%1$s has been approved. Everyone on the %2$s account can now place orders.', 'woo-organization-accounts-pro' ),
-			$organization_name,
-			$organization_noun
+			/* translators: 1: the organization noun for the site's mode, for example "Company", 2: organization name. */
+			__( '%1$s: %2$s', 'woo-organization-accounts-pro' ),
+			$organization_noun,
+			$organization_name
 		)
 	);
 	?>

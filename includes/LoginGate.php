@@ -62,6 +62,18 @@ final class LoginGate {
 	const REASON_INACTIVE = 'inactive';
 
 	/**
+	 * Signed in, and waiting: the account is pending but the sign-in gate is off.
+	 *
+	 * Not a refusal, which is why it is not returned by `reason()` or `reason_for_status()`
+	 * and never ends a session. It exists because the *default* configuration —
+	 * `require_approval` on, `require_approval_to_sign_in` off — used to say nothing at all:
+	 * somebody filled in a twenty-field form, was signed in, and landed on My Account with
+	 * no word about what happens next. The screen for saying it already existed and the
+	 * common setup never reached it.
+	 */
+	const REASON_AWAITING = 'awaiting';
+
+	/**
 	 * Register the hooks.
 	 *
 	 * @return void
@@ -144,24 +156,55 @@ final class LoginGate {
 	 * is worth waiting for and "this account is closed" is worth a phone call, and
 	 * neither says anything the account holder does not already know about themselves.
 	 *
+	 * **It is the customer's account that is being reviewed, not their company.** The status
+	 * lives on the organization row, and the person reading this is a person who signed up
+	 * and cannot get in — telling them their *company* is under review answers a question
+	 * they did not ask, about a record they may not know exists. The company is named as
+	 * what the account is for, which is the part they can act on if the shop rings them.
+	 *
 	 * @param string $reason One of the REASON_* codes.
+	 * @param string $name   Optional organization name, to say what the account is for.
 	 * @return string Translated message, or an empty string for an unknown code.
 	 */
-	public static function message( $reason ) {
+	public static function message( $reason, $name = '' ) {
+		$name = trim( (string) $name );
+
 		if ( self::REASON_PENDING === $reason ) {
-			return sprintf(
-				/* translators: %s: the organization noun for the site's mode, for example "Company". */
-				__( 'Your %s is still being reviewed. You will be able to sign in as soon as it has been approved.', 'woo-organization-accounts-pro' ),
-				Labels::organization()
-			);
+			return '' !== $name
+				? sprintf(
+					/* translators: 1: the organization noun for the site's mode, for example "Company", 2: the organization's name. */
+					__( 'Your account is still being reviewed. You will be able to sign in as soon as it has been approved. (%1$s: %2$s)', 'woo-organization-accounts-pro' ),
+					Labels::organization(),
+					$name
+				)
+				: __( 'Your account is still being reviewed. You will be able to sign in as soon as it has been approved.', 'woo-organization-accounts-pro' );
 		}
 
 		if ( self::REASON_INACTIVE === $reason ) {
-			return sprintf(
-				/* translators: %s: the organization noun for the site's mode, for example "Company". */
-				__( 'Your %s account is not active, so you cannot sign in. Please contact the shop.', 'woo-organization-accounts-pro' ),
-				Labels::organization()
-			);
+			return '' !== $name
+				? sprintf(
+					/* translators: 1: the organization noun for the site's mode, for example "Company", 2: the organization's name. */
+					__( 'Your account is not active, so you cannot sign in. Please contact the shop. (%1$s: %2$s)', 'woo-organization-accounts-pro' ),
+					Labels::organization(),
+					$name
+				)
+				: __( 'Your account is not active, so you cannot sign in. Please contact the shop.', 'woo-organization-accounts-pro' );
+		}
+
+		/*
+		 * Signed in and waiting. A different sentence from the two above, because they are
+		 * refusals and this is not: they may sign in, browse and fill a cart, and the one
+		 * thing they cannot do yet is check out.
+		 */
+		if ( self::REASON_AWAITING === $reason ) {
+			return '' !== $name
+				? sprintf(
+					/* translators: 1: the organization noun for the site's mode, for example "Company", 2: the organization's name. */
+					__( 'Your account is being reviewed. You can sign in and look around; you will be able to place orders as soon as it has been approved. (%1$s: %2$s)', 'woo-organization-accounts-pro' ),
+					Labels::organization(),
+					$name
+				)
+				: __( 'Your account is being reviewed. You can sign in and look around; you will be able to place orders as soon as it has been approved.', 'woo-organization-accounts-pro' );
 		}
 
 		return '';

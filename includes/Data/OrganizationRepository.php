@@ -42,6 +42,7 @@ class OrganizationRepository extends Repository {
 	 *
 	 *     @type string $status  Restrict to one status.
 	 *     @type string $search  Match against name, email or tax ID.
+	 *     @type int[]  $include Restrict to these IDs. An empty array matches nothing.
 	 *     @type string $orderby Column to sort on. One of name, status, date_created, id.
 	 *     @type string $order   ASC or DESC.
 	 *     @type int    $limit   Maximum rows. 0 for no limit.
@@ -243,6 +244,23 @@ class OrganizationRepository extends Repository {
 			$params[]  = $like;
 			$params[]  = $like;
 			$params[]  = $like;
+		}
+
+		/*
+		 * Named IDs, for a screen that already knows which rows it wants — a list showing an
+		 * organization name per row, which would otherwise ask for them one at a time. An
+		 * empty array is *not* "no restriction" here: a caller asking for none must get
+		 * none, or the shape becomes another empty-means-the-opposite trap.
+		 */
+		if ( isset( $args['include'] ) && is_array( $args['include'] ) ) {
+			$ids = self::clean_ids( $args['include'] );
+
+			if ( empty( $ids ) ) {
+				return ' WHERE 1=0';
+			}
+
+			$clauses[] = 'id IN ( ' . implode( ', ', array_fill( 0, count( $ids ), '%d' ) ) . ' )';
+			$params    = array_merge( $params, $ids );
 		}
 
 		return empty( $clauses ) ? '' : ' WHERE ' . implode( ' AND ', $clauses );

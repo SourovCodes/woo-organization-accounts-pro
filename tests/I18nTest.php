@@ -182,6 +182,20 @@ class I18nTest extends WP_UnitTestCase {
 
 			$translated = $po->entries[ $key ];
 
+			/*
+			 * An entry nobody has touched carries an *empty* translations array rather than
+			 * an array holding an empty string — POMO drops `msgstr ""` on the way in. So
+			 * the loop below never ran for exactly the entries it was written to catch, and
+			 * this whole assertion passed over 80 untranslated strings without a word. The
+			 * empty case has to be tested before iterating, not inside the iteration.
+			 */
+			$translations = array_filter( (array) $translated->translations, 'strlen' );
+
+			if ( empty( $translations ) ) {
+				$untranslated[] = $entry->singular;
+				continue;
+			}
+
 			foreach ( (array) $translated->translations as $translation ) {
 				if ( '' === trim( (string) $translation ) ) {
 					$untranslated[] = $entry->singular;

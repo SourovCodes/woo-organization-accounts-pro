@@ -11,6 +11,8 @@
  * @var array          $billing   Billing address values to prefill.
  * @var string         $action    Nonce action for the form.
  * @var string         $honeypot  Name of the honeypot field.
+ * @var bool           $approval_required Whether a new account is reviewed before it can order.
+ * @var bool           $sign_in_gated     Whether it is reviewed before it can sign in at all.
  */
 
 use WooOrgAccounts\Data\Organization;
@@ -48,6 +50,28 @@ $woap_tax_id_required = Organization::tax_id_required();
 			<?php foreach ( $errors->get_error_messages() as $woap_message ) : ?>
 				<li><?php echo wp_kses_post( $woap_message ); ?></li>
 			<?php endforeach; ?>
+		</ul>
+	<?php endif; ?>
+
+	<?php
+	/*
+	 * Said before the form rather than after it. A shop that reviews registrations is
+	 * asking for twenty fields and a password in exchange for an account that cannot buy
+	 * anything yet, and finding that out on the confirmation screen is finding it out too
+	 * late to have decided anything. Shown only where it is true.
+	 */
+	?>
+	<?php if ( ! empty( $approval_required ) ) : ?>
+		<ul class="woocommerce-info woap-registration__notice" role="status">
+			<li>
+				<?php
+				echo esc_html(
+					empty( $sign_in_gated )
+						? __( 'New accounts are reviewed before their first order. You can register now and sign in straight away; we will email you as soon as the account has been approved.', 'woo-organization-accounts-pro' )
+						: __( 'New accounts are reviewed before they can be used. We will email you as soon as yours has been approved, and you can sign in from then on.', 'woo-organization-accounts-pro' )
+				);
+				?>
+			</li>
 		</ul>
 	<?php endif; ?>
 

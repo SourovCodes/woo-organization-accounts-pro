@@ -7,11 +7,17 @@
 
 namespace WooOrgAccounts;
 
+use WooOrgAccounts\Admin\Approvals;
 use WooOrgAccounts\Admin\Import;
+use WooOrgAccounts\Admin\InvitationScreen;
+use WooOrgAccounts\Admin\LocationScreen;
+use WooOrgAccounts\Admin\Members;
+use WooOrgAccounts\Admin\Menu;
 use WooOrgAccounts\Admin\Organizations;
 use WooOrgAccounts\Admin\OrderColumn;
 use WooOrgAccounts\Admin\Settings;
 use WooOrgAccounts\Admin\ThemeSettings;
+use WooOrgAccounts\Admin\UserColumn;
 use WooOrgAccounts\Checkout\BillingLock;
 use WooOrgAccounts\Checkout\Blocks\CheckoutIntegration;
 use WooOrgAccounts\Checkout\Gate;
@@ -22,6 +28,7 @@ use WooOrgAccounts\Frontend\AddressFields;
 use WooOrgAccounts\Frontend\MyAccount;
 use WooOrgAccounts\Frontend\OrderDetails;
 use WooOrgAccounts\Frontend\Registration;
+use WooOrgAccounts\Membership\Members as MemberService;
 use WooOrgAccounts\Rest\RestApi;
 
 defined( 'ABSPATH' ) || exit;
@@ -126,6 +133,13 @@ final class Plugin {
 		 */
 		AddressFields::register();
 
+		/*
+		 * Outside the is_admin() branch: a user is deleted from wp-cli and over REST at
+		 * least as often as from the users screen, and a membership that outlives its
+		 * account goes on reserving a UNIQUE user_id that WordPress will hand out again.
+		 */
+		MemberService::register();
+
 		( new Registration() )->register();
 		( new MyAccount() )->register();
 		( new AccountHandlers() )->register();
@@ -152,10 +166,23 @@ final class Plugin {
 		( new Analytics() )->register();
 
 		if ( is_admin() ) {
-			( new Settings() )->register();
+			/*
+			 * Order matters twice over. The parent goes on first (priority 8) and the
+			 * organizations list next (9), which is what stops WordPress copying the parent
+			 * into its own submenu — see `Menu::register()`. Everything after that shares
+			 * priority 10, so this order is the order of the menu itself: the screens a
+			 * shop uses daily first, settings last.
+			 */
+			( new Menu() )->register();
 			( new Organizations() )->register();
+			( new Approvals() )->register();
+			( new Members() )->register();
+			( new Settings() )->register();
 			( new Import() )->register();
+			( new LocationScreen() )->register();
+			( new InvitationScreen() )->register();
 			( new OrderColumn() )->register();
+			( new UserColumn() )->register();
 			( new ThemeSettings() )->register();
 		}
 

@@ -152,6 +152,256 @@ class MemberRepository extends Repository {
 	}
 
 	/**
+	 * Memberships across every organization, searched, sorted and paged.
+	 *
+	 * `for_organization()` answers "who works here", which is what an account screen asks.
+	 * This answers "who is this person and which account are they on", which is what a shop
+	 * asks — and it cannot be built out of the other one, because a shop looking somebody up
+	 * does not know which organization to look in. That is the whole reason the client's
+	 * search failed: the name they typed lives in `wp_users`, the organization lives here,
+	 * and nothing joined the two.
+	 *
+	 * **The search reaches into `wp_users`**, which is the one place in this plugin a query
+	 * crosses out of its own tables. It has to: a member's name and address are not stored
+	 * on the membership row and never have been — `woap_members` has no column for either —
+	 * so a search of memberships that did not join the users table could match nothing a
+	 * person would think to type.
+	 *
+	 * The join is `LEFT`, and `join_clause()` records why an INNER one was wrong. A
+	 * membership whose user account has been deleted has no name to match, so it drops out
+	 * of a *search* by name — but it stays in an unsearched list, where the screen reports
+	 * it as an orphan and offers to remove it.
+	 *
+	 * @param array $args {
+	 *     Optional. Query arguments.
+	 *
+	 *     @type int    $organization_id Restrict to one organization.
+	 *     @type string $role            Restrict to one role.
+	 *     @type string $status          Restrict to one status.
+	 *     @type string $search          Match against display name, login or email address.
+	 *     @type string $orderby         One of id, role, status, date_created, name, email.
+	 *     @type string $order           ASC or DESC.
+	 *     @type int    $limit           Maximum rows. 0 for no limit.
+	 *     @type int    $offset          Rows to skip.
+	 * }
+	 * @return Member[] Matching memberships.
+	 */
+	public static function query( array $args = array() ) {
+		global $wpdb;
+
+		$args = wp_parse_args( $args, self::query_defaults() );
+
+		$table = static::table();
+		$join  = self::join_clause( $args );
+		$where = self::query_where( $args, $params );
+		$order = self::query_order( $args['orderby'], $args['order'] );
+
+		$limit  = '';
+		$limits = array();
+
+		if ( $args['limit'] > 0 ) {
+			$limit    = ' LIMIT %d OFFSET %d';
+			$limits[] = absint( $args['limit'] );
+			$limits[] = absint( $args['offset'] );
+		}
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table, JOIN, WHERE and ORDER BY are built from validated identifiers; every value is a placeholder bound below.
+		$sql = "SELECT m.* FROM {$table} m{$join}{$where}{$order}{$limit}";
+
+		$values = array_merge( $params, $limits );
+
+		if ( ! empty( $values ) ) {
+			// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- $sql holds only placeholders for the values; prepare() binds them here.
+			$sql = $wpdb->prepare( $sql, $values );
+		}
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- Prepared immediately above when it carries any values.
+		return static::hydrate_all( $wpdb->get_results( $sql, ARRAY_A ) );
+	}
+
+	/**
+	 * Count memberships matching a query.
+	 *
+	 * @param array $args Same arguments as query(), minus ordering and paging.
+	 * @return int Number of matching rows.
+	 */
+	public static function count( array $args = array() ) {
+		global $wpdb;
+
+		$args = wp_parse_args( $args, self::query_defaults() );
+
+		$table = static::table();
+		$join  = self::join_clause( $args );
+		$where = self::query_where( $args, $params );
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table, JOIN and WHERE are built from validated identifiers; every value is a placeholder bound below.
+		$sql = "SELECT COUNT(*) FROM {$table} m{$join}{$where}";
+
+		if ( ! empty( $params ) ) {
+			// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- $sql holds only placeholders for the values; prepare() binds them here.
+			$sql = $wpdb->prepare( $sql, $params );
+		}
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- Prepared immediately above when it carries any values.
+		return (int) $wpdb->get_var( $sql );
+	}
+
+	/**
+	 * How many memberships hold each role.
+	 *
+	 * One `GROUP BY` rather than one query per role, because the list screen prints every
+	 * count above every view of it.
+	 *
+	 * @param array $args Same arguments as query(); role is ignored.
+	 * @return array Map of role to count, including the roles with none.
+	 */
+	public static function counts_by_role( array $args = array() ) {
+		global $wpdb;
+
+		$args         = wp_parse_args( $args, self::query_defaults() );
+		$args['role'] = '';
+		$counts       = array_fill_keys( array_keys( Member::roles() ), 0 );
+		$table        = static::table();
+		$join         = self::join_clause( $args );
+		$where        = self::query_where( $args, $params );
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table, JOIN and WHERE are built from validated identifiers; every value is a placeholder bound below.
+		$sql = "SELECT m.role, COUNT(*) AS total FROM {$table} m{$join}{$where} GROUP BY m.role";
+
+		if ( ! empty( $params ) ) {
+			// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- $sql holds only placeholders for the values; prepare() binds them here.
+			$sql = $wpdb->prepare( $sql, $params );
+		}
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- Prepared immediately above when it carries any values.
+		foreach ( (array) $wpdb->get_results( $sql, ARRAY_A ) as $row ) {
+			$role = (string) $row['role'];
+
+			if ( array_key_exists( $role, $counts ) ) {
+				$counts[ $role ] = (int) $row['total'];
+			}
+		}
+
+		return $counts;
+	}
+
+	/**
+	 * The arguments query(), count() and counts_by_role() all read.
+	 *
+	 * @return array Defaults.
+	 */
+	private static function query_defaults() {
+		return array(
+			'organization_id' => 0,
+			'role'            => '',
+			'status'          => '',
+			'search'          => '',
+			'orderby'         => 'date_created',
+			'order'           => 'DESC',
+			'limit'           => 0,
+			'offset'          => 0,
+		);
+	}
+
+	/**
+	 * The users-table join, present only when something needs it.
+	 *
+	 * Sorting by name or address needs the join as much as searching does, and joining
+	 * unconditionally would quietly drop every membership whose account has been deleted
+	 * from the plain list as well.
+	 *
+	 * @param array $args Query arguments.
+	 * @return string The JOIN clause, or an empty string.
+	 */
+	private static function join_clause( array $args ) {
+		global $wpdb;
+
+		$needs_users = '' !== (string) $args['search']
+			|| in_array( (string) $args['orderby'], array( 'name', 'email' ), true );
+
+		/*
+		 * LEFT, not INNER. Nothing in this plugin hooks `deleted_user`, so deleting a
+		 * WordPress account leaves the membership row behind — a state the screens expect,
+		 * since both the members list and the organization's own tab render "(deleted
+		 * account)" for it. An INNER JOIN dropped every one of those from this table, and
+		 * because the list sorts by name by default the join was taken on the *ordinary*
+		 * view as well as on a search: an orphaned membership was invisible everywhere it
+		 * could have been cleaned up from.
+		 *
+		 * A search still misses them, which is correct and is what the join was reasoned
+		 * about originally — `u.display_name LIKE …` is never true of a NULL row, so they
+		 * drop out of a search by name and stay in the unfiltered list.
+		 */
+		return $needs_users ? " LEFT JOIN {$wpdb->users} u ON u.ID = m.user_id" : '';
+	}
+
+	/**
+	 * The WHERE clause and the values it binds.
+	 *
+	 * @param array $args   Query arguments.
+	 * @param array $params Filled with the values to bind, in order.
+	 * @return string The clause, with a leading space, or an empty string.
+	 */
+	private static function query_where( array $args, &$params ) {
+		global $wpdb;
+
+		$clauses = array();
+		$params  = array();
+
+		if ( absint( $args['organization_id'] ) > 0 ) {
+			$clauses[] = 'm.organization_id = %d';
+			$params[]  = absint( $args['organization_id'] );
+		}
+
+		if ( array_key_exists( (string) $args['role'], Member::roles() ) ) {
+			$clauses[] = 'm.role = %s';
+			$params[]  = (string) $args['role'];
+		}
+
+		if ( in_array( (string) $args['status'], array( Member::STATUS_ACTIVE, Member::STATUS_INACTIVE ), true ) ) {
+			$clauses[] = 'm.status = %s';
+			$params[]  = (string) $args['status'];
+		}
+
+		if ( '' !== (string) $args['search'] ) {
+			$like      = '%' . $wpdb->esc_like( (string) $args['search'] ) . '%';
+			$clauses[] = '( u.display_name LIKE %s OR u.user_login LIKE %s OR u.user_email LIKE %s )';
+			$params[]  = $like;
+			$params[]  = $like;
+			$params[]  = $like;
+		}
+
+		return empty( $clauses ) ? '' : ' WHERE ' . implode( ' AND ', $clauses );
+	}
+
+	/**
+	 * The ORDER BY clause.
+	 *
+	 * Allow-listed rather than escaped, the same rule the organizations list follows: a
+	 * column name cannot be a bound value, so the only safe form is one this class chose.
+	 * Anything unrecognised falls back rather than being interpolated.
+	 *
+	 * @param string $orderby Requested column.
+	 * @param string $order   ASC or DESC.
+	 * @return string The clause, with a leading space.
+	 */
+	private static function query_order( $orderby, $order ) {
+		$columns = array(
+			'id'           => 'm.id',
+			'role'         => 'm.role',
+			'status'       => 'm.status',
+			'date_created' => 'm.date_created',
+			'name'         => 'u.display_name',
+			'email'        => 'u.user_email',
+		);
+
+		$column    = $columns[ (string) $orderby ] ?? 'm.date_created';
+		$direction = ( 'ASC' === strtoupper( (string) $order ) ) ? 'ASC' : 'DESC';
+
+		return " ORDER BY {$column} {$direction}, m.id DESC";
+	}
+
+	/**
 	 * Every membership belonging to each of several organizations.
 	 *
 	 * The batched form of for_organization(), for the one caller that needs a whole
