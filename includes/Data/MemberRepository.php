@@ -167,9 +167,10 @@ class MemberRepository extends Repository {
 	 * so a search of memberships that did not join the users table could match nothing a
 	 * person would think to type.
 	 *
-	 * The join is `INNER`, which is deliberate and slightly lossy: a membership whose user
-	 * account has been deleted has no name to match and is left out of search results. It
-	 * still appears in an unsearched list, where the screen reports it as an orphan.
+	 * The join is `LEFT`, and `join_clause()` records why an INNER one was wrong. A
+	 * membership whose user account has been deleted has no name to match, so it drops out
+	 * of a *search* by name — but it stays in an unsearched list, where the screen reports
+	 * it as an orphan and offers to remove it.
 	 *
 	 * @param array $args {
 	 *     Optional. Query arguments.
@@ -318,7 +319,20 @@ class MemberRepository extends Repository {
 		$needs_users = '' !== (string) $args['search']
 			|| in_array( (string) $args['orderby'], array( 'name', 'email' ), true );
 
-		return $needs_users ? " INNER JOIN {$wpdb->users} u ON u.ID = m.user_id" : '';
+		/*
+		 * LEFT, not INNER. Nothing in this plugin hooks `deleted_user`, so deleting a
+		 * WordPress account leaves the membership row behind — a state the screens expect,
+		 * since both the members list and the organization's own tab render "(deleted
+		 * account)" for it. An INNER JOIN dropped every one of those from this table, and
+		 * because the list sorts by name by default the join was taken on the *ordinary*
+		 * view as well as on a search: an orphaned membership was invisible everywhere it
+		 * could have been cleaned up from.
+		 *
+		 * A search still misses them, which is correct and is what the join was reasoned
+		 * about originally — `u.display_name LIKE …` is never true of a NULL row, so they
+		 * drop out of a search by name and stay in the unfiltered list.
+		 */
+		return $needs_users ? " LEFT JOIN {$wpdb->users} u ON u.ID = m.user_id" : '';
 	}
 
 	/**

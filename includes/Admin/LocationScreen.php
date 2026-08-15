@@ -99,11 +99,17 @@ class LocationScreen {
 	/**
 	 * Render the add or edit form.
 	 *
-	 * @param Organization $organization The organization it belongs to.
-	 * @param string       $requested    A location ID, or "new".
+	 * The errors and the rejected submission are handed in rather than read here, because
+	 * the screen this renders inside has already consumed them — there is one notice store
+	 * and reading it twice means the second reader finds nothing.
+	 *
+	 * @param Organization   $organization The organization it belongs to.
+	 * @param string         $requested    A location ID, or "new".
+	 * @param \WP_Error|null $errors       Errors from a rejected save, if any.
+	 * @param array          $submitted    What that save tried to store.
 	 * @return void
 	 */
-	public function render_form( Organization $organization, $requested ) {
+	public function render_form( Organization $organization, $requested, $errors = null, array $submitted = array() ) {
 		$location = ( 'new' === $requested )
 			? new Location()
 			: LocationRepository::find_for_organization( absint( $requested ), $organization->get_id() );
@@ -113,8 +119,6 @@ class LocationScreen {
 
 			return;
 		}
-
-		list( $errors, $submitted ) = Notices::consume();
 
 		$address = $location->get_shipping_address();
 

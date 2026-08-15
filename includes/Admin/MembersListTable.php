@@ -27,9 +27,12 @@ if ( ! class_exists( 'WP_List_Table' ) ) {
  * knowing the answer first. It is the question a shop asks most often — somebody rings up
  * about an order — and the one the users list could not answer either.
  *
- * Every organization is loaded in one batch and cached against the rows, because the
- * organization name is a column: asking per row is the hundred-queries mistake the REST
- * snapshot is careful about, and a list of fifty people spans at most fifty accounts.
+ * **Three columns name something that is not on the membership row** — the person, their
+ * organization and their delivery access — so all three are loaded in one query each and
+ * cached against the page, not asked for per row. That is the hundred-queries mistake the
+ * REST snapshot is careful about, and it arrives here the same way: a list of twenty-five
+ * people spans up to twenty-five accounts, and one `find()` per row looks like nothing until
+ * the page is full.
  */
 class MembersListTable extends \WP_List_Table {
 
@@ -59,6 +62,13 @@ class MembersListTable extends \WP_List_Table {
 	 * @var array
 	 */
 	private $users = array();
+
+	/**
+	 * Location access for the rows on this page, keyed by member ID.
+	 *
+	 * @var array
+	 */
+	private $access = array();
 
 	/**
 	 * Set the table up.
@@ -222,13 +232,23 @@ class MembersListTable extends \WP_List_Table {
 			$user_ids[]         = $member->get_user_id();
 		}
 
-		foreach ( array_unique( array_filter( $organization_ids ) ) as $organization_id ) {
-			$organization = OrganizationRepository::find( $organization_id );
+		$organization_ids = array_values( array_unique( array_filter( $organization_ids ) ) );
 
-			if ( null !== $organization ) {
-				$this->organizations[ $organization_id ] = $organization;
+		if ( ! empty( $organization_ids ) ) {
+			foreach ( OrganizationRepository::query( array( 'include' => $organization_ids ) ) as $organization ) {
+				$this->organizations[ $organization->get_id() ] = $organization;
 			}
 		}
+
+		// "All branches" and "two only" are different answers, so every row needs its list.
+		$this->access = MemberRepository::location_ids_for_members(
+			array_map(
+				static function ( $member ) {
+					return $member->get_id();
+				},
+				$this->items
+			)
+		);
 
 		$user_ids = array_unique( array_filter( $user_ids ) );
 
@@ -363,7 +383,7 @@ class MembersListTable extends \WP_List_Table {
 	 * @return string Markup.
 	 */
 	public function column_access( $item ) {
-		$ids = MemberRepository::location_ids( $item->get_id() );
+		$ids = (array) ( $this->access[ $item->get_id() ] ?? array() );
 
 		if ( empty( $ids ) ) {
 			return esc_html(

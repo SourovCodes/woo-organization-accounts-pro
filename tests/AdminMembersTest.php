@@ -476,6 +476,99 @@ class AdminMembersTest extends TestCase {
 	}
 
 	/**
+	 * A membership whose WordPress account is gone can still be edited.
+	 *
+	 * Nothing hooks `deleted_user`, so this is an ordinary state rather than an anomaly —
+	 * and it is the one this screen most needs to handle, because tidying the row up is why
+	 * somebody opened it. Sending the identity fields unconditionally made every such save
+	 * run `update_identity()` against an account that is not there and be refused for it,
+	 * discarding a role or status change that never touched the account.
+	 *
+	 * @return void
+	 */
+	public function testAMembershipWithNoAccountCanStillBeEdited() {
+		$organization = $this->make_organization();
+
+		$this->make_member( $organization, Member::ROLE_ADMIN );
+
+		$member  = $this->make_member( $organization, Member::ROLE_MEMBER );
+		$user_id = $member->get_user_id();
+
+		require_once ABSPATH . 'wp-admin/includes/user.php';
+		wp_delete_user( $user_id );
+
+		$this->handle(
+			'handle_save',
+			array(
+				'woap_member_id'         => $member->get_id(),
+				'woap_role'              => Member::ROLE_MEMBER,
+				'woap_status'            => Member::STATUS_INACTIVE,
+				'woap_permissions_scope' => 'role',
+				'woap_location_scope'    => 'all',
+				'_wpnonce'               => wp_create_nonce( 'woap_admin_member_save_' . $member->get_id() ),
+			)
+		);
+
+		$this->assertSame(
+			Member::STATUS_INACTIVE,
+			(string) MemberRepository::find( $member->get_id() )->get( 'status' ),
+			'A status change needs no user account, so losing the account must not refuse it.'
+		);
+	}
+
+	/**
+	 * An orphaned membership is listed, so somebody can find it and remove it.
+	 *
+	 * The list sorts by name by default, which took the users-table join — and an INNER one
+	 * dropped exactly the rows the screen renders "(deleted account)" for. They were
+	 * invisible everywhere they could have been cleaned up from.
+	 *
+	 * @return void
+	 */
+	public function testAnOrphanedMembershipIsStillListed() {
+		$organization = $this->make_organization();
+
+		$this->make_member( $organization, Member::ROLE_ADMIN );
+
+		$member = $this->make_member( $organization, Member::ROLE_MEMBER );
+
+		require_once ABSPATH . 'wp-admin/includes/user.php';
+		wp_delete_user( $member->get_user_id() );
+
+		$listed = array_map(
+			static function ( Member $found ) {
+				return $found->get_id();
+			},
+			MemberRepository::query( array( 'orderby' => 'name' ) )
+		);
+
+		$this->assertContains(
+			$member->get_id(),
+			$listed,
+			'A membership whose account was deleted must still appear in an unsearched list.'
+		);
+	}
+
+	/**
+	 * A search by name still leaves the orphan out, which is the part that was right.
+	 *
+	 * @return void
+	 */
+	public function testAnOrphanedMembershipIsNotFoundByName() {
+		$organization = $this->make_organization();
+		$member       = $this->make_member( $organization, Member::ROLE_MEMBER );
+
+		require_once ABSPATH . 'wp-admin/includes/user.php';
+		wp_delete_user( $member->get_user_id() );
+
+		$this->assertSame(
+			array(),
+			MemberRepository::query( array( 'search' => 'anything' ) ),
+			'There is no name to match, so a search must not return it.'
+		);
+	}
+
+	/**
 	 * Nobody without the capability may write.
 	 *
 	 * @return void

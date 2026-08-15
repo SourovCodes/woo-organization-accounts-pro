@@ -740,21 +740,31 @@ class Members {
 			);
 		}
 
+		$changes = array(
+			'role'            => self::posted( 'woap_role' ),
+			'status'          => self::posted( 'woap_status' ),
+			'capabilities'    => 'custom' === $scope
+				? self::posted_capabilities()
+				: MemberService::ROLE_DEFAULT,
+			'location_access' => $restricting ? $location_ids : MemberService::ACCESS_ALL,
+		);
+
+		/*
+		 * The name and the address only when the form actually offered them. Presence is how
+		 * the service tells "set this" from "leave it alone", so sending them unconditionally
+		 * made every save of an orphaned membership run `update_identity()` against an
+		 * account that is not there — and be refused for it. The role and the status need no
+		 * account, and refusing to change them because the person's login was deleted is the
+		 * opposite of what that screen is for: it exists to let somebody tidy the row up.
+		 */
+		if ( self::has_account( $member ) ) {
+			$changes['first_name'] = self::posted( 'woap_first_name' );
+			$changes['last_name']  = self::posted( 'woap_last_name' );
+			$changes['email']      = self::posted_email( 'woap_email' );
+		}
+
 		if ( ! $errors->has_errors() ) {
-			$saved = MemberService::update(
-				$member,
-				array(
-					'first_name'      => self::posted( 'woap_first_name' ),
-					'last_name'       => self::posted( 'woap_last_name' ),
-					'email'           => self::posted_email( 'woap_email' ),
-					'role'            => self::posted( 'woap_role' ),
-					'status'          => self::posted( 'woap_status' ),
-					'capabilities'    => 'custom' === $scope
-						? self::posted_capabilities()
-						: MemberService::ROLE_DEFAULT,
-					'location_access' => $restricting ? $location_ids : MemberService::ACCESS_ALL,
-				)
-			);
+			$saved = MemberService::update( $member, $changes );
 
 			if ( is_wp_error( $saved ) ) {
 				$errors = self::prefixed( self::keyed_to_email( $saved ) );
@@ -879,6 +889,20 @@ class Members {
 		);
 
 		$this->go_to( self::list_url( $organization_id ) );
+	}
+
+	/**
+	 * Whether the WordPress account behind a membership still exists.
+	 *
+	 * Nothing here hooks `deleted_user`, so a membership outliving its account is an
+	 * ordinary state rather than an anomaly — and the one this screen has to be able to
+	 * edit, because removing the row is what somebody has come to do.
+	 *
+	 * @param Member $member The membership.
+	 * @return bool True when the account is there.
+	 */
+	private static function has_account( Member $member ) {
+		return get_userdata( $member->get_user_id() ) instanceof \WP_User;
 	}
 
 	/**

@@ -46,8 +46,15 @@ class Organizations {
 	 * Per user, and short-lived: this is a handover between two requests, not storage.
 	 * `admin-post.php` produces no output, so a rejected save has nowhere to say so
 	 * until the screen renders again.
+	 *
+	 * **`Admin\Notices` owns it, and this is its name here rather than a second one.** This
+	 * screen had its own transient and its own reader, so the location, invitation and
+	 * member handlers — which park through `Notices` and redirect *to this screen* — were
+	 * writing somewhere it never looked. Their confirmations were never printed, and being
+	 * transients they were then printed by the next screen that did read them, over
+	 * unrelated work. Two answers to "where does a message wait" is the whole of that bug.
 	 */
-	const NOTICE_TRANSIENT = 'woap_admin_notices_';
+	const NOTICE_TRANSIENT = Notices::TRANSIENT;
 
 	/**
 	 * Register the hooks.
@@ -428,7 +435,7 @@ class Organizations {
 				break;
 
 			case 'locations':
-				$this->render_locations( $organization );
+				$this->render_locations( $organization, $rejected, $submitted );
 				break;
 
 			case 'invitations':
@@ -732,14 +739,16 @@ class Organizations {
 	/**
 	 * The organization's locations.
 	 *
-	 * @param Organization $organization The organization.
+	 * @param Organization   $organization The organization.
+	 * @param \WP_Error|null $rejected     Errors from a rejected location save, if any.
+	 * @param array          $submitted    What that save tried to store.
 	 * @return void
 	 */
-	private function render_locations( Organization $organization ) {
+	private function render_locations( Organization $organization, $rejected = null, array $submitted = array() ) {
 		$requested = LocationScreen::requested();
 
 		if ( '' !== $requested ) {
-			( new LocationScreen() )->render_form( $organization, $requested );
+			( new LocationScreen() )->render_form( $organization, $requested, $rejected, $submitted );
 
 			return;
 		}
@@ -1086,14 +1095,7 @@ class Organizations {
 				$parked[ AddressFields::BILLING . '_' . $field ] = $value;
 			}
 
-			set_transient(
-				self::NOTICE_TRANSIENT . get_current_user_id(),
-				array(
-					'errors' => $errors->errors,
-					'values' => $parked,
-				),
-				MINUTE_IN_SECONDS
-			);
+			Notices::hold( $errors, $parked );
 
 			// Back to the form that was rejected, which for a create is the add screen.
 			if ( $creating ) {
@@ -1250,29 +1252,7 @@ class Organizations {
 	 * }
 	 */
 	private static function render_notices() {
-		$key    = self::NOTICE_TRANSIENT . get_current_user_id();
-		$parked = get_transient( $key );
-
-		if ( empty( $parked['errors'] ) || ! is_array( $parked['errors'] ) ) {
-			return array( null, array() );
-		}
-
-		delete_transient( $key );
-
-		$errors = new \WP_Error();
-
-		echo '<div class="notice notice-error"><ul>';
-
-		foreach ( $parked['errors'] as $code => $messages ) {
-			foreach ( (array) $messages as $message ) {
-				$errors->add( $code, $message );
-				printf( '<li>%s</li>', wp_kses_post( $message ) );
-			}
-		}
-
-		echo '</ul></div>';
-
-		return array( $errors, isset( $parked['values'] ) ? (array) $parked['values'] : array() );
+		return Notices::consume();
 	}
 
 	/**

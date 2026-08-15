@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-08-15T09:12:41+00:00\n"
+"POT-Creation-Date: 2026-08-15T09:46:46+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: woo-organization-accounts-pro\n"
@@ -78,11 +78,11 @@ msgid "Nobody is on this account. It was created without a member — most likel
 msgstr ""
 
 #: includes/Admin/Approvals.php:266
-#: includes/Admin/LocationScreen.php:162
-#: includes/Admin/MembersListTable.php:83
-#: includes/Admin/Organizations.php:559
-#: includes/Admin/Organizations.php:624
-#: includes/Admin/Organizations.php:773
+#: includes/Admin/LocationScreen.php:166
+#: includes/Admin/MembersListTable.php:93
+#: includes/Admin/Organizations.php:572
+#: includes/Admin/Organizations.php:637
+#: includes/Admin/Organizations.php:788
 #: includes/Data/Organization.php:256
 #: templates/myaccount/location-form.php:106
 #: templates/myaccount/locations.php:29
@@ -94,9 +94,9 @@ msgstr ""
 #: includes/Admin/Import.php:628
 #: includes/Admin/Members.php:340
 #: includes/Admin/Members.php:416
-#: includes/Admin/MembersListTable.php:84
-#: includes/Admin/Organizations.php:625
-#: includes/Admin/Organizations.php:837
+#: includes/Admin/MembersListTable.php:94
+#: includes/Admin/Organizations.php:638
+#: includes/Admin/Organizations.php:852
 #: includes/Import/Mapping.php:52
 #: includes/Import/Report.php:37
 #: templates/myaccount/invitation-form.php:60
@@ -127,7 +127,7 @@ msgid "VAT number, tax ID or registration number"
 msgstr ""
 
 #: includes/Admin/Approvals.php:314
-#: includes/Admin/Organizations.php:584
+#: includes/Admin/Organizations.php:597
 #: includes/Import/Mapping.php:175
 #: includes/Import/Record.php:123
 #: templates/myaccount/organization.php:192
@@ -427,29 +427,29 @@ msgid "Invitation withdrawn."
 msgstr ""
 
 #: includes/Admin/InvitationScreen.php:147
-#: includes/Admin/LocationScreen.php:380
-#: includes/Admin/Members.php:1034
+#: includes/Admin/LocationScreen.php:384
+#: includes/Admin/Members.php:1058
 msgid "You are not allowed to do that."
 msgstr ""
 
 #: includes/Admin/InvitationScreen.php:156
-#: includes/Admin/LocationScreen.php:112
-#: includes/Admin/LocationScreen.php:222
-#: includes/Admin/LocationScreen.php:234
-#: includes/Admin/LocationScreen.php:299
+#: includes/Admin/LocationScreen.php:118
+#: includes/Admin/LocationScreen.php:226
+#: includes/Admin/LocationScreen.php:238
+#: includes/Admin/LocationScreen.php:303
 #: includes/Admin/Members.php:698
 #: includes/Admin/Members.php:717
-#: includes/Admin/Members.php:795
-#: includes/Admin/Members.php:861
+#: includes/Admin/Members.php:805
+#: includes/Admin/Members.php:871
 msgid "That record no longer exists."
 msgstr ""
 
 #. translators: %s: the singular location noun for the site's mode, for example "Branch".
 #. translators: %s: the singular organization noun for the site's mode, for example "Company".
-#: includes/Admin/LocationScreen.php:142
-#: includes/Admin/Organizations.php:294
-#: includes/Admin/Organizations.php:745
-#: includes/Admin/Organizations.php:763
+#: includes/Admin/LocationScreen.php:146
+#: includes/Admin/Organizations.php:307
+#: includes/Admin/Organizations.php:760
+#: includes/Admin/Organizations.php:778
 #: templates/myaccount/location-form.php:79
 #: templates/myaccount/locations.php:56
 #: templates/myaccount/locations.php:95
@@ -457,35 +457,35 @@ msgstr ""
 msgid "Add a %s"
 msgstr ""
 
-#: includes/Admin/LocationScreen.php:170
+#: includes/Admin/LocationScreen.php:174
 msgid "What this address is called in the checkout selector — \"Head office\", \"Warehouse North\". Only the label; nothing on a parcel."
 msgstr ""
 
-#: includes/Admin/LocationScreen.php:181
-#: includes/Admin/Organizations.php:798
+#: includes/Admin/LocationScreen.php:185
+#: includes/Admin/Organizations.php:813
 #: templates/myaccount/locations.php:128
 msgid "Default"
 msgstr ""
 
-#: includes/Admin/LocationScreen.php:183
+#: includes/Admin/LocationScreen.php:187
 msgid "Offer this one first at the checkout"
 msgstr ""
 
-#: includes/Admin/LocationScreen.php:188
+#: includes/Admin/LocationScreen.php:192
 #: includes/Import/Record.php:124
 #: templates/myaccount/locations.php:30
 msgid "Delivery address"
 msgstr ""
 
-#: includes/Admin/LocationScreen.php:191
+#: includes/Admin/LocationScreen.php:195
 msgid "A surname and a phone number are optional here: a delivery address belongs to a place at least as often as to a person. Everything else is what the checkout asks for in that country."
 msgstr ""
 
-#: includes/Admin/LocationScreen.php:196
+#: includes/Admin/LocationScreen.php:200
 msgid "Save"
 msgstr ""
 
-#: includes/Admin/LocationScreen.php:201
+#: includes/Admin/LocationScreen.php:205
 #: templates/myaccount/invitation-form.php:96
 #: templates/myaccount/location-form.php:176
 #: templates/myaccount/member-form.php:227
@@ -493,39 +493,39 @@ msgid "Cancel"
 msgstr ""
 
 #. translators: %s: the singular location noun for the site's mode, for example "Branch".
-#: includes/Admin/LocationScreen.php:276
+#: includes/Admin/LocationScreen.php:280
 #: includes/Frontend/AccountHandlers.php:335
 #, php-format
 msgid "%s saved."
 msgstr ""
 
 #. translators: %s: the singular location noun for the site's mode, for example "Branch".
-#: includes/Admin/LocationScreen.php:315
+#: includes/Admin/LocationScreen.php:319
 #: includes/Frontend/AccountHandlers.php:392
 #, php-format
 msgid "%s deleted."
 msgstr ""
 
 #. translators: %s: the singular location noun for the site's mode, for example "Branch".
-#: includes/Admin/LocationScreen.php:320
+#: includes/Admin/LocationScreen.php:324
 #, php-format
 msgid "%s deleted. This account now has nowhere to ship to, so nobody on it can check out until another is added."
 msgstr ""
 
 #: includes/Admin/Members.php:223
-#: includes/Admin/Organizations.php:602
-#: includes/Admin/Organizations.php:616
+#: includes/Admin/Organizations.php:615
+#: includes/Admin/Organizations.php:629
 msgid "Add somebody"
 msgstr ""
 
 #: includes/Admin/Members.php:242
-#: includes/Admin/Organizations.php:368
+#: includes/Admin/Organizations.php:381
 msgid "Search"
 msgstr ""
 
 #: includes/Admin/Members.php:282
-#: includes/Admin/MembersListTable.php:267
-#: includes/Admin/Organizations.php:652
+#: includes/Admin/MembersListTable.php:287
+#: includes/Admin/Organizations.php:665
 #: templates/myaccount/member-form.php:55
 #: templates/myaccount/members.php:143
 msgid "(deleted account)"
@@ -634,9 +634,9 @@ msgid "All %s on this account"
 msgstr ""
 
 #: includes/Admin/Members.php:591
-#: includes/Admin/MembersListTable.php:86
-#: includes/Admin/Organizations.php:626
-#: includes/Admin/Organizations.php:838
+#: includes/Admin/MembersListTable.php:96
+#: includes/Admin/Organizations.php:639
+#: includes/Admin/Organizations.php:853
 #: includes/Admin/UserColumn.php:376
 #: templates/myaccount/invitation-form.php:71
 #: templates/myaccount/invitations.php:37
@@ -646,11 +646,11 @@ msgid "Role"
 msgstr ""
 
 #: includes/Admin/Members.php:615
-#: includes/Admin/MembersListTable.php:88
-#: includes/Admin/Organizations.php:562
-#: includes/Admin/Organizations.php:628
-#: includes/Admin/Organizations.php:840
-#: includes/Admin/Organizations.php:921
+#: includes/Admin/MembersListTable.php:98
+#: includes/Admin/Organizations.php:575
+#: includes/Admin/Organizations.php:641
+#: includes/Admin/Organizations.php:855
+#: includes/Admin/Organizations.php:936
 #: includes/Admin/OrganizationsListTable.php:67
 #: includes/Admin/UserColumn.php:381
 #: templates/myaccount/invitations.php:38
@@ -661,8 +661,8 @@ msgid "Status"
 msgstr ""
 
 #: includes/Admin/Members.php:619
-#: includes/Admin/MembersListTable.php:401
-#: includes/Admin/Organizations.php:675
+#: includes/Admin/MembersListTable.php:421
+#: includes/Admin/Organizations.php:688
 #: includes/Admin/UserColumn.php:384
 #: includes/Data/Organization.php:111
 #: includes/Import/Mapping.php:76
@@ -672,8 +672,8 @@ msgid "Active"
 msgstr ""
 
 #: includes/Admin/Members.php:620
-#: includes/Admin/MembersListTable.php:402
-#: includes/Admin/Organizations.php:675
+#: includes/Admin/MembersListTable.php:422
+#: includes/Admin/Organizations.php:688
 #: includes/Admin/UserColumn.php:385
 #: templates/myaccount/member-form.php:140
 #: templates/myaccount/members.php:183
@@ -692,62 +692,62 @@ msgid "Choose at least one %s, or give access to all of them."
 msgstr ""
 
 #. translators: %s: the singular member noun for the site's mode, for example "Employee".
-#: includes/Admin/Members.php:772
+#: includes/Admin/Members.php:782
 #, php-format
 msgid "%s updated."
 msgstr ""
 
-#: includes/Admin/Members.php:831
+#: includes/Admin/Members.php:841
 #: includes/Frontend/AccountHandlers.php:431
 msgid "Invitation sent."
 msgstr ""
 
 #. translators: %s: the singular member noun for the site's mode, for example "Employee".
-#: includes/Admin/Members.php:838
+#: includes/Admin/Members.php:848
 #, php-format
 msgid "%s added. They set a password through the shop's lost-password form; no email has been sent."
 msgstr ""
 
 #. translators: %s: the singular member noun for the site's mode, for example "Employee".
-#: includes/Admin/Members.php:876
+#: includes/Admin/Members.php:886
 #, php-format
 msgid "%s removed. Their login and their orders are kept."
 msgstr ""
 
-#: includes/Admin/MembersListTable.php:120
+#: includes/Admin/MembersListTable.php:130
 #: includes/Admin/OrganizationsListTable.php:105
 msgid "All"
 msgstr ""
 
-#: includes/Admin/MembersListTable.php:274
-#: includes/Admin/Organizations.php:638
-#: includes/Admin/Organizations.php:783
+#: includes/Admin/MembersListTable.php:294
+#: includes/Admin/Organizations.php:651
+#: includes/Admin/Organizations.php:798
 #: includes/Admin/OrganizationsListTable.php:183
 #: templates/myaccount/locations.php:157
 msgid "Edit"
 msgstr ""
 
-#: includes/Admin/MembersListTable.php:282
+#: includes/Admin/MembersListTable.php:302
 msgid "User account"
 msgstr ""
 
 #. translators: %s: the singular organization noun for the site's mode, for example "Company".
-#: includes/Admin/MembersListTable.php:292
+#: includes/Admin/MembersListTable.php:312
 #, php-format
 msgid "Take this person off the %s? Their login is kept, and so are their orders — they simply can no longer buy on this account."
 msgstr ""
 
-#: includes/Admin/MembersListTable.php:296
-#: includes/Admin/Organizations.php:643
+#: includes/Admin/MembersListTable.php:316
+#: includes/Admin/Organizations.php:656
 msgid "Remove"
 msgstr ""
 
 #. translators: %s: the plural location noun for the site's mode, for example "Branches".
 #. translators: %s: the plural organization noun for the site's mode, for example "Companies".
-#: includes/Admin/MembersListTable.php:372
-#: includes/Admin/MembersListTable.php:459
-#: includes/Admin/Organizations.php:92
-#: includes/Admin/Organizations.php:663
+#: includes/Admin/MembersListTable.php:392
+#: includes/Admin/MembersListTable.php:479
+#: includes/Admin/Organizations.php:105
+#: includes/Admin/Organizations.php:676
 #: includes/Admin/UserColumn.php:204
 #: includes/Admin/UserColumn.php:418
 #: templates/myaccount/members.php:161
@@ -756,26 +756,26 @@ msgid "All %s"
 msgstr ""
 
 #. translators: %d: how many locations this person may ship to.
-#: includes/Admin/MembersListTable.php:381
-#: includes/Admin/Organizations.php:668
+#: includes/Admin/MembersListTable.php:401
+#: includes/Admin/Organizations.php:681
 #, php-format
 msgid "%d only"
 msgid_plural "%d only"
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/Admin/MembersListTable.php:424
+#: includes/Admin/MembersListTable.php:444
 msgid "Nobody yet."
 msgstr ""
 
 #. translators: %s: the singular organization noun for the site's mode, for example "Company".
-#: includes/Admin/MembersListTable.php:447
+#: includes/Admin/MembersListTable.php:467
 #: includes/Admin/UserColumn.php:192
 #, php-format
 msgid "Filter by %s"
 msgstr ""
 
-#: includes/Admin/MembersListTable.php:476
+#: includes/Admin/MembersListTable.php:496
 #: includes/Admin/UserColumn.php:221
 msgid "Filter"
 msgstr ""
@@ -801,96 +801,96 @@ msgstr ""
 msgid "Placed by"
 msgstr ""
 
-#: includes/Admin/Organizations.php:302
+#: includes/Admin/Organizations.php:315
 msgid "The account is created with nobody on it. Add or invite somebody afterwards — until then there is nobody to order with it."
 msgstr ""
 
-#: includes/Admin/Organizations.php:325
+#: includes/Admin/Organizations.php:338
 msgid "Add new"
 msgstr ""
 
-#: includes/Admin/Organizations.php:337
+#: includes/Admin/Organizations.php:350
 msgid "Import"
 msgstr ""
 
-#: includes/Admin/Organizations.php:386
+#: includes/Admin/Organizations.php:399
 #: includes/Guard.php:105
 msgid "That account no longer exists."
 msgstr ""
 
 #. translators: %s: the plural organization noun for the site's mode.
-#: includes/Admin/Organizations.php:409
+#: includes/Admin/Organizations.php:422
 #, php-format
 msgid "← Back to all %s"
 msgstr ""
 
-#: includes/Admin/Organizations.php:472
-#: includes/Admin/Organizations.php:558
+#: includes/Admin/Organizations.php:485
+#: includes/Admin/Organizations.php:571
 msgid "Details"
 msgstr ""
 
-#: includes/Admin/Organizations.php:475
-#: includes/Admin/Organizations.php:818
+#: includes/Admin/Organizations.php:488
+#: includes/Admin/Organizations.php:833
 #: includes/Frontend/MyAccount.php:103
 msgid "Invitations"
 msgstr ""
 
-#: includes/Admin/Organizations.php:476
+#: includes/Admin/Organizations.php:489
 #: includes/Frontend/MyAccount.php:490
 msgid "Orders"
 msgstr ""
 
-#: includes/Admin/Organizations.php:560
+#: includes/Admin/Organizations.php:573
 #: includes/Admin/OrganizationsListTable.php:69
 #: includes/Admin/Settings.php:178
 msgid "VAT / tax ID"
 msgstr ""
 
-#: includes/Admin/Organizations.php:577
+#: includes/Admin/Organizations.php:590
 msgid "Shipping"
 msgstr ""
 
-#: includes/Admin/Organizations.php:579
+#: includes/Admin/Organizations.php:592
 msgid "Allow one-off shipping addresses at checkout"
 msgstr ""
 
 #. translators: %s: the plural member noun for the site's mode, for example "Employees".
 #. translators: %s: the plural location noun for the site's mode, for example "Branches".
-#: includes/Admin/Organizations.php:612
-#: includes/Admin/Organizations.php:757
+#: includes/Admin/Organizations.php:625
+#: includes/Admin/Organizations.php:772
 #, php-format
 msgid "No %s yet"
 msgstr ""
 
-#: includes/Admin/Organizations.php:615
+#: includes/Admin/Organizations.php:628
 msgid "Nobody can order on this account until somebody is on it. Invite them, or create the account yourself."
 msgstr ""
 
-#: includes/Admin/Organizations.php:760
+#: includes/Admin/Organizations.php:775
 msgid "This account has nowhere to ship to, so nobody on it can check out at all. Add the first address."
 msgstr ""
 
-#: includes/Admin/Organizations.php:774
+#: includes/Admin/Organizations.php:789
 msgid "Address"
 msgstr ""
 
-#: includes/Admin/Organizations.php:775
+#: includes/Admin/Organizations.php:790
 #: includes/Admin/OrganizationsListTable.php:68
 msgid "Contact"
 msgstr ""
 
-#: includes/Admin/Organizations.php:788
+#: includes/Admin/Organizations.php:803
 msgid "Delete this address? Anybody restricted to it will be able to ship to every other one instead."
 msgstr ""
 
-#: includes/Admin/Organizations.php:789
+#: includes/Admin/Organizations.php:804
 #: includes/Admin/OrganizationsListTable.php:198
 #: templates/myaccount/locations.php:182
 msgid "Delete"
 msgstr ""
 
-#: includes/Admin/Organizations.php:819
-#: includes/Admin/Organizations.php:829
+#: includes/Admin/Organizations.php:834
+#: includes/Admin/Organizations.php:844
 #: templates/myaccount/invitation-form.php:39
 #: templates/myaccount/invitations.php:70
 #: templates/myaccount/invitations.php:81
@@ -898,63 +898,63 @@ msgstr ""
 msgid "Invite somebody"
 msgstr ""
 
-#: includes/Admin/Organizations.php:827
+#: includes/Admin/Organizations.php:842
 msgid "No invitations"
 msgstr ""
 
-#: includes/Admin/Organizations.php:828
+#: includes/Admin/Organizations.php:843
 msgid "Nothing is outstanding. Somebody invited here receives a one-time link and joins when they accept it."
 msgstr ""
 
-#: includes/Admin/Organizations.php:839
+#: includes/Admin/Organizations.php:854
 #: templates/myaccount/invitations.php:36
 msgid "Sent by"
 msgstr ""
 
-#: includes/Admin/Organizations.php:857
+#: includes/Admin/Organizations.php:872
 #: templates/myaccount/invitations.php:158
 msgid "Send again"
 msgstr ""
 
-#: includes/Admin/Organizations.php:863
+#: includes/Admin/Organizations.php:878
 msgid "Withdraw this invitation? The link already sent stops working."
 msgstr ""
 
-#: includes/Admin/Organizations.php:864
+#: includes/Admin/Organizations.php:879
 #: templates/myaccount/invitations.php:174
 msgid "Withdraw"
 msgstr ""
 
-#: includes/Admin/Organizations.php:909
+#: includes/Admin/Organizations.php:924
 msgid "Recent orders"
 msgstr ""
 
-#: includes/Admin/Organizations.php:912
+#: includes/Admin/Organizations.php:927
 msgid "No orders yet."
 msgstr ""
 
-#: includes/Admin/Organizations.php:918
+#: includes/Admin/Organizations.php:933
 #: templates/myaccount/organization-orders.php:35
 msgid "Order"
 msgstr ""
 
-#: includes/Admin/Organizations.php:919
+#: includes/Admin/Organizations.php:934
 #: templates/myaccount/organization-orders.php:36
 msgid "Date"
 msgstr ""
 
-#: includes/Admin/Organizations.php:922
+#: includes/Admin/Organizations.php:937
 #: templates/myaccount/organization-orders.php:40
 msgid "Total"
 msgstr ""
 
-#: includes/Admin/Organizations.php:1206
+#: includes/Admin/Organizations.php:1214
 #: includes/Admin/Settings.php:697
 #: includes/Guard.php:68
 msgid "You do not have permission to do that."
 msgstr ""
 
-#: includes/Admin/Organizations.php:1207
+#: includes/Admin/Organizations.php:1215
 #: includes/Admin/Settings.php:698
 #: includes/Guard.php:69
 msgid "Permission denied"

@@ -917,4 +917,93 @@ class AdminOrganizationsTest extends TestCase {
 
 		$this->fail( 'The handler did not redirect.' );
 	}
+
+	/**
+	 * A message parked by a handler is printed by the screen it redirects to.
+	 *
+	 * This screen kept its own transient and its own reader, so the location, invitation and
+	 * member handlers — which park through `Notices` and redirect *here* — were writing
+	 * somewhere it never looked. Their confirmations were never printed, and being
+	 * transients they were then printed by the next screen that did read them, over
+	 * unrelated work. Asserted through `Notices` rather than through one of those handlers
+	 * so it holds for every one of them, including any added later.
+	 *
+	 * @return void
+	 */
+	public function testANoticeParkedByAHandlerReachesTheDetailScreen() {
+		$this->act_as_shop_manager();
+
+		$organization = $this->make_billable_organization();
+
+		\WooOrgAccounts\Admin\Notices::success( 'Branch saved.' );
+
+		$_GET['woap_tab'] = 'locations';
+
+		$this->assertStringContainsString(
+			'Branch saved.',
+			$this->render_detail( $organization->get_id() ),
+			'A handler that redirects to this screen has nowhere else to report from.'
+		);
+	}
+
+	/**
+	 * And is not left behind to appear over the next screen.
+	 *
+	 * @return void
+	 */
+	public function testThatNoticeIsNotShownTwice() {
+		$this->act_as_shop_manager();
+
+		$organization = $this->make_billable_organization();
+
+		\WooOrgAccounts\Admin\Notices::success( 'Branch saved.' );
+
+		$_GET['woap_tab'] = 'locations';
+
+		$this->render_detail( $organization->get_id() );
+
+		$this->assertStringNotContainsString(
+			'Branch saved.',
+			$this->render_detail( $organization->get_id() ),
+			'A message read once must be cleared, or it reappears over unrelated work.'
+		);
+	}
+
+	/**
+	 * A rejected location save still refills its own form.
+	 *
+	 * The screen consumes the notice store before the tab renders, so the location form has
+	 * to be handed what it found rather than reading it again and finding nothing.
+	 *
+	 * @return void
+	 */
+	public function testARejectedLocationSaveRefillsItsForm() {
+		$this->act_as_shop_manager();
+
+		$organization = $this->make_billable_organization();
+		$location     = $this->make_location( $organization );
+
+		$errors = new \WP_Error( 'shipping_postcode', 'That postcode is not valid.' );
+
+		\WooOrgAccounts\Admin\Notices::hold(
+			$errors,
+			array(
+				'woap_name'        => 'Warehouse North',
+				'shipping_city'    => 'Bremen',
+				'shipping_country' => 'DE',
+			)
+		);
+
+		$_GET['woap_tab']      = 'locations';
+		$_GET['woap_location'] = $location->get_id();
+
+		$markup = $this->render_detail( $organization->get_id() );
+
+		$this->assertStringContainsString( 'That postcode is not valid.', $markup );
+		$this->assertStringContainsString(
+			'Warehouse North',
+			$markup,
+			'Losing a twelve-field address to one mistyped postcode is what parking the whole submission prevents.'
+		);
+	}
 }
