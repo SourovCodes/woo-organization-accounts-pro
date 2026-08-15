@@ -89,3 +89,145 @@
 .woap-import__summary th {
 	font-weight: 600;
 }
+
+/*
+ * The approvals queue. A card per registration rather than a row, because approving is a
+ * decision made on evidence and a row has nowhere to put the evidence.
+ */
+.woap-approvals__intro {
+	max-width: 46em;
+}
+
+.woap-review {
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-left: 4px solid #dba617;
+	border-radius: 2px;
+	margin: 0 0 16px;
+}
+
+.woap-review__header {
+	border-bottom: 1px solid #f0f0f1;
+	padding: 12px 16px;
+}
+
+.woap-review__title {
+	font-size: 15px;
+	margin: 0;
+}
+
+.woap-review__meta {
+	color: #646970;
+	font-size: 12px;
+	margin: 4px 0 0;
+}
+
+.woap-review__body {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 24px;
+	padding: 16px;
+}
+
+.woap-review__panel {
+	flex: 1 1 280px;
+}
+
+.woap-review__panel h3 {
+	margin: 0 0 8px;
+}
+
+.woap-review__panel h4 {
+	margin: 16px 0 4px;
+}
+
+.woap-review__facts {
+	margin: 0;
+}
+
+.woap-review__facts dt {
+	color: #646970;
+	font-size: 12px;
+	margin-top: 8px;
+}
+
+.woap-review__facts dd {
+	margin: 0;
+}
+
+.woap-review__address {
+	font-style: normal;
+	line-height: 1.6;
+}
+
+.woap-review__none {
+	color: #646970;
+	font-style: italic;
+}
+
+.woap-review__decision {
+	background: #f6f7f7;
+	border-top: 1px solid #f0f0f1;
+	padding: 12px 16px;
+}
+
+.woap-review__consequence {
+	margin: 0 0 10px;
+	max-width: 52em;
+}
+
+/*
+ * A setting whose stored form is ambiguous on its own: radios naming the answer, and a
+ * detail block per answer. Two settings need it — permissions and delivery access — and
+ * both store an empty list to mean the opposite of what their checkboxes suggest.
+ *
+ * The indent is the whole point of the block: it says the checkboxes belong to the radio
+ * above them rather than standing beside it as a third, separate answer.
+ */
+.woap-choice {
+	margin: 0 0 1em;
+	max-width: 46em;
+}
+
+.woap-choice__detail {
+	border-left: 3px solid #dcdcde;
+	margin: 0 0 8px 24px;
+	padding: 4px 0 4px 16px;
+}
+
+.woap-choice__detail[hidden] {
+	display: none;
+}
+
+.woap-choice__detail p {
+	margin: 4px 0;
+}
+
+/*
+ * Nothing-here-yet, on a screen where that is the good news rather than a failed search.
+ */
+.woap-empty {
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: 2px;
+	max-width: 46em;
+	padding: 24px;
+	text-align: center;
+}
+
+.woap-empty h2 {
+	margin-top: 0;
+}
+
+/*
+ * The organization column in the users list, and the read-only membership panel on the
+ * user's own profile screen.
+ */
+.woap-user-panel {
+	max-width: 46em;
+}
+
+.woap-user-panel td,
+.woap-user-panel th {
+	padding: 8px 10px;
+}

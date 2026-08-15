@@ -77,10 +77,20 @@ class Organizations {
 	 * @return void
 	 */
 	public function register_menu() {
+		/*
+		 * The same slug as the top-level menu, which is what names the duplicate first item
+		 * WordPress creates for a parent — "All Companies" rather than the menu's own title
+		 * repeated. Registering a different slug here would leave the parent pointing at a
+		 * page nothing renders.
+		 */
 		$hook = add_submenu_page(
-			'woocommerce',
+			Menu::PAGE_SLUG,
 			Labels::organizations(),
-			Labels::organizations(),
+			sprintf(
+				/* translators: %s: the plural organization noun for the site's mode, for example "Companies". */
+				__( 'All %s', 'woo-organization-accounts-pro' ),
+				Labels::organizations()
+			),
 			self::CAPABILITY,
 			self::PAGE_SLUG,
 			array( $this, 'render' )
@@ -171,18 +181,22 @@ class Organizations {
 	 *
 	 * @param int    $organization_id Organization ID.
 	 * @param string $status          Target status.
+	 * @param string $return_to       Optional screen slug to come back to.
 	 * @return string URL.
 	 */
-	public static function status_url( $organization_id, $status ) {
+	public static function status_url( $organization_id, $status, $return_to = '' ) {
+		$args = array(
+			'action'          => 'woap_admin_set_status',
+			'organization_id' => absint( $organization_id ),
+			'status'          => $status,
+		);
+
+		if ( '' !== $return_to ) {
+			$args['woap_return'] = sanitize_key( $return_to );
+		}
+
 		return wp_nonce_url(
-			add_query_arg(
-				array(
-					'action'          => 'woap_admin_set_status',
-					'organization_id' => absint( $organization_id ),
-					'status'          => $status,
-				),
-				admin_url( 'admin-post.php' )
-			),
+			add_query_arg( $args, admin_url( 'admin-post.php' ) ),
 			'woap_admin_set_status_' . absint( $organization_id )
 		);
 	}
@@ -591,6 +605,21 @@ class Organizations {
 		$status = isset( $_GET['status'] ) ? sanitize_key( wp_unslash( $_GET['status'] ) ) : '';
 
 		OrganizationRepository::set_status( $organization_id, $status );
+
+		/*
+		 * Back to the screen the decision was made on. A reviewer working the approvals
+		 * queue wants the next one, not the record they have just finished with — and the
+		 * detail screen is exactly where somebody who pressed Approve from *there* expects
+		 * to stay. The value is an allow-listed slug rather than a URL, so nothing here can
+		 * be pointed at another site.
+		 */
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Verified above; this only chooses which of our own screens to return to.
+		$return_to = isset( $_GET['woap_return'] ) ? sanitize_key( wp_unslash( $_GET['woap_return'] ) ) : '';
+
+		if ( Approvals::PAGE_SLUG === $return_to ) {
+			wp_safe_redirect( Approvals::url() );
+			exit;
+		}
 
 		self::go_back( $organization_id );
 	}

@@ -7,11 +7,15 @@
 
 namespace WooOrgAccounts;
 
+use WooOrgAccounts\Admin\Approvals;
 use WooOrgAccounts\Admin\Import;
+use WooOrgAccounts\Admin\Members;
+use WooOrgAccounts\Admin\Menu;
 use WooOrgAccounts\Admin\Organizations;
 use WooOrgAccounts\Admin\OrderColumn;
 use WooOrgAccounts\Admin\Settings;
 use WooOrgAccounts\Admin\ThemeSettings;
+use WooOrgAccounts\Admin\UserColumn;
 use WooOrgAccounts\Checkout\BillingLock;
 use WooOrgAccounts\Checkout\Blocks\CheckoutIntegration;
 use WooOrgAccounts\Checkout\Gate;
@@ -152,10 +156,15 @@ final class Plugin {
 		( new Analytics() )->register();
 
 		if ( is_admin() ) {
+			// The parent first: it registers on admin_menu at priority 9, ahead of the rest.
+			( new Menu() )->register();
 			( new Settings() )->register();
 			( new Organizations() )->register();
+			( new Approvals() )->register();
+			( new Members() )->register();
 			( new Import() )->register();
 			( new OrderColumn() )->register();
+			( new UserColumn() )->register();
 			( new ThemeSettings() )->register();
 		}
 

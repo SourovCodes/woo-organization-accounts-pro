@@ -99,7 +99,7 @@ class Import {
 	 */
 	public function register_menu() {
 		add_submenu_page(
-			'woocommerce',
+			Menu::PAGE_SLUG,
 			$this->title(),
 			$this->title(),
 			self::CAPABILITY,
@@ -121,9 +121,9 @@ class Import {
 	public function hide_from_menu() {
 		global $submenu, $submenu_file;
 
-		foreach ( (array) ( $submenu['woocommerce'] ?? array() ) as $key => $item ) {
+		foreach ( (array) ( $submenu[ Menu::PAGE_SLUG ] ?? array() ) as $key => $item ) {
 			if ( self::PAGE_SLUG === $item[2] ) {
-				unset( $submenu['woocommerce'][ $key ] );
+				unset( $submenu[ Menu::PAGE_SLUG ][ $key ] );
 			}
 		}
 
