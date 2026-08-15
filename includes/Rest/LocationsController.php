@@ -10,8 +10,8 @@ namespace WooOrgAccounts\Rest;
 use WooOrgAccounts\Data\Location;
 use WooOrgAccounts\Data\LocationRepository;
 use WooOrgAccounts\Data\Organization;
-use WooOrgAccounts\Frontend\AddressFields;
 use WooOrgAccounts\Labels;
+use WooOrgAccounts\Locations\Locations;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -204,22 +204,17 @@ final class LocationsController {
 
 		$previous        = OrganizationsController::location_payload( $location );
 		$organization_id = $location->get_organization_id();
+		$deleted         = Locations::delete( $location );
 
-		if ( ! LocationRepository::delete( $location->get_id() ) ) {
-			return Writes::not_saved(
-				sprintf(
-					/* translators: %s: the singular location noun for the site's mode, for example "Branch". */
-					__( 'That %s could not be deleted.', 'woo-organization-accounts-pro' ),
-					Labels::location()
-				)
-			);
+		if ( is_wp_error( $deleted ) ) {
+			return Writes::not_saved( $deleted->get_error_message() );
 		}
 
 		return new \WP_REST_Response(
 			array(
 				'deleted'               => true,
 				'previous'              => $previous,
-				'organization_can_ship' => LocationRepository::count_for_organization( $organization_id ) > 0,
+				'organization_can_ship' => Locations::can_ship( $organization_id ),
 			),
 			200
 		);
@@ -235,108 +230,41 @@ final class LocationsController {
 	 * @return \WP_REST_Response|\WP_Error The location, or a refusal.
 	 */
 	private function save( Location $location, Organization $organization, $request, $status ) {
-		$creating = 0 === $location->get_id();
-		$errors   = new \WP_Error();
+		$saved = Locations::save( $organization, $location, $this->submitted( $request ) );
 
-		$name = $request->has_param( 'name' )
-			? trim( (string) $request['name'] )
-			: $location->get_name();
-
-		if ( '' === $name ) {
-			$errors->add(
-				'woap_name',
-				sprintf(
-					/* translators: %s: the singular location noun for the site's mode, for example "Branch". */
-					__( 'Please give the %s a name.', 'woo-organization-accounts-pro' ),
-					Labels::location()
-				)
-			);
+		if ( is_wp_error( $saved ) ) {
+			return 'woap_not_saved' === $saved->get_error_code()
+				? Writes::not_saved( $saved->get_error_message() )
+				: Writes::refuse( 'woap_rest_invalid_location', $saved );
 		}
 
-		$address = Writes::address(
-			AddressFields::SHIPPING,
-			$this->submitted_address( $request ),
-			$creating ? array_fill_keys( Location::ADDRESS_FIELDS, '' ) : $location->get_shipping_address()
-		);
-
-		/*
-		 * On an edit the address is only checked when the request carried one. A record
-		 * stored before this plugin validated anything, or one whose country has grown
-		 * stricter since, must not make renaming it impossible — that is the same
-		 * retroactive-rule objection the relaxed shipping fields exist for.
-		 */
-		if ( $creating || $this->carries_address( $request ) ) {
-			AddressFields::validate( AddressFields::SHIPPING, $address, $errors );
-		}
-
-		if ( $errors->has_errors() ) {
-			return Writes::refuse( 'woap_rest_invalid_location', $errors, array( 'shipping_' => '' ) );
-		}
-
-		/*
-		 * A parcel with no company on the label is one nobody at a loading bay
-		 * recognises, so a blank company becomes the organization's name — stored, not
-		 * resolved later, so what this route returns is what the courier will get.
-		 */
-		if ( '' === trim( (string) $address['company'] ) ) {
-			$address['company'] = $organization->get_name();
-		}
-
-		$location->set_props(
-			array(
-				'organization_id' => $organization->get_id(),
-				'name'            => $name,
-				'is_default'      => $request->has_param( 'is_default' )
-					? (bool) $request['is_default']
-					: $location->is_default(),
-			)
-		);
-
-		$location->set_shipping_address( $address );
-
-		if ( 0 === LocationRepository::save( $location ) ) {
-			return Writes::not_saved(
-				sprintf(
-					/* translators: %s: the singular location noun for the site's mode, for example "Branch". */
-					__( 'That %s could not be saved.', 'woo-organization-accounts-pro' ),
-					Labels::location()
-				)
-			);
-		}
-
-		return new \WP_REST_Response( OrganizationsController::location_payload( $location ), $status );
+		return new \WP_REST_Response( OrganizationsController::location_payload( $saved ), $status );
 	}
 
 	/**
-	 * The address fields the request carried, read from the body's top level.
+	 * What the request asked to change, keyed the way the service reads it.
 	 *
 	 * A location is flat in the snapshot — the address fields sit beside the name rather
 	 * than under an `address` key — so it is flat here too. One shape per noun, whichever
 	 * direction it is travelling in.
 	 *
+	 * Only the fields the request actually carried are included, because presence is how
+	 * the service tells "set this to empty" from "leave it alone" — the same distinction
+	 * `has_param()` draws, carried across a boundary that has no request object.
+	 *
 	 * @param \WP_REST_Request $request The request.
-	 * @return array Submitted address fields, keyed without a prefix.
+	 * @return array Submitted values, keyed without a prefix.
 	 */
-	private function submitted_address( $request ) {
+	private function submitted( $request ) {
 		$submitted = array();
 
-		foreach ( Location::ADDRESS_FIELDS as $field ) {
+		foreach ( array_merge( array( 'name', 'is_default' ), Location::ADDRESS_FIELDS ) as $field ) {
 			if ( $request->has_param( $field ) ) {
 				$submitted[ $field ] = $request[ $field ];
 			}
 		}
 
 		return $submitted;
-	}
-
-	/**
-	 * Whether the request said anything about the address at all.
-	 *
-	 * @param \WP_REST_Request $request The request.
-	 * @return bool True when at least one address field was sent.
-	 */
-	private function carries_address( $request ) {
-		return ! empty( $this->submitted_address( $request ) );
 	}
 
 	/**

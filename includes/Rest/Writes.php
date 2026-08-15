@@ -95,16 +95,9 @@ final class Writes {
 	/**
 	 * Merge a submitted address onto the one already stored.
 	 *
-	 * Merged rather than replaced, so a request that carries three fields edits three
-	 * fields — and validated whole afterwards by the caller, so those three cannot leave
-	 * the address in a state the checkout would reject. On a create the caller passes an
-	 * empty address as the base, which is what makes every required field for the
-	 * country actually get checked: `AddressFields::validate()` only examines keys that
-	 * are present, so an absent one would otherwise pass by not being there.
-	 *
-	 * A field the country does not have is dropped rather than stored, the same answer
-	 * `AddressFields::posted()` gives the web forms: a state posted for a country with no
-	 * states is not data.
+	 * The merge itself is `AddressFields::merge()`, where the rest of this plugin's
+	 * understanding of an address lives. It stays reachable under this name because a
+	 * partial address is a REST-shaped problem and this is where a route looks for it.
 	 *
 	 * @param string $type      AddressFields::BILLING or AddressFields::SHIPPING.
 	 * @param mixed  $submitted The address from the request body, if it carried one.
@@ -112,32 +105,7 @@ final class Writes {
 	 * @return array The merged address, keyed without the prefix.
 	 */
 	public static function address( $type, $submitted, array $current ) {
-		$address = $current;
-
-		if ( is_array( $submitted ) ) {
-			foreach ( $submitted as $field => $value ) {
-				if ( ! array_key_exists( $field, $address ) || ! is_scalar( $value ) ) {
-					continue;
-				}
-
-				$address[ $field ] = ( 'email' === $field )
-					? sanitize_email( (string) $value )
-					: sanitize_text_field( (string) $value );
-			}
-		}
-
-		$address['country'] = '' !== (string) $address['country']
-			? strtoupper( (string) $address['country'] )
-			: WC()->countries->get_base_country();
-
-		/*
-		 * Only the fields this country actually has. Anything else came from a client
-		 * built against another country's form and would be stored where nothing reads
-		 * it.
-		 */
-		$keep = array_fill_keys( AddressFields::keys( $type, $address['country'] ), '' );
-
-		return array_intersect_key( $address, $keep ) + array_fill_keys( array_keys( $current ), '' );
+		return AddressFields::merge( $type, $submitted, $current );
 	}
 
 	/**

@@ -17,7 +17,9 @@ use WooOrgAccounts\Data\Organization;
 use WooOrgAccounts\Data\OrganizationRepository;
 use WooOrgAccounts\Guard;
 use WooOrgAccounts\Labels;
+use WooOrgAccounts\Locations\Locations;
 use WooOrgAccounts\Members\Invitations;
+use WooOrgAccounts\Membership\Members;
 use WooOrgAccounts\Roles;
 
 defined( 'ABSPATH' ) || exit;
@@ -288,26 +290,31 @@ class AccountHandlers {
 			self::finish( MyAccount::ENDPOINT_LOCATIONS, __( 'That entry no longer exists.', 'woo-organization-accounts-pro' ), 'error' );
 		}
 
-		$errors  = new \WP_Error();
 		$name    = self::posted( 'woap_name' );
 		$address = AddressFields::posted( AddressFields::SHIPPING );
 
-		if ( '' === $name ) {
-			$errors->add(
-				'name',
-				sprintf(
-					/* translators: %s: the singular location noun for the site's mode, for example "Branch". */
-					__( 'Please give the %s a name.', 'woo-organization-accounts-pro' ),
-					Labels::location()
+		$saved = Locations::save(
+			$organization,
+			$location,
+			array_merge(
+				$address,
+				array(
+					'name'       => $name,
+					'is_default' => self::posted_checkbox( 'woap_is_default' ),
 				)
-			);
-		}
+			)
+		);
 
-		AddressFields::validate( AddressFields::SHIPPING, $address, $errors );
-
-		if ( $errors->has_errors() ) {
+		if ( is_wp_error( $saved ) ) {
+			/*
+			 * Handed back rather than redirected away: losing a twelve-field address to one
+			 * mistyped postcode is not an acceptable way to report an error. The service
+			 * keys its errors by the record's own field names, and the address half has to
+			 * carry the `shipping_` prefix again to reach `AddressFields::render()`, which
+			 * marks a field by the name the input actually has.
+			 */
 			self::hold(
-				$errors,
+				self::location_errors( $saved ),
 				array_merge(
 					self::prefixed( AddressFields::SHIPPING, $address ),
 					array(
@@ -320,33 +327,6 @@ class AccountHandlers {
 
 			return;
 		}
-
-		/*
-		 * A shipping label with no company on it is a parcel nobody at the receiving
-		 * end recognises, so a blank company falls back to the organization's name
-		 * rather than being left empty. It is stored rather than resolved at checkout,
-		 * so what the screen shows is what the courier will get.
-		 *
-		 * The key is absent rather than empty: the form offers no company field for
-		 * `AddressFields::posted()` to have read — see `AddressFields::strip_company()`.
-		 * Coalesced rather than assumed missing so this still reads as the fallback it
-		 * is if the field is ever offered again.
-		 */
-		if ( '' === trim( (string) ( isset( $address['company'] ) ? $address['company'] : '' ) ) ) {
-			$address['company'] = $organization->get_name();
-		}
-
-		$location->set_props(
-			array(
-				'organization_id' => $organization->get_id(),
-				'name'            => $name,
-				'is_default'      => self::posted_checkbox( 'woap_is_default' ),
-			)
-		);
-
-		$location->set_shipping_address( $address );
-
-		LocationRepository::save( $location );
 
 		self::finish(
 			MyAccount::ENDPOINT_LOCATIONS,
@@ -517,24 +497,12 @@ class AccountHandlers {
 
 		$errors = new \WP_Error();
 
-		$losing_admin = $member->is_admin() && ( Member::ROLE_ADMIN !== $role || Member::STATUS_ACTIVE !== $status );
-
-		if ( $losing_admin && ! MemberRepository::has_other_admin( $organization->get_id(), $member->get_id() ) ) {
-			$errors->add(
-				'woap_role',
-				sprintf(
-					/* translators: 1: the organization noun, 2: the organization admin noun. */
-					__( 'A %1$s must keep at least one active %2$s. Promote somebody else first.', 'woo-organization-accounts-pro' ),
-					Labels::organization(),
-					Labels::organization_admin()
-				)
-			);
-		}
-
 		/*
 		 * An empty access list means "every location", so "only the ones I tick" with
 		 * nothing ticked would silently store the opposite of what it says. It is a
-		 * question, not a mistake to swallow.
+		 * question, not a mistake to swallow — and it is asked here rather than by the
+		 * service because it is a question about the control this form drew. The service
+		 * knows only that an empty list is never what gets stored.
 		 */
 		if ( self::restricting_locations() && empty( $location_ids ) ) {
 			$errors->add(
@@ -545,6 +513,24 @@ class AccountHandlers {
 					Labels::location()
 				)
 			);
+		}
+
+		if ( ! $errors->has_errors() ) {
+			$saved = Members::update(
+				$member,
+				array(
+					'role'            => $role,
+					'status'          => $status,
+					'capabilities'    => 'custom' === $perm_scope
+						? self::posted_capabilities()
+						: Members::ROLE_DEFAULT,
+					'location_access' => self::restricting_locations() ? $location_ids : Members::ACCESS_ALL,
+				)
+			);
+
+			if ( is_wp_error( $saved ) ) {
+				$errors = self::prefixed_errors( $saved );
+			}
 		}
 
 		if ( $errors->has_errors() ) {
@@ -563,20 +549,59 @@ class AccountHandlers {
 			return;
 		}
 
-		$member->set( 'role', $role );
-		$member->set( 'status', $status );
-		$member->set_capabilities( 'custom' === $perm_scope ? self::posted_capabilities( $role ) : array() );
+		self::finish( MyAccount::ENDPOINT_MEMBERS, __( 'Member updated.', 'woo-organization-accounts-pro' ) );
+	}
 
-		MemberRepository::save( $member );
-		MemberRepository::set_location_ids( $member->get_id(), $location_ids );
+	/**
+	 * Re-key a location refusal the way the location form's fields are named.
+	 *
+	 * `Locations::save()` reports an error against the column it is about — `postcode`,
+	 * `address_1`, `name` — because that is what the record calls it and what a REST client
+	 * sends. The form's address half is rendered by `AddressFields::render()`, which marks a
+	 * field by its prefixed input name, so the address fields get their prefix back and the
+	 * name field does not have one to get.
+	 *
+	 * @param \WP_Error $error The refusal.
+	 * @return \WP_Error The same messages, keyed the way this form names its fields.
+	 */
+	private static function location_errors( \WP_Error $error ) {
+		$rekeyed = new \WP_Error();
 
-		$user = get_user_by( 'id', $member->get_user_id() );
+		foreach ( $error->get_error_codes() as $code ) {
+			$code = (string) $code;
+			$key  = in_array( $code, Location::ADDRESS_FIELDS, true )
+				? AddressFields::SHIPPING . '_' . $code
+				: $code;
 
-		if ( $user instanceof \WP_User ) {
-			$user->set_role( Roles::wordpress_role( $role ) );
+			$rekeyed->add( $key, $error->get_error_message( $code ) );
 		}
 
-		self::finish( MyAccount::ENDPOINT_MEMBERS, __( 'Member updated.', 'woo-organization-accounts-pro' ) );
+		return $rekeyed;
+	}
+
+	/**
+	 * Re-key a service refusal the way this form's fields are named.
+	 *
+	 * The service names an error after the thing that was wrong — `role`, `location_access`
+	 * — because that is the one name both a form and an API can agree on. Every field this
+	 * plugin renders is prefixed `woap_`, for the reason recorded in CLAUDE.md: WordPress
+	 * reads its public query variables out of `$_POST` as readily as out of the URL. So the
+	 * prefix goes back on here, at the point the error meets a field.
+	 *
+	 * @param \WP_Error $error The refusal.
+	 * @return \WP_Error The same messages, keyed by field name.
+	 */
+	private static function prefixed_errors( \WP_Error $error ) {
+		$prefixed = new \WP_Error();
+
+		foreach ( $error->get_error_codes() as $code ) {
+			$code = (string) $code;
+			$key  = 0 === strpos( $code, 'woap_' ) ? $code : 'woap_' . $code;
+
+			$prefixed->add( $key, $error->get_error_message( $code ) );
+		}
+
+		return $prefixed;
 	}
 
 	/**
@@ -597,57 +622,46 @@ class AccountHandlers {
 			self::finish( MyAccount::ENDPOINT_MEMBERS, __( 'That member no longer exists.', 'woo-organization-accounts-pro' ), 'error' );
 		}
 
+		/*
+		 * The one refusal that belongs to this screen rather than to the rule underneath.
+		 * A back office removing somebody is not removing themselves, so the service has no
+		 * opinion on it; here it is the difference between an organization admin tidying up
+		 * a list and locking themselves out of their own account.
+		 */
 		if ( $member->get_user_id() === get_current_user_id() ) {
 			self::finish( MyAccount::ENDPOINT_MEMBERS, __( 'You cannot remove yourself.', 'woo-organization-accounts-pro' ), 'error' );
 		}
 
-		if ( $member->is_admin() && ! MemberRepository::has_other_admin( $organization->get_id(), $member->get_id() ) ) {
-			self::finish(
-				MyAccount::ENDPOINT_MEMBERS,
-				sprintf(
-					/* translators: 1: the organization noun, 2: the organization admin noun. */
-					__( 'A %1$s must keep at least one active %2$s. Promote somebody else first.', 'woo-organization-accounts-pro' ),
-					Labels::organization(),
-					Labels::organization_admin()
-				),
-				'error'
-			);
-		}
+		$removed = Members::remove( $member );
 
-		$user = get_user_by( 'id', $member->get_user_id() );
-
-		MemberRepository::delete( $member->get_id() );
-
-		if ( $user instanceof \WP_User ) {
-			$user->set_role( 'customer' );
+		if ( is_wp_error( $removed ) ) {
+			self::finish( MyAccount::ENDPOINT_MEMBERS, $removed->get_error_message(), 'error' );
 		}
 
 		self::finish( MyAccount::ENDPOINT_MEMBERS, __( 'Member removed.', 'woo-organization-accounts-pro' ) );
 	}
 
 	/**
-	 * The capability overrides a permissions form submitted.
+	 * What a permissions form said should be true of this member.
 	 *
-	 * Stored only where they differ from the role's own answer, so a member left on
-	 * the defaults carries no overrides and follows the role if the role ever changes.
+	 * An absolute map, every capability named, because a group of checkboxes says as much by
+	 * the ones it leaves unticked as by the ones it ticks. Reducing it to the overrides
+	 * worth storing is `Members::capability_overrides()`, and it happens there rather than
+	 * here because the diff is against *the role being saved* — which this form is often in
+	 * the act of changing, and which was the whole of the bug that made promoting somebody
+	 * to organization admin produce an admin who could manage nothing.
 	 *
-	 * @param string $role The role the member will hold.
 	 * @return array Map of capability to boolean.
 	 */
-	private static function posted_capabilities( $role ) {
-		$granted   = self::posted_list( 'woap_capabilities' );
-		$defaults  = Roles::role_capabilities( $role );
-		$overrides = array();
+	private static function posted_capabilities() {
+		$granted = self::posted_list( 'woap_capabilities' );
+		$wanted  = array();
 
 		foreach ( Roles::capabilities() as $capability ) {
-			$wanted = in_array( $capability, $granted, true );
-
-			if ( $wanted !== (bool) $defaults[ $capability ] ) {
-				$overrides[ $capability ] = $wanted;
-			}
+			$wanted[ $capability ] = in_array( $capability, $granted, true );
 		}
 
-		return $overrides;
+		return $wanted;
 	}
 
 	/**
