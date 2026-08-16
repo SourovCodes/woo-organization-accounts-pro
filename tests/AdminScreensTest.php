@@ -11,6 +11,7 @@ use WooOrgAccounts\Admin\OrderColumn;
 use WooOrgAccounts\Admin\Organizations;
 use WooOrgAccounts\Admin\Settings;
 use WooOrgAccounts\Checkout\OrderMeta;
+use WooOrgAccounts\Data\LocationRepository;
 use WooOrgAccounts\Data\Member;
 use WooOrgAccounts\Data\Organization;
 use WooOrgAccounts\Data\OrganizationRepository;
@@ -313,6 +314,121 @@ class AdminScreensTest extends TestCase {
 		$this->expectException( \WPDieException::class );
 
 		( new Settings() )->handle_check_updates();
+	}
+
+	/**
+	 * Press the backfill button and report where it redirected.
+	 *
+	 * @return string Redirect target.
+	 */
+	private function backfill_locations() {
+		$_POST    = array( '_wpnonce' => wp_create_nonce( 'woap_backfill_locations' ) );
+		$_REQUEST = $_POST; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Building the request the handler then verifies; the nonce is on the line above.
+
+		$throw = static function ( $location ) {
+			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Carried to an assertion in a test, never rendered.
+			throw new RedirectException( $location );
+		};
+
+		add_filter( 'wp_redirect', $throw );
+
+		try {
+			( new Settings() )->handle_backfill_locations();
+		} catch ( RedirectException $redirect ) {
+			return $redirect->location;
+		} finally {
+			remove_filter( 'wp_redirect', $throw );
+
+			$_POST    = array();
+			$_REQUEST = array();
+		}
+
+		$this->fail( 'The backfill did not redirect.' );
+	}
+
+	/**
+	 * The backfill gives a delivery address to the organizations that have none.
+	 *
+	 * Both halves are the assertion. An organization with no location cannot check out,
+	 * so the shop needs a way to repair the accounts that predate registration creating
+	 * one — and an organization that already has locations must not be given another,
+	 * because a second address nobody chose is worse than the missing one this fixes.
+	 */
+	public function testTheBackfillOnlyGivesALocationToOrganizationsWithNone() {
+		$this->act_as_shop_manager();
+
+		$stranded = $this->make_organization( array( 'name' => 'Hafen Logistik' ) );
+		$supplied = $this->make_organization( array( 'name' => 'Nordwerk GmbH' ) );
+
+		$this->make_location( $supplied );
+
+		$this->backfill_locations();
+
+		$created = LocationRepository::for_organization( $stranded->get_id() );
+
+		$this->assertCount( 1, $created );
+		$this->assertTrue( $created[0]->is_default() );
+		$this->assertSame( '1 Hauptstrasse', $created[0]->get( 'address_1' ) );
+		$this->assertSame( 'Berlin', $created[0]->get( 'city' ) );
+
+		// The company on the label is the account the parcel belongs to.
+		$this->assertSame( 'Hafen Logistik', $created[0]->get( 'company' ) );
+
+		$untouched = LocationRepository::for_organization( $supplied->get_id() );
+
+		$this->assertCount( 1, $untouched, 'An organization that already had somewhere to ship to was given a second address.' );
+		$this->assertSame( 'Warehouse North', $untouched[0]->get_name() );
+	}
+
+	/**
+	 * A billing address that is not a complete delivery address is refused, not stored.
+	 *
+	 * The point of routing this through `Locations::save()` rather than writing the row
+	 * directly: a location the checkout would turn down is worse than the missing one,
+	 * because it looks like the problem has been dealt with.
+	 */
+	public function testTheBackfillRefusesAnIncompleteBillingAddress() {
+		$this->act_as_shop_manager();
+
+		$organization = $this->make_organization(
+			array(
+				'name'            => 'Halbe Adresse AG',
+				'billing_country' => 'DE',
+			)
+		);
+
+		$this->backfill_locations();
+
+		$this->assertSame( array(), LocationRepository::for_organization( $organization->get_id() ) );
+		$this->assertSame( 1, OrganizationRepository::count_without_locations() );
+	}
+
+	/**
+	 * The backfill is nonced, and refuses somebody who may not manage the shop.
+	 */
+	public function testTheBackfillNeedsPermission() {
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'editor' ) ) );
+
+		$_POST    = array( '_wpnonce' => wp_create_nonce( 'woap_backfill_locations' ) );
+		$_REQUEST = $_POST; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- The nonce is created on the line above; the capability is what is expected to refuse.
+
+		$this->expectException( \WPDieException::class );
+
+		( new Settings() )->handle_backfill_locations();
+	}
+
+	/**
+	 * Without its nonce the backfill is refused too.
+	 */
+	public function testTheBackfillNeedsItsNonce() {
+		$this->act_as_shop_manager();
+
+		$_POST    = array( '_wpnonce' => 'not the nonce' );
+		$_REQUEST = $_POST; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Deliberately wrong; the handler is expected to refuse it.
+
+		$this->expectException( \WPDieException::class );
+
+		( new Settings() )->handle_backfill_locations();
 	}
 
 	/**

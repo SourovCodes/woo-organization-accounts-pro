@@ -157,6 +157,98 @@ class RegistrationSurfaceTest extends TestCase {
 	}
 
 	/**
+	 * A new organization can be shipped to the moment it exists.
+	 *
+	 * An organization with no location cannot check out at all, so a registration that
+	 * created only the billing address left every new customer to type the same address
+	 * again before they could buy anything. The billing address is the one address the
+	 * form is known to have collected, and it is the address the shop will invoice.
+	 *
+	 * Asserted field by field rather than by counting the rows, because the failure worth
+	 * catching is the reshaping between a billing address and a shipping one — a location
+	 * has no email column and a billing address has one.
+	 */
+	public function testRegisteringCreatesADeliveryLocationFromTheBillingAddress() {
+		$this->make_registration_page();
+		$this->set_setting( 'require_approval', false );
+
+		$this->register();
+
+		$member    = MemberRepository::find_by_user( get_user_by( 'email', 'ada@acme.test' )->ID );
+		$locations = LocationRepository::for_organization( $member->get_organization_id() );
+
+		$this->assertCount( 1, $locations, 'A registration left the organization with nowhere to ship to.' );
+
+		$location = $locations[0];
+
+		$this->assertTrue( $location->is_default(), 'The only location an organization has is its default one.' );
+		$this->assertSame(
+			array(
+				'first_name' => 'Ada',
+				'last_name'  => 'Byron',
+				'company'    => 'Acme Holdings AG',
+				'address_1'  => '1 Hauptstrasse',
+				'address_2'  => '',
+				'city'       => 'Berlin',
+				'state'      => '',
+				'postcode'   => '10115',
+				'country'    => 'DE',
+				'phone'      => '+49 30 123456',
+			),
+			$location->get_shipping_address(),
+			'The delivery address is not the billing address that was typed.'
+		);
+
+		// Named for what it is: the organization's name is already the company line above it.
+		$this->assertSame( 'Main ' . Labels::location(), $location->get_name() );
+	}
+
+	/**
+	 * A registration is not refused over the location it could not derive.
+	 *
+	 * The account, the organization and the membership are all correct by the time the
+	 * location is attempted, and a billing address the shop's own billing rules accepted
+	 * is not something the registration form could ask the visitor to fix. What is left is
+	 * an organization with no location — a state the account screen reports in words, and
+	 * the settings screen's backfill can revisit.
+	 */
+	public function testARegistrationSurvivesADeliveryAddressItCannotDerive() {
+		$this->make_registration_page();
+		$this->set_setting( 'require_approval', false );
+
+		/*
+		 * A shipping address needs a first name and this one has none. The billing rules
+		 * are relaxed for the length of the submission so the address itself is accepted,
+		 * which is the only way to reach the case: the two rule sets differ, and one day
+		 * a country's will differ again.
+		 */
+		$relax = static function ( $fields, $type ) {
+			if ( 'billing' === $type ) {
+				unset( $fields['billing_first_name'] );
+			}
+
+			return $fields;
+		};
+
+		add_filter( 'woo_org_accounts_address_fields', $relax, 10, 2 );
+
+		$location = $this->register( array( 'billing_first_name' => '' ) );
+
+		remove_filter( 'woo_org_accounts_address_fields', $relax, 10 );
+
+		$this->assertNotSame( '', $location, 'The registration was refused over an address the billing rules accepted.' );
+
+		$user = get_user_by( 'email', 'ada@acme.test' );
+
+		$this->assertInstanceOf( \WP_User::class, $user );
+
+		$member = MemberRepository::find_by_user( $user->ID );
+
+		$this->assertNotNull( $member, 'The membership was rolled back over a location.' );
+		$this->assertSame( array(), LocationRepository::for_organization( $member->get_organization_id() ) );
+	}
+
+	/**
 	 * A tax ID is optional by default and required when the site says so.
 	 *
 	 * Both halves matter: the setting exists because insisting on a VAT number is

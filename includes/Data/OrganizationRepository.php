@@ -148,6 +148,56 @@ class OrganizationRepository extends Repository {
 	}
 
 	/**
+	 * The organizations that have nowhere to ship to.
+	 *
+	 * An organization with no location cannot check out at all, whatever else is right about
+	 * it, so this is the one question the settings screen's backfill asks — both to report how
+	 * many there are and to work through them.
+	 *
+	 * A `LEFT JOIN` rather than a count per organization, because the answer is wanted for
+	 * every row on the site at once and a shop that has just imported one has hundreds. It is
+	 * ordered by ID and takes a limit so the backfill can work in batches without a row moving
+	 * between one press and the next: every organization the batch fixes leaves the result set
+	 * for good, so the next press resumes where this one stopped without carrying an offset.
+	 *
+	 * @param int $limit Maximum rows to return. 0 for all of them.
+	 * @return Organization[] Organizations with no location, oldest first.
+	 */
+	public static function without_locations( $limit = 0 ) {
+		global $wpdb;
+
+		$table     = static::table();
+		$locations = LocationRepository::table();
+		$limit     = absint( $limit );
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Both table names come from class constants; the limit is a placeholder below.
+		$sql = "SELECT o.* FROM {$table} o LEFT JOIN {$locations} l ON l.organization_id = o.id WHERE l.id IS NULL ORDER BY o.id ASC";
+
+		if ( $limit > 0 ) {
+			// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- $sql holds only the placeholder for the limit; prepare() binds it here.
+			$sql = $wpdb->prepare( $sql . ' LIMIT %d', $limit );
+		}
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- Prepared immediately above when it carries a limit; otherwise it takes no values.
+		return static::hydrate_all( $wpdb->get_results( $sql, ARRAY_A ) );
+	}
+
+	/**
+	 * How many organizations have nowhere to ship to.
+	 *
+	 * @return int Number of organizations with no location.
+	 */
+	public static function count_without_locations() {
+		global $wpdb;
+
+		$table     = static::table();
+		$locations = LocationRepository::table();
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Both table names come from class constants; the query takes no values.
+		return (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table} o LEFT JOIN {$locations} l ON l.organization_id = o.id WHERE l.id IS NULL" );
+	}
+
+	/**
 	 * Persist an organization, with its billing company derived from its name.
 	 *
 	 * The billing company is not collected anywhere — see

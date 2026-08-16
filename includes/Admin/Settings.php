@@ -7,8 +7,10 @@
 
 namespace WooOrgAccounts\Admin;
 
+use WooOrgAccounts\Data\OrganizationRepository;
 use WooOrgAccounts\Frontend\Registration;
 use WooOrgAccounts\Labels;
+use WooOrgAccounts\Locations\Locations;
 use WooOrgAccounts\Updates\Updater;
 
 defined( 'ABSPATH' ) || exit;
@@ -42,6 +44,17 @@ class Settings {
 	 * Invitation expiry value meaning "these invitations never expire".
 	 */
 	const EXPIRY_NEVER = 0;
+
+	/**
+	 * How many organizations one press of the backfill button works through.
+	 *
+	 * Bounded because this is an ordinary admin request, and a shop that has just imported
+	 * a customer file can have thousands of organizations with no location: a single
+	 * unbounded pass would be killed by the host halfway through with nothing said about
+	 * where it stopped. Each batch is a complete, reported piece of work, and the button
+	 * comes back with however many are left.
+	 */
+	const BACKFILL_BATCH = 200;
 
 	/**
 	 * Hook suffix of the settings screen, used to scope asset loading.
@@ -117,6 +130,7 @@ class Settings {
 		add_action( 'admin_menu', array( $this, 'register_menu' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 		add_action( 'admin_post_woap_check_updates', array( $this, 'handle_check_updates' ) );
+		add_action( 'admin_post_woap_backfill_locations', array( $this, 'handle_backfill_locations' ) );
 	}
 
 	/**
@@ -617,15 +631,238 @@ class Settings {
 		echo '<div class="wrap woap-settings">';
 		printf( '<h1>%s</h1>', esc_html__( 'Organization Accounts', 'woo-organization-accounts-pro' ) );
 
+		/*
+		 * What the backfill below did, said after its redirect. The same handover every
+		 * other write in this back office uses, so this screen reports a result the way
+		 * the organization, member and location screens do.
+		 */
+		Notices::render();
+
 		echo '<form action="options.php" method="post">';
 		settings_fields( self::OPTION_GROUP );
 		do_settings_sections( self::PAGE_SLUG );
 		submit_button();
 		echo '</form>';
 
+		$this->render_locations_section();
 		$this->render_updates_section();
 
 		echo '</div>';
+	}
+
+	/**
+	 * Report the organizations that cannot be shipped to, and offer to fix them.
+	 *
+	 * A registration has created its first location from its billing address since 0.12.0, so
+	 * this is about the accounts that arrived before it — a shop that has been running for a
+	 * year, or one that has just imported a customer file whose rows carried no delivery
+	 * address of their own. Every one of them is an account that looks complete on the
+	 * organizations list and refuses at the checkout, which is the worst place to find out.
+	 *
+	 * It is a button rather than something that happens by itself on upgrade: writing a
+	 * delivery address for somebody else's customer is a decision a shop makes, and a
+	 * migration doing it silently would leave nobody to ask about the ones it got wrong.
+	 *
+	 * @return void
+	 */
+	private function render_locations_section() {
+		$pending = OrganizationRepository::count_without_locations();
+
+		printf( '<h2>%s</h2>', esc_html( Labels::locations() ) );
+
+		if ( 0 === $pending ) {
+			printf(
+				'<p>%s</p>',
+				esc_html(
+					sprintf(
+						/* translators: 1: the organization noun for the site's mode. 2: the singular location noun. */
+						__( 'Every %1$s has at least one %2$s, so every one of them can check out.', 'woo-organization-accounts-pro' ),
+						Labels::organization(),
+						Labels::location()
+					)
+				)
+			);
+
+			return;
+		}
+
+		printf(
+			'<p>%s</p>',
+			esc_html(
+				1 === $pending
+					? sprintf(
+						/* translators: 1: the organization noun for the site's mode. 2: the singular location noun. */
+						__( 'One %1$s has no %2$s, so nobody on it can check out.', 'woo-organization-accounts-pro' ),
+						Labels::organization(),
+						Labels::location()
+					)
+					: sprintf(
+						/* translators: 1: number of organizations. 2: the plural organization noun. 3: the plural location noun. */
+						__( '%1$d %2$s have no %3$s, so nobody on them can check out.', 'woo-organization-accounts-pro' ),
+						$pending,
+						Labels::organizations(),
+						Labels::locations()
+					)
+			)
+		);
+
+		printf(
+			'<p class="description">%s</p>',
+			esc_html(
+				sprintf(
+					/* translators: %s: the singular location noun for the site's mode, for example "Branch". */
+					__( 'Their billing address is the address the shop already invoices them at. This turns it into a %s they can order to, which they can rename or correct afterwards. Nothing is changed for anybody who already has one.', 'woo-organization-accounts-pro' ),
+					Labels::location()
+				)
+			)
+		);
+
+		if ( $pending > self::BACKFILL_BATCH ) {
+			printf(
+				'<p class="description">%s</p>',
+				esc_html(
+					sprintf(
+						/* translators: %d: how many organizations one press works through. */
+						__( 'Up to %d at a time. Press the button again for the rest.', 'woo-organization-accounts-pro' ),
+						self::BACKFILL_BATCH
+					)
+				)
+			);
+		}
+
+		printf( '<form action="%s" method="post">', esc_url( admin_url( 'admin-post.php' ) ) );
+		echo '<input type="hidden" name="action" value="woap_backfill_locations">';
+		wp_nonce_field( 'woap_backfill_locations' );
+		submit_button(
+			sprintf(
+				/* translators: %s: the plural location noun for the site's mode, for example "Branches". */
+				__( 'Create %s from billing addresses', 'woo-organization-accounts-pro' ),
+				1 === $pending ? Labels::location() : Labels::locations()
+			),
+			'secondary',
+			'submit',
+			false
+		);
+		echo '</form>';
+	}
+
+	/**
+	 * Handle the "Create locations from billing addresses" button.
+	 *
+	 * Every write goes through `Locations::save()`, by way of
+	 * `Locations::from_billing_address()`, so a billing address that is not a complete
+	 * delivery address is refused here exactly as it would be on the location form rather
+	 * than stored as a location the checkout would then turn down. Those are counted and
+	 * reported: they are the ones somebody has to look at.
+	 *
+	 * @return void
+	 */
+	public function handle_backfill_locations() {
+		check_admin_referer( 'woap_backfill_locations' );
+
+		if ( ! current_user_can( self::CAPABILITY ) ) {
+			wp_die(
+				esc_html__( 'You do not have permission to do that.', 'woo-organization-accounts-pro' ),
+				esc_html__( 'Permission denied', 'woo-organization-accounts-pro' ),
+				array( 'response' => 403 )
+			);
+		}
+
+		$created = 0;
+		$refused = 0;
+
+		foreach ( OrganizationRepository::without_locations( self::BACKFILL_BATCH ) as $organization ) {
+			if ( is_wp_error( Locations::from_billing_address( $organization ) ) ) {
+				++$refused;
+
+				continue;
+			}
+
+			++$created;
+		}
+
+		/*
+		 * What is left for a second press, which is not the same as what is left without a
+		 * location: the refusals above are still in that count and pressing again would only
+		 * refuse them a second time. Subtracting them is what keeps the button's own promise
+		 * honest.
+		 */
+		$remaining = OrganizationRepository::count_without_locations() - $refused;
+
+		self::report_backfill( $created, $refused, max( 0, $remaining ) );
+
+		wp_safe_redirect( admin_url( 'admin.php?page=' . self::PAGE_SLUG ) );
+		exit;
+	}
+
+	/**
+	 * Say what the backfill did, on the screen it redirects back to.
+	 *
+	 * @param int $created   Locations created.
+	 * @param int $refused   Organizations whose billing address could not become one.
+	 * @param int $remaining Organizations still waiting for a later press.
+	 * @return void
+	 */
+	private static function report_backfill( $created, $refused, $remaining ) {
+		$refusal = 1 === $refused
+			? sprintf(
+				/* translators: 1: the organization noun for the site's mode. 2: the singular location noun. */
+				__( 'One %1$s was left out because its billing address is not a complete delivery address; give it a %2$s by hand.', 'woo-organization-accounts-pro' ),
+				Labels::organization(),
+				Labels::location()
+			)
+			: sprintf(
+				/* translators: 1: number of organizations. 2: the plural organization noun. 3: the singular location noun. */
+				__( '%1$d %2$s were left out because their billing address is not a complete delivery address; give each a %3$s by hand.', 'woo-organization-accounts-pro' ),
+				$refused,
+				Labels::organizations(),
+				Labels::location()
+			);
+
+		if ( 0 === $created && 0 === $refused ) {
+			Notices::success(
+				sprintf(
+					/* translators: %s: the organization noun for the site's mode. */
+					__( 'Every %s already has somewhere to deliver to.', 'woo-organization-accounts-pro' ),
+					Labels::organization()
+				)
+			);
+
+			return;
+		}
+
+		if ( 0 === $created ) {
+			Notices::error( $refusal );
+
+			return;
+		}
+
+		$message = 1 === $created
+			? sprintf(
+				/* translators: %s: the singular location noun for the site's mode, for example "Branch". */
+				__( 'Created one %s from a billing address.', 'woo-organization-accounts-pro' ),
+				Labels::location()
+			)
+			: sprintf(
+				/* translators: 1: number of locations created. 2: the plural location noun. */
+				__( 'Created %1$d %2$s from billing addresses.', 'woo-organization-accounts-pro' ),
+				$created,
+				Labels::locations()
+			);
+
+		if ( $refused > 0 ) {
+			$message .= ' ' . $refusal;
+		}
+
+		if ( $remaining > 0 ) {
+			$message .= ' ' . sprintf(
+				/* translators: %d: how many organizations are still without a location. */
+				__( '%d still to go — press the button again to continue.', 'woo-organization-accounts-pro' ),
+				$remaining
+			);
+		}
+
+		Notices::success( $message );
 	}
 
 	/**

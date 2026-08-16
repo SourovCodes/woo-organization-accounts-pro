@@ -153,6 +153,49 @@ class OrganizationRepositoryTest extends TestCase {
 	}
 
 	/**
+	 * The organizations with nowhere to ship to are the ones with no location at all.
+	 *
+	 * The join is the whole method, and a join written the other way round — or one that
+	 * counted rows rather than looking for their absence — would answer with every
+	 * organization on the site, which the settings screen would then rewrite addresses for.
+	 */
+	public function testOrganizationsWithoutALocationAreFoundByTheirAbsence() {
+		$stranded = $this->make_organization( array( 'name' => 'Hafen Logistik' ) );
+		$supplied = $this->make_organization( array( 'name' => 'Nordwerk GmbH' ) );
+
+		$this->make_location( $supplied );
+
+		// Two locations, so the join cannot be answering with one row per location either.
+		$this->make_location( $supplied, array( 'name' => 'Warehouse South' ) );
+
+		$this->assertSame( 1, OrganizationRepository::count_without_locations() );
+
+		$found = OrganizationRepository::without_locations();
+
+		$this->assertCount( 1, $found );
+		$this->assertSame( $stranded->get_id(), $found[0]->get_id() );
+	}
+
+	/**
+	 * The backfill's batch takes the oldest first, so a second press resumes after it.
+	 */
+	public function testOrganizationsWithoutALocationComeBackOldestFirst() {
+		$first  = $this->make_organization( array( 'name' => 'Erste GmbH' ) );
+		$second = $this->make_organization( array( 'name' => 'Zweite GmbH' ) );
+
+		$batch = OrganizationRepository::without_locations( 1 );
+
+		$this->assertCount( 1, $batch );
+		$this->assertSame( $first->get_id(), $batch[0]->get_id() );
+
+		$this->make_location( $first );
+
+		$next = OrganizationRepository::without_locations( 1 );
+
+		$this->assertSame( $second->get_id(), $next[0]->get_id(), 'The second press did not resume where the first stopped.' );
+	}
+
+	/**
 	 * A status change fires the hook the emails hang off, with the old status.
 	 */
 	public function testStatusChangeFiresHook() {

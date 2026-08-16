@@ -501,6 +501,16 @@ The plugin has **one top-level menu**, `Admin\Menu`, and every screen registers 
   approval, no per-member state to keep in step — but every sentence the customer reads says
   *account*, with the company named as what the account is for. `LoginGate::message()`,
   `Context::purchase_blocked_reason()` and `registration/pending-approval.php` all follow it.
+- **The settings screen carries one repair, and it is a button rather than a migration.**
+  Registration has created a first location from the billing address since 0.12.0; the accounts
+  that predate it — and every account an import created from rows carrying no delivery address —
+  are the ones that look complete on the organizations list and refuse at the checkout.
+  `Settings::handle_backfill_locations()` works through `OrganizationRepository::without_locations()`
+  in batches of 200, through the same `Locations::from_billing_address()` registration uses, so a
+  billing address that is not a complete delivery address is **refused and counted** rather than
+  stored as a location the checkout would then turn down. It is not done silently on upgrade:
+  writing a delivery address for somebody else's customer is a decision a shop makes, and a
+  migration doing it by itself would leave nobody to ask about the ones it got wrong.
 - **`Admin\Notices` is the handover across a redirect.** `admin-post.php` prints nothing, so a
   handler parks its message — and, on a refusal, **the whole submission** — in a one-minute
   per-user transient. Parking only the messages is how somebody loses a fourteen-field address
@@ -949,6 +959,22 @@ but the login form — the visitor asked to sign up and the site answered by ask
 `Registration::redirect_register_action()` sends them to the registration page instead, and sends
 somebody already signed in to their account. GET only: a POST to that URL is a submission, and
 swallowing one in a redirect would lose what it carried.
+
+**A registration ends with somewhere to deliver to, derived from the billing address it just
+collected.** An organization with no location cannot check out at all — `Checkout\ShippingSelector`
+has nowhere to send the goods — so a registration that stored only the billing address handed every
+new customer a shop they could not buy from until they had typed the same address a second time.
+`Locations::from_billing_address()` is that one rule, shared with the settings screen's backfill
+below, and it is the fallback the importer has applied to a flat export since it was written.
+
+Two things about it are deliberate. **It copies only the columns a location has**, so `billing_email`
+is dropped rather than carried onto a shipping address WooCommerce puts no email on. And **a failure
+is not a failed registration**: the account, the organization and the membership are all correct by
+the time it runs, and refusing the whole registration over an address the shop's own billing rules
+accepted would be a refusal the form could not explain — the billing and delivery rule sets differ
+on purpose (`AddressFields::delivery_fields()`), so one can accept what the other turns down. What
+is left is an organization with no location, which the account screen's empty state already reports
+in the words that say why it matters.
 
 **`require_tax_id` is the one detail a site can make mandatory, and it is one predicate, not three.**
 Insisting on a VAT number is right for a shop selling to companies in the EU and wrong for one

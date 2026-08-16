@@ -128,6 +128,65 @@ final class Locations {
 	}
 
 	/**
+	 * Make the delivery location an organization's billing address already implies.
+	 *
+	 * An organization with no location cannot check out at all — `Checkout\ShippingSelector`
+	 * has nowhere to send the goods — so the one thing every organization arrives with has to
+	 * be able to become one. That is its billing address: the only address a registration is
+	 * known to have, and the address the shop is already invoicing it at. The importer has
+	 * made the same fallback since it was written, for the same reason and against the same
+	 * columns; this is that rule stated once, for registration and for the settings screen's
+	 * backfill to share.
+	 *
+	 * Only the fields a location has are copied. `billing_email` is not one of them — a
+	 * location is a shipping address, and WooCommerce puts no email on one — so it is dropped
+	 * by the loop rather than needing to be unset.
+	 *
+	 * The address goes through `save()` like any other, which is what stops this quietly
+	 * creating a location the checkout would then refuse: an incomplete or unshippable
+	 * billing address comes back as the errors it would have been marked with on the form.
+	 * That is a `WP_Error` about the address, never about the caller's own act — see the two
+	 * callers for what each does with it.
+	 *
+	 * @param Organization $organization The organization to give a location to.
+	 * @return Location|\WP_Error The location, or the errors that stopped it.
+	 */
+	public static function from_billing_address( Organization $organization ) {
+		$billing = $organization->get_billing_address();
+
+		$values = array(
+			'name'       => self::default_location_name(),
+			'is_default' => true,
+		);
+
+		foreach ( Location::ADDRESS_FIELDS as $field ) {
+			$values[ $field ] = (string) ( $billing[ $field ] ?? '' );
+		}
+
+		return self::save( $organization, null, $values );
+	}
+
+	/**
+	 * What a location derived from the billing address is called.
+	 *
+	 * The name is the label in the checkout's delivery selector, so it has to say something
+	 * the person choosing recognises. The organization's own name would not: it is already
+	 * the company line on every one of these addresses, so the row would read "Acme GmbH —
+	 * Acme GmbH, Hauptstrasse 1" and say nothing about which place it is. "Main Branch" —
+	 * "Main Campus" in educational mode — says what it is, and stays right once a second
+	 * location is added beside it.
+	 *
+	 * @return string Name.
+	 */
+	private static function default_location_name() {
+		return sprintf(
+			/* translators: %s: the singular location noun for the site's mode, for example "Branch". */
+			__( 'Main %s', 'woo-organization-accounts-pro' ),
+			Labels::location()
+		);
+	}
+
+	/**
 	 * Delete a location.
 	 *
 	 * Deleting the last one is allowed. An organization with no location cannot check out,

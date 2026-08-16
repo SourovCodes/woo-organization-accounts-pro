@@ -2927,3 +2927,55 @@ msgstr "Dein Konto wurde freigegeben. Alle darauf können jetzt bestellen."
 #: templates/emails/plain/organization-rejected.php:21
 msgid "We are not able to open your account at the moment."
 msgstr "Wir können dein Konto derzeit nicht eröffnen."
+
+#: includes/Locations/Locations.php
+msgid "Main %s"
+msgstr "Haupt-%s"
+
+#: includes/Admin/Settings.php
+msgid "Every %1$s has at least one %2$s, so every one of them can check out."
+msgstr "Jede %1$s hat mindestens eine %2$s, also können alle bestellen."
+
+#: includes/Admin/Settings.php
+msgid "One %1$s has no %2$s, so nobody on it can check out."
+msgstr "Eine %1$s hat keine %2$s, dort kann niemand bestellen."
+
+#: includes/Admin/Settings.php
+msgid "%1$d %2$s have no %3$s, so nobody on them can check out."
+msgstr "%1$d %2$s haben keine %3$s, dort kann niemand bestellen."
+
+#: includes/Admin/Settings.php
+msgid "Their billing address is the address the shop already invoices them at. This turns it into a %s they can order to, which they can rename or correct afterwards. Nothing is changed for anybody who already has one."
+msgstr "Die Rechnungsadresse ist die Adresse, an die der Shop bereits Rechnungen stellt. Daraus wird eine %s, an die geliefert werden kann; sie lässt sich danach umbenennen oder korrigieren. Wer bereits eine hat, bleibt unverändert."
+
+#: includes/Admin/Settings.php
+msgid "Up to %d at a time. Press the button again for the rest."
+msgstr "Höchstens %d auf einmal. Drücke die Schaltfläche erneut für den Rest."
+
+#: includes/Admin/Settings.php
+msgid "Create %s from billing addresses"
+msgstr "%s aus Rechnungsadressen anlegen"
+
+#: includes/Admin/Settings.php
+msgid "One %1$s was left out because its billing address is not a complete delivery address; give it a %2$s by hand."
+msgstr "Eine %1$s wurde ausgelassen, weil ihre Rechnungsadresse keine vollständige Lieferadresse ist; lege dort eine %2$s von Hand an."
+
+#: includes/Admin/Settings.php
+msgid "%1$d %2$s were left out because their billing address is not a complete delivery address; give each a %3$s by hand."
+msgstr "%1$d %2$s wurden ausgelassen, weil ihre Rechnungsadresse keine vollständige Lieferadresse ist; lege dort jeweils eine %3$s von Hand an."
+
+#: includes/Admin/Settings.php
+msgid "Every %s already has somewhere to deliver to."
+msgstr "Jede %s hat bereits ein Lieferziel."
+
+#: includes/Admin/Settings.php
+msgid "Created one %s from a billing address."
+msgstr "Eine %s wurde aus einer Rechnungsadresse angelegt."
+
+#: includes/Admin/Settings.php
+msgid "Created %1$d %2$s from billing addresses."
+msgstr "%1$d %2$s wurden aus Rechnungsadressen angelegt."
+
+#: includes/Admin/Settings.php
+msgid "%d still to go — press the button again to continue."
+msgstr "%d noch offen – drücke die Schaltfläche erneut, um fortzufahren."

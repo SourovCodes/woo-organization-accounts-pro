@@ -15,6 +15,7 @@ use WooOrgAccounts\Data\MemberRepository;
 use WooOrgAccounts\Data\Organization;
 use WooOrgAccounts\Data\OrganizationRepository;
 use WooOrgAccounts\Labels;
+use WooOrgAccounts\Locations\Locations;
 use WooOrgAccounts\LoginGate;
 use WooOrgAccounts\Members\Invitations;
 use WooOrgAccounts\Roles;
@@ -934,6 +935,22 @@ class Registration {
 
 			return new \WP_Error( 'woap_registration_failed', __( 'Registration failed. Please try again.', 'woo-organization-accounts-pro' ) );
 		}
+
+		/*
+		 * The organization can now be shipped to. Until this, a registration produced an
+		 * account that could not check out: the billing address had been collected, validated
+		 * and stored, and the checkout still had nowhere to send the goods, so the first thing
+		 * every new customer met was a delivery address they had to type again — the same one.
+		 *
+		 * A failure is not a failed registration. The account, the organization and the
+		 * membership all exist and are correct at this point, and refusing the whole
+		 * registration over an address the shop's own billing rules accepted would be a
+		 * refusal the form could not explain. What is left instead is an organization with no
+		 * location, which is a state the account screen already reports — its empty state
+		 * names what is missing and says nothing can be ordered until it exists — and which
+		 * the settings screen's backfill can fix in bulk afterwards.
+		 */
+		Locations::from_billing_address( $organization );
 
 		/**
 		 * Fires after an organization and its first admin have been created.
