@@ -32,8 +32,12 @@ jobs:
       contents: write
 
     steps:
+      # fetch-tags, because the release notes are read out of the annotated tag below
+      # and the default shallow checkout of a ref does not guarantee the tag *object*.
       - name: Check out the plugin
         uses: actions/checkout@v7
+        with:
+          fetch-tags: true
 
       - name: Set up the plugin
         uses: ./.github/actions/setup-plugin
@@ -79,6 +83,26 @@ jobs:
             *-*) prerelease="--prerelease" ;;
           esac
 
+          # The annotated tag's message is the release notes, and the release notes are
+          # this plugin's changelog: Updater tells every site admin that what changed is
+          # "recorded with the release it shipped in", and points the View details modal
+          # at /releases. --generate-notes cannot fill that in — it summarises merged
+          # pull requests, and work here lands as direct commits, so v0.13.0 and v0.13.1
+          # both published with a compare link and nothing else.
+          #
+          # Falling back rather than failing is deliberate. Publishing is gated on CI, so
+          # anything that stops this step leaves a pushed tag with no release behind it —
+          # the one state an installed copy cannot see at all, since update.json is the
+          # only thing it reads. A thin release beats an invisible one.
+          # Tested against the whole message, not its body: a one-line annotation still
+          # says more than the compare link --generate-notes falls back to. Only a
+          # lightweight tag, which has no message at all, takes the fallback.
+          notes="--generate-notes"
+          git tag -l --format='%(contents)' "$TAG" > "$RUNNER_TEMP/notes.md"
+          if [ -n "$(tr -d '[:space:]' < "$RUNNER_TEMP/notes.md")" ]; then
+            notes="--notes-file $RUNNER_TEMP/notes.md"
+          fi
+
           # update.json rides along on every release under that exact name: it is what
           # /releases/latest/download/update.json resolves to, and the only thing an
           # installed copy of the plugin reads to discover this version. A release
@@ -88,6 +112,6 @@ jobs:
             dist/woo-organization-accounts-pro-"$VERSION".zip.sha256 \
             dist/update.json \
             --title "WooCommerce Organization Accounts Pro $VERSION" \
-            --generate-notes \
             --verify-tag \
+            $notes \
             $prerelease

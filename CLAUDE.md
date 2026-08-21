@@ -1296,6 +1296,22 @@ commit first, `bin/check-version.sh <tag>` asserts the tag and the two version d
 and `bin/build-zip.sh` produces the zip, its `.sha256` and `dist/update.json`, which `gh release
 create` publishes. A tag containing a hyphen (`v0.2.0-rc.1`) is published as a pre-release.
 
+**The annotated tag's message is the release notes, and the release notes are the changelog.**
+There is no `CHANGELOG.md`, deliberately: `Updates\Updater` tells every site admin that what changed
+is "recorded with the release it shipped in" and points WordPress's *View details* modal at
+`/releases`, so a second copy in the repository would be a second answer to one question. Write the
+notes into the tag — `git tag -a v0.14.0 -m "$(cat notes.md)"` — and the workflow publishes them.
+
+`--generate-notes` is the fallback and only that. It summarises **merged pull requests**, and work
+here lands as direct commits on `main`, so it has nothing to summarise: v0.13.0 and v0.13.1 both
+published with a compare link and not one word, while the plugin was telling site admins to go there
+to find out what changed. The fallback stays rather than failing hard, because publishing is gated
+on CI and *anything* that stops that step leaves a pushed tag with no release behind it — the one
+state an installed copy cannot see at all, since `update.json` is the only thing it reads. A thin
+release beats an invisible one. That is not hypothetical either: v0.13.1 first failed to publish
+because Packagist's advisory API returned a 502, which is why the audit now passes
+`--ignore-unreachable`.
+
 The zip carries only what WordPress runs: the main file, `includes/`, `assets/`, `templates/`,
 `languages/`, `uninstall.php` and a `--no-dev` `vendor/`.
 
