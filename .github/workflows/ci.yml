@@ -90,8 +90,13 @@ jobs:
         with:
           php-version: '8.2'
 
+      # --ignore-unreachable so a Packagist outage cannot block a release. The advisory
+      # API returned a 502 during the v0.13.1 release: the audit failed, "Publish the
+      # release" is gated on CI, and the tag ended up with no release behind it — which
+      # is the one state an installed copy cannot see at all. A real advisory still
+      # fails the build; only an unreachable API is shrugged off.
       - name: Audit the locked dependencies
-        run: composer audit --locked --abandoned=report
+        run: composer audit --locked --abandoned=report --ignore-unreachable
 
   test:
     name: Tests (PHP ${{ matrix.php }}, WP ${{ matrix.wordpress }}, WC ${{ matrix.woocommerce }})
