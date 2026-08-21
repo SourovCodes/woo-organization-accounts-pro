@@ -12,6 +12,7 @@ use Automattic\WooCommerce\StoreApi\Schemas\V1\CartSchema;
 use Automattic\WooCommerce\StoreApi\Schemas\V1\CheckoutSchema;
 use WooOrgAccounts\Checkout\BillingLock;
 use WooOrgAccounts\Checkout\ShippingSelector;
+use WooOrgAccounts\Datasheet\Download as Datasheet;
 use WooOrgAccounts\Labels;
 use WooOrgAccounts\Membership\Context;
 
@@ -112,6 +113,8 @@ class CheckoutIntegration implements IntegrationInterface {
 				'locations'             => array(),
 				'location_label'        => '',
 				'custom_label'          => '',
+				'datasheet_url'         => '',
+				'datasheet_label'       => '',
 			);
 		}
 
@@ -130,6 +133,15 @@ class CheckoutIntegration implements IntegrationInterface {
 				Labels::location()
 			),
 			'custom_label'          => __( 'A different address (enter it below)', 'woo-organization-accounts-pro' ),
+
+			/*
+			 * Empty rather than absent when the customer may not buy, so the block has
+			 * one thing to test — the same shape every other key here takes. The nonce
+			 * inside it is minted per Store API request, which is per-session and never
+			 * page-cached.
+			 */
+			'datasheet_url'         => Datasheet::may_download_cart() ? Datasheet::cart_url() : '',
+			'datasheet_label'       => Datasheet::label(),
 		);
 	}
 
@@ -183,6 +195,8 @@ class CheckoutIntegration implements IntegrationInterface {
 			),
 			'location_label'        => array_merge( $string, array( 'description' => __( 'Label for the location selector.', 'woo-organization-accounts-pro' ) ) ),
 			'custom_label'          => array_merge( $string, array( 'description' => __( 'Label for the one-off address option.', 'woo-organization-accounts-pro' ) ) ),
+			'datasheet_url'         => array_merge( $string, array( 'description' => __( 'Link that downloads the product data for the cart.', 'woo-organization-accounts-pro' ) ) ),
+			'datasheet_label'       => array_merge( $string, array( 'description' => __( 'Label for the product data download.', 'woo-organization-accounts-pro' ) ) ),
 		);
 	}
 

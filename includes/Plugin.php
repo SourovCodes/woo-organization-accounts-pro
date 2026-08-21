@@ -22,6 +22,7 @@ use WooOrgAccounts\Checkout\BillingLock;
 use WooOrgAccounts\Checkout\Blocks\CheckoutIntegration;
 use WooOrgAccounts\Checkout\Gate;
 use WooOrgAccounts\Checkout\ShippingSelector;
+use WooOrgAccounts\Datasheet\Download as Datasheet;
 use WooOrgAccounts\Emails\Emails;
 use WooOrgAccounts\Frontend\AccountHandlers;
 use WooOrgAccounts\Frontend\AddressFields;
@@ -144,6 +145,14 @@ final class Plugin {
 		( new MyAccount() )->register();
 		( new AccountHandlers() )->register();
 		( new OrderDetails() )->register();
+
+		/*
+		 * Outside the is_admin() branch, and registered here rather than beside the
+		 * admin screens: four of its five surfaces are the customer's own — the cart,
+		 * the order, both orders lists — and the wp-admin one is an `admin_post_`
+		 * action, which only fires on admin-post.php whoever registered it.
+		 */
+		( new Datasheet() )->register();
 
 		( new Gate() )->register();
 		( new BillingLock() )->register();

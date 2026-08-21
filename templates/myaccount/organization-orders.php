@@ -14,6 +14,7 @@
  */
 
 use WooOrgAccounts\Checkout\OrderMeta;
+use WooOrgAccounts\Datasheet\Download as Datasheet;
 use WooOrgAccounts\Frontend\MyAccount;
 use WooOrgAccounts\Labels;
 
@@ -156,6 +157,11 @@ $woap_cell = static function ( $column ) use ( $woap_columns ) {
 							<a href="<?php echo esc_url( $woap_order->get_view_order_url() ); ?>" class="woocommerce-button button view">
 								<?php esc_html_e( 'View', 'woo-organization-accounts-pro' ); ?>
 							</a>
+							<?php if ( Datasheet::may_download_order( $woap_order ) ) : ?>
+								<a href="<?php echo esc_url( Datasheet::order_url( $woap_order ) ); ?>" class="woocommerce-button button btn-style-bordered">
+									<?php echo esc_html( Datasheet::short_label() ); ?>
+								</a>
+							<?php endif; ?>
 						</td>
 					</tr>
 				<?php endforeach; ?>

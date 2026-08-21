@@ -10,6 +10,7 @@ namespace WooOrgAccounts\Admin;
 use Automattic\WooCommerce\Utilities\OrderUtil;
 use WooOrgAccounts\Checkout\OrderMeta;
 use WooOrgAccounts\Data\OrganizationRepository;
+use WooOrgAccounts\Datasheet\Download as Datasheet;
 use WooOrgAccounts\Labels;
 
 defined( 'ABSPATH' ) || exit;
@@ -139,6 +140,8 @@ class OrderColumn {
 				)
 			);
 
+			$this->render_datasheet_link( $order );
+
 			return;
 		}
 
@@ -189,5 +192,29 @@ class OrderColumn {
 				esc_html( $buyer->display_name )
 			);
 		}
+
+		$this->render_datasheet_link( $order );
+	}
+
+	/**
+	 * Offer the order's product data to shop staff.
+	 *
+	 * Printed for an order with no organization as well as for one with. The datasheet
+	 * describes what was bought, which is a fact about the products and not about the
+	 * account — the panel is only where the button fits, not what it is about.
+	 *
+	 * @param \WC_Order $order The order being edited.
+	 * @return void
+	 */
+	private function render_datasheet_link( \WC_Order $order ) {
+		if ( ! current_user_can( 'edit_shop_orders' ) ) {
+			return;
+		}
+
+		printf(
+			'<p><a href="%1$s" class="button">%2$s</a></p>',
+			esc_url( Datasheet::admin_order_url( $order ) ),
+			esc_html( Datasheet::label() )
+		);
 	}
 }

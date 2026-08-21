@@ -186,4 +186,52 @@
 		},
 		scope: 'woocommerce-checkout'
 	} );
+
+	/**
+	 * The link that downloads the product data for everything in the cart.
+	 *
+	 * The Cart block only. One script is registered for both blocks, so without this
+	 * test the button would also appear at the checkout, where the customer is paying
+	 * rather than collecting data — and where the same file is one page away on the
+	 * order they are about to place.
+	 *
+	 * @return {Object|null} Element tree, or null when there is nothing to offer.
+	 */
+	function DatasheetLink() {
+		var data = organizationData();
+
+		if ( ! data || ! data.datasheet_url ) {
+			return null;
+		}
+
+		if ( ! document.querySelector( '.wp-block-woocommerce-cart' ) ) {
+			return null;
+		}
+
+		return el(
+			'p',
+			{ className: 'woap-blocks-datasheet' },
+			el(
+				'a',
+				{
+					href: data.datasheet_url,
+					className: 'wc-block-components-button wp-element-button outlined'
+				},
+				data.datasheet_label || __( 'Download datasheet', 'woo-organization-accounts-pro' )
+			)
+		);
+	}
+
+	if ( wc.blocksCheckout.ExperimentalOrderMeta ) {
+		registerPlugin( 'woap-cart-datasheet', {
+			render: function () {
+				return el(
+					wc.blocksCheckout.ExperimentalOrderMeta,
+					null,
+					el( DatasheetLink, null )
+				);
+			},
+			scope: 'woocommerce-checkout'
+		} );
+	}
 }( window.wp, window.wc ) );

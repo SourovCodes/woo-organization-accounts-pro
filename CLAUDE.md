@@ -685,6 +685,85 @@ no JSX, no bundler** — so the plugin still builds with nothing but Composer an
 `node --check assets/js` stays meaningful. Nothing in that script enforces anything; the server
 does.
 
+### Product datasheets
+
+The organizations buying here resell what they buy, so what they want out of a cart or an order is
+not a receipt but the **product data** behind it — article number, EAN, manufacturer, description,
+the price they paid and the recommended retail price, plus the image URLs — in the layout their
+supplier feed already arrives in, ready to load into their own shop. `Datasheet\Sheet` builds that
+file; `Datasheet\Download` offers it and serves it.
+
+**One file per cart and one per order, never per line.** A button on every row would make a
+fourteen-line order into fourteen downloads for somebody to join up themselves.
+
+- **The header row is the one set of strings in this plugin that is deliberately not translated.**
+  It is a machine format whose column names the consuming system matches on, so a German shop has
+  to send exactly the same header as an English one. Same for the filenames. `Sheet::columns()`
+  therefore carries no text domain, and that is a rule rather than an oversight.
+- **Every row is exactly as wide as the header**, which the gallery columns are what threaten: a
+  product with two images and one with twelve have to produce the same number of fields, so the
+  gallery is truncated at nine and padded to nine. A ragged row is invisible to whoever generated
+  it and turns into the *next* column's data for whoever reads it — which is why the test is the
+  invariant `testEveryRowIsAsWideAsTheHeader` and not a case per product shape.
+- **A variation inherits what it does not carry.** It has its own SKU, GTIN, price and image, rarely
+  a description, and *never* a brand — those terms are on the parent post. Each field falls back to
+  the parent through one `inherited()` helper rather than seven ad-hoc branches.
+- **`Langtext` keeps its markup and loses its entities and its line breaks**, and both of those are
+  about what the shop's product sync actually stores. It writes numeric character references, so a
+  description arrives holding `&#xFC;` rather than `ü` — passed through, every umlaut in the file
+  reads as an escape sequence to anything treating the column as text. And 54 of the first 400
+  products on the test site hold a line break, which a quoted field carries perfectly legally and
+  which turns one record into several lines for anything splitting the file by line before parsing
+  it. So the description is `html_entity_decode()`d and every whitespace run becomes one space. The
+  markup itself stays, because `<br>` and `<li>` are what a consumer that renders HTML wants and
+  whitespace between tags means nothing there. The cost of decoding fully rather than numerically
+  is that a description escaping a tag as `&lt;br&gt;` to *show* it comes out as a real tag; nothing
+  in this shop's data does that, and the umlauts are in all of it.
+- **A missing value is an empty column, never `0`.** `_wksync_msrp` is the recommended retail price
+  the shop's product sync records; a shop that has never recorded one must not be made to look as
+  though the product were free. Same for a product with no price, no GTIN and no brand.
+- **The file is written the way the feed is** — semicolons, CRLF, UTF-8 — **plus a BOM**, which the
+  feed does not have. That is the same deliberate choice `Import\Report::start()` makes and for the
+  same reason: this file is opened in Excel by a person, and Excel reads a BOM-less UTF-8 CSV as
+  Windows-1252, which turns every umlaut in a German product description into mojibake. Every
+  RFC 4180 parser skips a BOM. The line breaks are normalised in one pass rather than replacing
+  `\n` with `\r\n`, because a description that already holds CRLF would otherwise come out CR CR LF.
+- **`fputcsv()` is deliberately not used here**, unlike in `Import\Report`, and it was what this was
+  written with first. PHP quotes any field containing a **space**, so `EK / VK1` left the header as
+  `"EK / VK1"` and every product name on the site was quoted too. Both files parse to the same
+  values — but the feed this one has to look like quotes nothing it does not have to, and a
+  consumer matching a column name as a literal string sees a different name. `Sheet::field()`
+  applies the standard's own rule instead: quote for the delimiter, a double quote or a line break,
+  and nothing else. `testOnlyTheFieldsThatHaveToBeQuotedAre` is that bug. Where the file is written
+  for a *shop* to read rather than for another system to parse — the import report — `fputcsv()` is
+  still the right call, escape argument and all.
+- **`Sheet::render()` returns a string and `Download` sends it.** That is the separation
+  `Import\Report` keeps between building rows and `Admin\Import::handle_report()` streaming them,
+  and it is the only reason any of this is assertable — a handler that ends in `exit` is not.
+
+**The frontend download is on `template_redirect` and wp-admin's is on `admin_post_`**, which is
+the split the *Security* rules above set out: WooCommerce decides what to load from `is_admin()`,
+so nothing on `admin-post.php` has a cart to read. Both entry points hand off to one `serve()`.
+The links are ordinary nonced GETs — nothing is written, and two of the five places they appear are
+the Actions column of a table, where a `<form>` would be the wrong shape.
+
+**Authorisation reuses the answers that already exist rather than inventing a capability.** The
+cart asks `Context::can_purchase()`, which is what `Checkout\Gate` asks before letting anyone near
+the cart at all. An order asks WooCommerce's own `view_order`, which is what `Frontend\OrderDetails`
+asks and which routes through `Capabilities::resolve_order_capabilities()` — so an organization
+admin gets a colleague's order and a member of another organization does not. A new
+`woap_view_product_data` capability would have been a second answer to a question already settled,
+and would have had to be added to `Roles::capabilities()`, `Roles::role_capabilities()` and three
+test suites to say the same thing. The same check decides whether the *button* renders, so a button
+never appears where the download would refuse.
+
+Five surfaces, and the block cart is one of them because WooCommerce 11 gives a new store the Cart
+block by default — the same both-surfaces rule `Gate` and `ShippingSelector` follow.
+`CheckoutIntegration::cart_data()` publishes `datasheet_url` (empty, not absent, when the customer
+may not buy — the shape every other key there takes), and the block script renders a link from it.
+**That fill tests for the Cart block on the page**, because one script is registered for both
+blocks and the checkout is where somebody is paying, not collecting data.
+
 ### The REST surface a till talks to
 
 **`docs/rest-api.md` is the client-facing reference** — routes, parameters, payloads, error codes

@@ -35,23 +35,23 @@ msgid "Sourov Biswas"
 msgstr ""
 
 #. translators: %s: the organization noun for the site's mode, for example "Company".
-#: includes/Admin/OrderColumn.php:136
+#: includes/Admin/OrderColumn.php:137
 #, php-format
 msgid "This order is not linked to a %s."
 msgstr "Diese Bestellung ist keiner %s zugeordnet."
 
-#: includes/Admin/OrderColumn.php:161
+#: includes/Admin/OrderColumn.php:164
 msgid "The account has since been deleted. The order keeps the details it was placed with."
 msgstr "Das Konto wurde inzwischen gelöscht. Die Bestellung behält die Daten, mit denen sie aufgegeben wurde."
 
 #. translators: %s: the organization's current name.
-#: includes/Admin/OrderColumn.php:169
+#: includes/Admin/OrderColumn.php:172
 #, php-format
 msgid "Now called %s."
 msgstr "Heißt jetzt %s."
 
-#: includes/Admin/OrderColumn.php:187
-#: templates/myaccount/organization-orders.php:37
+#: includes/Admin/OrderColumn.php:190
+#: templates/myaccount/organization-orders.php:38
 msgid "Placed by"
 msgstr "Bestellt von"
 
@@ -126,7 +126,7 @@ msgstr "USt-IdNr. / Steuernummer"
 #: templates/myaccount/invitations.php:38
 #: templates/myaccount/member-form.php:133
 #: templates/myaccount/members.php:49
-#: templates/myaccount/organization-orders.php:39
+#: templates/myaccount/organization-orders.php:40
 msgid "Status"
 msgstr "Status"
 
@@ -216,17 +216,17 @@ msgid "No orders yet."
 msgstr "Noch keine Bestellungen."
 
 #: includes/Admin/Organizations.php:933
-#: templates/myaccount/organization-orders.php:35
+#: templates/myaccount/organization-orders.php:36
 msgid "Order"
 msgstr "Bestellung"
 
 #: includes/Admin/Organizations.php:934
-#: templates/myaccount/organization-orders.php:36
+#: templates/myaccount/organization-orders.php:37
 msgid "Date"
 msgstr "Datum"
 
 #: includes/Admin/Organizations.php:937
-#: templates/myaccount/organization-orders.php:40
+#: templates/myaccount/organization-orders.php:41
 msgid "Total"
 msgstr "Summe"
 
@@ -445,58 +445,58 @@ msgid "Orders are billed to your %s. Ask an administrator to change the billing 
 msgstr "Bestellungen werden Ihrer %s in Rechnung gestellt. Wenden Sie sich an eine Administratorin oder einen Administrator, um die Rechnungsadresse zu ändern."
 
 #. translators: %s: the singular location noun for the site's mode, for example "Branch".
-#: includes/Checkout/Blocks/CheckoutIntegration.php:129
+#: includes/Checkout/Blocks/CheckoutIntegration.php:132
 #: templates/checkout/location-selector.php:48
 #, php-format
 msgid "Deliver to which %s?"
 msgstr "An welche %s soll geliefert werden?"
 
-#: includes/Checkout/Blocks/CheckoutIntegration.php:132
+#: includes/Checkout/Blocks/CheckoutIntegration.php:135
 #: templates/checkout/location-selector.php:74
 msgid "A different address (enter it below)"
 msgstr "Eine andere Adresse (unten eingeben)"
 
-#: includes/Checkout/Blocks/CheckoutIntegration.php:150
+#: includes/Checkout/Blocks/CheckoutIntegration.php:162
 msgid "Whether the customer belongs to an organization."
 msgstr "Ob der Kunde zu einer Organisation gehört."
 
-#: includes/Checkout/Blocks/CheckoutIntegration.php:156
+#: includes/Checkout/Blocks/CheckoutIntegration.php:168
 msgid "Whether the customer may check out."
 msgstr "Ob der Kunde bestellen darf."
 
-#: includes/Checkout/Blocks/CheckoutIntegration.php:161
+#: includes/Checkout/Blocks/CheckoutIntegration.php:173
 msgid "Why the customer may not check out."
 msgstr "Warum der Kunde nicht bestellen darf."
 
-#: includes/Checkout/Blocks/CheckoutIntegration.php:162
+#: includes/Checkout/Blocks/CheckoutIntegration.php:174
 msgid "The name of the customer's organization."
 msgstr "Der Name der Organisation des Kunden."
 
-#: includes/Checkout/Blocks/CheckoutIntegration.php:164
+#: includes/Checkout/Blocks/CheckoutIntegration.php:176
 msgid "The organization billing address every order is billed to."
 msgstr "Die Rechnungsadresse der Organisation, an die jede Bestellung fakturiert wird."
 
-#: includes/Checkout/Blocks/CheckoutIntegration.php:170
+#: includes/Checkout/Blocks/CheckoutIntegration.php:182
 msgid "Explanation shown above the locked billing address."
 msgstr "Hinweis, der über der gesperrten Rechnungsadresse erscheint."
 
-#: includes/Checkout/Blocks/CheckoutIntegration.php:172
+#: includes/Checkout/Blocks/CheckoutIntegration.php:184
 msgid "Whether a one-off shipping address is allowed."
 msgstr "Ob eine einmalige Lieferadresse erlaubt ist."
 
-#: includes/Checkout/Blocks/CheckoutIntegration.php:178
+#: includes/Checkout/Blocks/CheckoutIntegration.php:190
 msgid "The locations this member may ship to."
 msgstr "Die Standorte, an die dieses Mitglied liefern lassen darf."
 
-#: includes/Checkout/Blocks/CheckoutIntegration.php:184
+#: includes/Checkout/Blocks/CheckoutIntegration.php:196
 msgid "Label for the location selector."
 msgstr "Beschriftung der Standortauswahl."
 
-#: includes/Checkout/Blocks/CheckoutIntegration.php:185
+#: includes/Checkout/Blocks/CheckoutIntegration.php:197
 msgid "Label for the one-off address option."
 msgstr "Beschriftung der Option für eine einmalige Adresse."
 
-#: includes/Checkout/Blocks/CheckoutIntegration.php:209
+#: includes/Checkout/Blocks/CheckoutIntegration.php:223
 msgid "The organization location this order is being delivered to."
 msgstr "Der Standort der Organisation, an den diese Bestellung geliefert wird."
 
@@ -1124,7 +1124,7 @@ msgstr "Läuft ab"
 #: templates/myaccount/invitations.php:40
 #: templates/myaccount/locations.php:32
 #: templates/myaccount/members.php:50
-#: templates/myaccount/organization-orders.php:41
+#: templates/myaccount/organization-orders.php:42
 msgid "Actions"
 msgstr "Aktionen"
 
@@ -1249,30 +1249,30 @@ msgid "Remove from this account"
 msgstr "Aus diesem Konto entfernen"
 
 #. translators: %s: the organization noun for the site's mode, for example "Company".
-#: templates/myaccount/organization-orders.php:73
+#: templates/myaccount/organization-orders.php:74
 #, php-format
 msgid "This %s has not placed any orders yet."
 msgstr "Diese %s hat noch nichts bestellt."
 
-#: templates/myaccount/organization-orders.php:144
+#: templates/myaccount/organization-orders.php:145
 msgid "Unknown"
 msgstr "Unbekannt"
 
-#: templates/myaccount/organization-orders.php:157
+#: templates/myaccount/organization-orders.php:158
 msgid "View"
 msgstr "Ansehen"
 
-#: templates/myaccount/organization-orders.php:169
+#: templates/myaccount/organization-orders.php:175
 msgid "Previous"
 msgstr "Zurück"
 
 #. translators: 1: current page, 2: total pages.
-#: templates/myaccount/organization-orders.php:178
+#: templates/myaccount/organization-orders.php:184
 #, php-format
 msgid "Page %1$d of %2$d"
 msgstr "Seite %1$d von %2$d"
 
-#: templates/myaccount/organization-orders.php:188
+#: templates/myaccount/organization-orders.php:194
 msgid "Next"
 msgstr "Weiter"
 
@@ -1651,13 +1651,13 @@ msgid "Manage"
 msgstr "Verwalten"
 
 #. translators: %s: the plural member noun for the site's mode, for example "Employees".
-#: templates/myaccount/organization-orders.php:84
+#: templates/myaccount/organization-orders.php:85
 #, php-format
 msgid "Every order any of your %s places appears here, whoever placed it."
 msgstr "Jede Bestellung Ihrer %s erscheint hier, unabhängig davon, wer sie aufgegeben hat."
 
 #. translators: %d: total number of orders the organization has placed.
-#: templates/myaccount/organization-orders.php:100
+#: templates/myaccount/organization-orders.php:101
 #, php-format
 msgid "%d order, newest first."
 msgid_plural "%d orders, newest first."
@@ -3007,3 +3007,28 @@ msgstr "%1$d %2$s wurden aus Rechnungsadressen angelegt."
 #, php-format
 msgid "%d still to go — press the button again to continue."
 msgstr "%d noch offen – drücken Sie die Schaltfläche erneut, um fortzufahren."
+
+#: includes/Checkout/Blocks/CheckoutIntegration.php:198
+msgid "Link that downloads the product data for the cart."
+msgstr "Link zum Herunterladen der Produktdaten für den Warenkorb."
+
+#: includes/Checkout/Blocks/CheckoutIntegration.php:199
+msgid "Label for the product data download."
+msgstr "Beschriftung für den Download der Produktdaten."
+
+#: includes/Datasheet/Download.php:87
+#: assets/js/blocks/checkout.js:220
+msgid "Download datasheet"
+msgstr "Datenblatt herunterladen"
+
+#: includes/Datasheet/Download.php:96
+msgid "Datasheet"
+msgstr "Datenblatt"
+
+#: includes/Datasheet/Download.php:373
+msgid "There is no product data to download."
+msgstr "Es gibt keine Produktdaten zum Herunterladen."
+
+#: includes/Datasheet/Download.php:402
+msgid "You are not allowed to download this product data."
+msgstr "Sie dürfen diese Produktdaten nicht herunterladen."
