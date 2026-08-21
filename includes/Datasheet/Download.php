@@ -25,9 +25,9 @@ defined( 'ABSPATH' ) || exit;
  * `admin_post_` is the right door, and `Admin\Import::handle_report()` already uses it —
  * so this registers both and hands both to one `serve()`.
  *
- * The links are ordinary GETs carrying a nonce, because two of the five places they
- * appear are the Actions column of a table, where a `<form>` would be the wrong shape.
- * Nothing is written, so a GET says what the request is.
+ * The links are ordinary GETs carrying a nonce, because most of the places they appear
+ * are the Actions column of a table, where a `<form>` would be the wrong shape. Nothing
+ * is written, so a GET says what the request is.
  *
  * Authorisation reuses the answers that already exist rather than inventing a
  * capability. The cart asks `Context::can_purchase()`, which is what `Checkout\Gate`
@@ -73,8 +73,8 @@ class Download {
 		add_action( 'template_redirect', array( $this, 'maybe_download' ) );
 		add_action( 'admin_post_' . self::ADMIN_ACTION, array( $this, 'download_in_admin' ) );
 
+		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_styles' ) );
 		add_action( 'woocommerce_after_cart_table', array( $this, 'render_cart_button' ) );
-		add_action( 'woocommerce_order_details_after_order_table', array( $this, 'render_order_button' ) );
 		add_filter( 'woocommerce_my_account_my_orders_actions', array( $this, 'add_orders_list_action' ), 10, 2 );
 	}
 
@@ -223,24 +223,15 @@ class Download {
 	}
 
 	/**
-	 * Print the button under an order's items.
+	 * Add the datasheet to an order's actions.
 	 *
-	 * Fires on the view-order screen and on order-received alike, both of which render
-	 * the same template.
-	 *
-	 * @param \WC_Order $order The order being shown.
-	 * @return void
-	 */
-	public function render_order_button( $order ) {
-		if ( ! $order instanceof \WC_Order || ! self::may_download_order( $order ) ) {
-			return;
-		}
-
-		$this->render_button( self::order_url( $order ), self::label() );
-	}
-
-	/**
-	 * Add the datasheet to the actions on WooCommerce's own orders list.
+	 * **This one filter covers all three order screens**, which is not obvious and is
+	 * why there is no second hook for the order itself. WooCommerce's own
+	 * `order/order-details.php` renders `wc_get_account_orders_actions()` in an
+	 * "Actions:" row of its footer, and that template is what both the view-order screen
+	 * and order-received print. Adding a button on
+	 * `woocommerce_order_details_after_order_table` as well — which is what this did
+	 * first — put two of them on the same page, ninety pixels apart.
 	 *
 	 * @param array     $actions The actions for this row.
 	 * @param \WC_Order $order   The order.
@@ -262,8 +253,15 @@ class Download {
 	/**
 	 * Print one download button.
 	 *
-	 * Woodmart already styles `.button`; `btn-style-bordered` picks its secondary
-	 * variant, which is what this is beside the cart's own primary actions.
+	 * `.button` alone, which Woodmart already styles as its secondary grey button —
+	 * the same weight as *Update basket* beside it, and a step below the checkout call
+	 * to action, which is what a download of the data belongs at.
+	 *
+	 * **`btn-style-bordered` is deliberately not added.** The theme's selector for it is
+	 * `.btn.btn-style-bordered`, so on a `.button` it matches nothing at all: the class
+	 * looked like it was choosing a variant and was choosing nothing, which is worse
+	 * than not asking, because the button then takes whatever the surrounding context
+	 * gives it — grey in the cart, solid primary in an order's footer.
 	 *
 	 * @param string $url   Where it goes.
 	 * @param string $label What it says.
@@ -271,9 +269,45 @@ class Download {
 	 */
 	private function render_button( $url, $label ) {
 		printf(
-			'<p class="woap-datasheet"><a href="%1$s" class="button btn-style-bordered woap-datasheet__link">%2$s</a></p>',
+			'<p class="woap-datasheet"><a href="%1$s" class="button woap-datasheet__link">%2$s</a></p>',
 			esc_url( $url ),
 			esc_html( $label )
+		);
+	}
+
+	/**
+	 * Give the cart's button room to breathe.
+	 *
+	 * Woodmart makes the coupon field and *Update basket* the last row of the cart
+	 * table, so a paragraph printed after the table lands directly under the coupon box
+	 * with no gap at all — reading as part of the coupon rather than as an action about
+	 * the cart. One margin fixes it.
+	 *
+	 * The second rule is Woodmart's own breakpoint. Below 768.98px the theme gives every
+	 * button in the cart the full width of the form — *Update basket* and *Apply coupon*
+	 * both — so a button left at its intrinsic width is the one ragged edge on the
+	 * screen. The figure is the theme's and was read off the rendered page rather than
+	 * guessed: at 768px the update button matches the form's width and at 800px it does
+	 * not.
+	 *
+	 * Registered against no file, so this is a `<style>` tag rather than a request for
+	 * three declarations. It is our own class, which the theme does not style, so
+	 * nothing here can tie with `base.css` and the load-order trap that catches theme
+	 * parts does not apply.
+	 *
+	 * @return void
+	 */
+	public function enqueue_styles() {
+		if ( ! function_exists( 'is_cart' ) || ! is_cart() ) {
+			return;
+		}
+
+		wp_register_style( 'woap-datasheet', false, array(), WOAP_VERSION );
+		wp_enqueue_style( 'woap-datasheet' );
+		wp_add_inline_style(
+			'woap-datasheet',
+			'.woap-datasheet{margin-top:20px;}'
+			. '@media(max-width:768.98px){.woap-datasheet__link{display:block;width:100%;text-align:center;}}'
 		);
 	}
 

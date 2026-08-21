@@ -158,7 +158,7 @@ $woap_cell = static function ( $column ) use ( $woap_columns ) {
 								<?php esc_html_e( 'View', 'woo-organization-accounts-pro' ); ?>
 							</a>
 							<?php if ( Datasheet::may_download_order( $woap_order ) ) : ?>
-								<a href="<?php echo esc_url( Datasheet::order_url( $woap_order ) ); ?>" class="woocommerce-button button btn-style-bordered">
+								<a href="<?php echo esc_url( Datasheet::order_url( $woap_order ) ); ?>" class="woocommerce-button button">
 									<?php echo esc_html( Datasheet::short_label() ); ?>
 								</a>
 							<?php endif; ?>

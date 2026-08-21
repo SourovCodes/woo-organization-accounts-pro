@@ -280,9 +280,18 @@ installed.
   `grep -c '\f157' wp-content/themes/woodmart/css/style.min.css` — because CI has no theme to check
   it against, and `AccountTest::testNavigationIconsAreGlyphsTheThemeAssigns` can only hold the list
   to the ones already verified that way.
-- **Buttons take Woodmart's colour variants.** `.button` is already the theme's button; adding
-  `btn-color-primary` or `btn-style-bordered` picks the variant. `.wd-login-title` is deliberately
-  *not* used: it carries no styling at all and exists only for the theme's login-tabs script.
+- **Buttons take Woodmart's colour variants — but `btn-style-bordered` needs `.btn`, not
+  `.button`.** This paragraph said the two were interchangeable until 0.13.1, and they are not: the
+  theme's rule is `.btn.btn-style-bordered`, so on a `.button` the class matches nothing at all. It
+  is the worst kind of dead class, because it *looks* like the variant was chosen and the button
+  then silently takes whatever the surrounding context gives it — the datasheet button came out
+  grey in the cart and solid primary in an order's footer from one line of markup. Five templates
+  still carry the inert combination (`registration/pending-approval.php`,
+  `myaccount/organization-orders.php` twice for its pagination, `myaccount/member-form.php`); they
+  render as Woodmart's default grey button, which is what those screens want anyway, so they are
+  left alone rather than silently restyled. Add the class only on a `.btn`. `.wd-login-title` is
+  deliberately *not* used: it carries no styling at all and exists only for the theme's login-tabs
+  script.
 - **The registration screens use `wd-registration-page`**, the theme's centred 1000px container.
   The invitation form adds `wd-no-registration`, which narrows it to 450px; the organization
   registration form must not, because it would squeeze a twenty-field form including a full billing
@@ -757,7 +766,22 @@ and would have had to be added to `Roles::capabilities()`, `Roles::role_capabili
 test suites to say the same thing. The same check decides whether the *button* renders, so a button
 never appears where the download would refuse.
 
-Five surfaces, and the block cart is one of them because WooCommerce 11 gives a new store the Cart
+**One filter covers all three order screens, and that is not obvious.** WooCommerce's own
+`order/order-details.php` renders `wc_get_account_orders_actions()` in an *Actions:* row of its
+footer, and that template is what the view-order screen and order-received both print — so
+`woocommerce_my_account_my_orders_actions` reaches the orders list *and* the order itself. Adding a
+button on `woocommerce_order_details_after_order_table` as well, which is what this did first, put
+two identical buttons on one page ninety pixels apart. `testAnOrderScreenOffersTheDatasheetOnce`
+asserts the count from the filter rather than the absence of the hook, so the same mistake made a
+third way still fails.
+
+The cart is the one surface whose markup is ours, and it needs two declarations of its own:
+Woodmart makes the coupon box the last row of the cart table, so a paragraph after the table butts
+straight against it, and below the theme's 768.98px breakpoint every other button in the cart is
+full width. Both are inline styles on a handle registered against no file — a `<style>` tag rather
+than a request. The breakpoint was read off the rendered page, not guessed.
+
+The block cart is a surface too, because WooCommerce 11 gives a new store the Cart
 block by default — the same both-surfaces rule `Gate` and `ShippingSelector` follow.
 `CheckoutIntegration::cart_data()` publishes `datasheet_url` (empty, not absent, when the customer
 may not buy — the shape every other key there takes), and the block script renders a link from it.

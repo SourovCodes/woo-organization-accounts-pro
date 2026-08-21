@@ -426,6 +426,71 @@ class DatasheetTest extends TestCase {
 	}
 
 	/**
+	 * The order screens get exactly one button, from the actions filter.
+	 *
+	 * WooCommerce's own `order/order-details.php` renders
+	 * `wc_get_account_orders_actions()` in an "Actions:" row of its footer, and that
+	 * template is what the view-order screen and order-received both print. So a second
+	 * hook on `woocommerce_order_details_after_order_table` — which is what this had at
+	 * first — puts two identical buttons on the same page, ninety pixels apart.
+	 *
+	 * @return void
+	 */
+	public function testAnOrderScreenOffersTheDatasheetOnce() {
+		$download = new Download();
+		$download->register();
+
+		$this->assertFalse(
+			has_action( 'woocommerce_order_details_after_order_table', array( $download, 'render_order_button' ) ),
+			'The order details template already renders the actions filter.'
+		);
+		$this->assertNotFalse(
+			has_filter( 'woocommerce_my_account_my_orders_actions', array( $download, 'add_orders_list_action' ) )
+		);
+
+		$organization = $this->make_organization();
+		$member       = $this->make_member( $organization, Member::ROLE_ADMIN );
+
+		$order = wc_create_order( array( 'customer_id' => $member->get_user_id() ) );
+		$order->add_product( $this->make_product(), 1 );
+		$order->update_meta_data( OrderMeta::ORGANIZATION_ID, $organization->get_id() );
+		$order->save();
+
+		$this->act_as( $member );
+
+		$actions = wc_get_account_orders_actions( wc_get_order( $order->get_id() ) );
+		$ours    = array_filter(
+			$actions,
+			static function ( $action ) {
+				return false !== strpos( $action['url'], 'woap_datasheet' );
+			}
+		);
+
+		$this->assertCount( 1, $ours, 'The order carries exactly one datasheet action.' );
+	}
+
+	/**
+	 * The button asks for no theme variant it will not get.
+	 *
+	 * Woodmart's selector is `.btn.btn-style-bordered`, so on a `.button` the class
+	 * matches nothing — it looked like it was choosing a variant and was choosing
+	 * nothing, leaving the button to take whatever the surrounding context gave it:
+	 * grey in the cart, solid primary in an order's footer.
+	 *
+	 * @return void
+	 */
+	public function testTheButtonDoesNotAskForAVariantItCannotGet() {
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- Reading a file this plugin ships.
+		$source = (string) file_get_contents( WOAP_PLUGIN_DIR . 'includes/Datasheet/Download.php' );
+
+		$this->assertStringNotContainsString(
+			'class="button btn-style-bordered',
+			$source,
+			'btn-style-bordered needs .btn, not .button.'
+		);
+	}
+
+	/**
 	 * The frontend download is handled on `template_redirect`.
 	 *
 	 * Structural, in the shape `AccountHandlersTest` uses: a handler that drifts onto
