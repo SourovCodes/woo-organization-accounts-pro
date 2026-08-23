@@ -65,6 +65,24 @@ class Download {
 	const ADMIN_ACTION = 'woap_datasheet';
 
 	/**
+	 * Query variable naming which file format is wanted.
+	 */
+	const FORMAT_VAR = 'woap_format';
+
+	/**
+	 * The feed's own format, and the default.
+	 *
+	 * Default because it is what the 0.13 links carried before a choice existed, so a
+	 * bookmarked or emailed URL from then still resolves to the file it named.
+	 */
+	const FORMAT_CSV = 'csv';
+
+	/**
+	 * A spreadsheet, for opening rather than parsing.
+	 */
+	const FORMAT_XLSX = 'xlsx';
+
+	/**
 	 * Register the hooks.
 	 *
 	 * @return void
@@ -79,21 +97,78 @@ class Download {
 	}
 
 	/**
-	 * The label the button carries.
+	 * The formats on offer, in the order they are shown.
 	 *
+	 * XLSX is dropped rather than offered and refused where ZipArchive is absent, so a
+	 * link never appears that cannot produce a file.
+	 *
+	 * @return string[] Format keys.
+	 */
+	public static function formats() {
+		$formats = array( self::FORMAT_CSV );
+
+		if ( Workbook::is_available() ) {
+			$formats[] = self::FORMAT_XLSX;
+		}
+
+		return $formats;
+	}
+
+	/**
+	 * The label a button carries.
+	 *
+	 * The format is named on the button rather than chosen afterwards: one click, and
+	 * the same shape works on every surface — WooCommerce's orders Actions column
+	 * renders a plain anchor from a URL and a name, so it can hold no control of its own.
+	 *
+	 * @param string $format Format key.
 	 * @return string Translated label.
 	 */
-	public static function label() {
-		return __( 'Download datasheet', 'woo-organization-accounts-pro' );
+	public static function label( $format = self::FORMAT_CSV ) {
+		if ( self::FORMAT_XLSX === $format ) {
+			return __( 'Download datasheet (Excel)', 'woo-organization-accounts-pro' );
+		}
+
+		return __( 'Download datasheet (CSV)', 'woo-organization-accounts-pro' );
 	}
 
 	/**
 	 * The label a table's Actions column carries, where there is no room for a sentence.
 	 *
+	 * The format's name alone. Two buttons reading *Datasheet CSV* and *Datasheet Excel*
+	 * beside *View* overflowed the column and wrapped onto a second line, squeezing the
+	 * columns beside it; the word is redundant next to each other anyway. What the
+	 * button is *for* is not lost, because both order templates take an explicit
+	 * `aria-label` and `accessible_label()` supplies the whole sentence there.
+	 *
+	 * @param string $format Format key.
 	 * @return string Translated label.
 	 */
-	public static function short_label() {
-		return __( 'Datasheet', 'woo-organization-accounts-pro' );
+	public static function short_label( $format = self::FORMAT_CSV ) {
+		if ( self::FORMAT_XLSX === $format ) {
+			return __( 'Excel', 'woo-organization-accounts-pro' );
+		}
+
+		return __( 'CSV', 'woo-organization-accounts-pro' );
+	}
+
+	/**
+	 * What a screen reader is told a compact button does.
+	 *
+	 * @param \WC_Order $order  The order.
+	 * @param string    $format Format key.
+	 * @return string Translated label.
+	 */
+	public static function accessible_label( \WC_Order $order, $format = self::FORMAT_CSV ) {
+		if ( self::FORMAT_XLSX === $format ) {
+			/* translators: %s: the order number. */
+			$template = __( 'Download the product datasheet for order %s as an Excel file', 'woo-organization-accounts-pro' );
+		} else {
+			/* translators: %s: the order number. */
+			$template = __( 'Download the product datasheet for order %s as a CSV file', 'woo-organization-accounts-pro' );
+		}
+
+		return sprintf( $template, $order->get_order_number() );
 	}
 
 	/**
@@ -110,13 +185,15 @@ class Download {
 	 * `wp_nonce_url()` stays in the query string and the nonce arrives as part of the
 	 * order ID.
 	 *
+	 * @param string $format Format key.
 	 * @return string Nonced URL.
 	 */
-	public static function cart_url() {
+	public static function cart_url( $format = self::FORMAT_CSV ) {
 		return add_query_arg(
 			array(
-				self::QUERY_VAR => self::SOURCE_CART,
-				'_wpnonce'      => wp_create_nonce( self::cart_nonce() ),
+				self::QUERY_VAR  => self::SOURCE_CART,
+				self::FORMAT_VAR => $format,
+				'_wpnonce'       => wp_create_nonce( self::cart_nonce() ),
 			),
 			home_url( '/' )
 		);
@@ -125,15 +202,17 @@ class Download {
 	/**
 	 * The link that downloads an order's datasheet.
 	 *
-	 * @param \WC_Order $order The order.
+	 * @param \WC_Order $order  The order.
+	 * @param string    $format Format key.
 	 * @return string Nonced URL.
 	 */
-	public static function order_url( \WC_Order $order ) {
+	public static function order_url( \WC_Order $order, $format = self::FORMAT_CSV ) {
 		return add_query_arg(
 			array(
-				self::QUERY_VAR => self::SOURCE_ORDER,
-				self::ORDER_VAR => $order->get_id(),
-				'_wpnonce'      => wp_create_nonce( self::order_nonce( $order->get_id() ) ),
+				self::QUERY_VAR  => self::SOURCE_ORDER,
+				self::ORDER_VAR  => $order->get_id(),
+				self::FORMAT_VAR => $format,
+				'_wpnonce'       => wp_create_nonce( self::order_nonce( $order->get_id() ) ),
 			),
 			home_url( '/' )
 		);
@@ -142,16 +221,18 @@ class Download {
 	/**
 	 * The same link, for shop staff on the order screen.
 	 *
-	 * @param \WC_Order $order The order.
+	 * @param \WC_Order $order  The order.
+	 * @param string    $format Format key.
 	 * @return string Nonced URL.
 	 */
-	public static function admin_order_url( \WC_Order $order ) {
+	public static function admin_order_url( \WC_Order $order, $format = self::FORMAT_CSV ) {
 		return add_query_arg(
 			array(
-				'action'        => self::ADMIN_ACTION,
-				self::QUERY_VAR => self::SOURCE_ORDER,
-				self::ORDER_VAR => $order->get_id(),
-				'_wpnonce'      => wp_create_nonce( self::order_nonce( $order->get_id() ) ),
+				'action'         => self::ADMIN_ACTION,
+				self::QUERY_VAR  => self::SOURCE_ORDER,
+				self::ORDER_VAR  => $order->get_id(),
+				self::FORMAT_VAR => $format,
+				'_wpnonce'       => wp_create_nonce( self::order_nonce( $order->get_id() ) ),
 			),
 			admin_url( 'admin-post.php' )
 		);
@@ -219,7 +300,17 @@ class Download {
 			return;
 		}
 
-		$this->render_button( self::cart_url(), self::label() );
+		$links = '';
+
+		foreach ( self::formats() as $format ) {
+			$links .= sprintf(
+				'<a href="%1$s" class="button woap-datasheet__link">%2$s</a>',
+				esc_url( self::cart_url( $format ) ),
+				esc_html( self::label( $format ) )
+			);
+		}
+
+		printf( '<p class="woap-datasheet">%s</p>', $links ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Built from esc_url() and esc_html() above.
 	}
 
 	/**
@@ -242,37 +333,15 @@ class Download {
 			return $actions;
 		}
 
-		$actions['woap-datasheet'] = array(
-			'url'  => self::order_url( $order ),
-			'name' => self::short_label(),
-		);
+		foreach ( self::formats() as $format ) {
+			$actions[ 'woap-datasheet-' . $format ] = array(
+				'url'        => self::order_url( $order, $format ),
+				'name'       => self::short_label( $format ),
+				'aria-label' => self::accessible_label( $order, $format ),
+			);
+		}
 
 		return $actions;
-	}
-
-	/**
-	 * Print one download button.
-	 *
-	 * `.button` alone, which Woodmart already styles as its secondary grey button —
-	 * the same weight as *Update basket* beside it, and a step below the checkout call
-	 * to action, which is what a download of the data belongs at.
-	 *
-	 * **`btn-style-bordered` is deliberately not added.** The theme's selector for it is
-	 * `.btn.btn-style-bordered`, so on a `.button` it matches nothing at all: the class
-	 * looked like it was choosing a variant and was choosing nothing, which is worse
-	 * than not asking, because the button then takes whatever the surrounding context
-	 * gives it — grey in the cart, solid primary in an order's footer.
-	 *
-	 * @param string $url   Where it goes.
-	 * @param string $label What it says.
-	 * @return void
-	 */
-	private function render_button( $url, $label ) {
-		printf(
-			'<p class="woap-datasheet"><a href="%1$s" class="button woap-datasheet__link">%2$s</a></p>',
-			esc_url( $url ),
-			esc_html( $label )
-		);
 	}
 
 	/**
@@ -283,12 +352,15 @@ class Download {
 	 * with no gap at all — reading as part of the coupon rather than as an action about
 	 * the cart. One margin fixes it.
 	 *
+	 * The row is a flex box because there is a button per format and they need a gap
+	 * between them rather than the single space between two inline anchors.
+	 *
 	 * The second rule is Woodmart's own breakpoint. Below 768.98px the theme gives every
 	 * button in the cart the full width of the form — *Update basket* and *Apply coupon*
 	 * both — so a button left at its intrinsic width is the one ragged edge on the
-	 * screen. The figure is the theme's and was read off the rendered page rather than
-	 * guessed: at 768px the update button matches the form's width and at 800px it does
-	 * not.
+	 * screen, and a whole row of them is worse. The figure is the theme's and was read
+	 * off the rendered page rather than guessed: at 768px the update button matches the
+	 * form's width and at 800px it does not.
 	 *
 	 * Registered against no file, so this is a `<style>` tag rather than a request for
 	 * three declarations. It is our own class, which the theme does not style, so
@@ -306,8 +378,8 @@ class Download {
 		wp_enqueue_style( 'woap-datasheet' );
 		wp_add_inline_style(
 			'woap-datasheet',
-			'.woap-datasheet{margin-top:20px;}'
-			. '@media(max-width:768.98px){.woap-datasheet__link{display:block;width:100%;text-align:center;}}'
+			'.woap-datasheet{margin-top:20px;display:flex;flex-wrap:wrap;gap:10px;}'
+			. '@media(max-width:768.98px){.woap-datasheet__link{flex:1 1 100%;text-align:center;}}'
 		);
 	}
 
@@ -326,6 +398,22 @@ class Download {
 		$source = sanitize_key( wp_unslash( $_GET[ self::QUERY_VAR ] ) );
 
 		return in_array( $source, array( self::SOURCE_CART, self::SOURCE_ORDER ), true ) ? $source : '';
+	}
+
+	/**
+	 * Which file format the request is asking for.
+	 *
+	 * Unrecognised values fall back to CSV rather than being refused: the format is a
+	 * presentation choice, not a permission, and the nonce deliberately does not cover
+	 * it so that the 0.13 links, which carried no format at all, still resolve.
+	 *
+	 * @return string One of the format constants.
+	 */
+	private static function requested_format() {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- serve() checks the nonce; this only picks which renderer writes the same authorised data.
+		$format = isset( $_GET[ self::FORMAT_VAR ] ) ? sanitize_key( wp_unslash( $_GET[ self::FORMAT_VAR ] ) ) : '';
+
+		return in_array( $format, self::formats(), true ) ? $format : self::FORMAT_CSV;
 	}
 
 	/**
@@ -369,7 +457,7 @@ class Download {
 				self::refuse();
 			}
 
-			$this->send( Sheet::from_cart( WC()->cart ), 'datasheet-cart-' . gmdate( 'Ymd-His' ) );
+			$this->send( Sheet::from_cart( WC()->cart ), 'datasheet-cart-' . gmdate( 'Ymd-His' ), self::requested_format() );
 
 			return;
 		}
@@ -397,18 +485,24 @@ class Download {
 
 		$this->send(
 			Sheet::from_order( $order ),
-			'datasheet-order-' . $order->get_order_number() . '-' . gmdate( 'Ymd' )
+			'datasheet-order-' . $order->get_order_number() . '-' . gmdate( 'Ymd' ),
+			self::requested_format()
 		);
 	}
 
 	/**
 	 * Send the file and stop.
 	 *
+	 * Both formats carry exactly the same values — `Sheet::rows()` produces them once
+	 * and each writer only decides how they are spelt — so which one somebody picks can
+	 * never change what the file says.
+	 *
 	 * @param \WC_Product[] $products The products to describe.
 	 * @param string        $basename Filename without its extension.
+	 * @param string        $format   Format key.
 	 * @return void
 	 */
-	private function send( array $products, $basename ) {
+	private function send( array $products, $basename, $format = self::FORMAT_CSV ) {
 		if ( empty( $products ) ) {
 			wp_die(
 				esc_html__( 'There is no product data to download.', 'woo-organization-accounts-pro' ),
@@ -417,15 +511,31 @@ class Download {
 			);
 		}
 
-		$csv = Sheet::render( $products );
+		if ( self::FORMAT_XLSX === $format ) {
+			$payload   = Workbook::render( Sheet::columns(), Sheet::rows( $products ) );
+			$extension = '.xlsx';
+			$type      = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+		} else {
+			$payload   = Sheet::render( $products );
+			$extension = '.csv';
+			$type      = 'text/csv; charset=utf-8';
+		}
+
+		if ( '' === $payload ) {
+			wp_die(
+				esc_html__( 'That file could not be produced.', 'woo-organization-accounts-pro' ),
+				'',
+				array( 'response' => 500 )
+			);
+		}
 
 		nocache_headers();
-		header( 'Content-Type: text/csv; charset=utf-8' );
-		header( 'Content-Disposition: attachment; filename="' . sanitize_file_name( $basename . '.csv' ) . '"' );
-		header( 'Content-Length: ' . strlen( $csv ) );
+		header( 'Content-Type: ' . $type );
+		header( 'Content-Disposition: attachment; filename="' . sanitize_file_name( $basename . $extension ) . '"' );
+		header( 'Content-Length: ' . strlen( $payload ) );
 
-		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- A CSV payload; escaping it for HTML would corrupt the file.
-		echo $csv;
+		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- A spreadsheet payload; escaping it for HTML would corrupt the file.
+		echo $payload;
 
 		exit;
 	}

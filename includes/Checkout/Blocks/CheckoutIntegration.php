@@ -113,8 +113,7 @@ class CheckoutIntegration implements IntegrationInterface {
 				'locations'             => array(),
 				'location_label'        => '',
 				'custom_label'          => '',
-				'datasheet_url'         => '',
-				'datasheet_label'       => '',
+				'datasheet_formats'     => array(),
 			);
 		}
 
@@ -136,13 +135,38 @@ class CheckoutIntegration implements IntegrationInterface {
 
 			/*
 			 * Empty rather than absent when the customer may not buy, so the block has
-			 * one thing to test — the same shape every other key here takes. The nonce
-			 * inside it is minted per Store API request, which is per-session and never
+			 * one thing to test — the same shape every other key here takes. The nonces
+			 * inside are minted per Store API request, which is per-session and never
 			 * page-cached.
 			 */
-			'datasheet_url'         => Datasheet::may_download_cart() ? Datasheet::cart_url() : '',
-			'datasheet_label'       => Datasheet::label(),
+			'datasheet_formats'     => self::datasheet_formats(),
 		);
+	}
+
+	/**
+	 * The download links for the cart's product data, one per format.
+	 *
+	 * Empty when the customer may not buy, which is the same answer `Checkout\Gate`
+	 * gives before letting anyone near the cart at all.
+	 *
+	 * @return array[] One entry per format, each with a url and a label.
+	 */
+	private static function datasheet_formats() {
+		if ( ! Datasheet::may_download_cart() ) {
+			return array();
+		}
+
+		$formats = array();
+
+		foreach ( Datasheet::formats() as $format ) {
+			$formats[] = array(
+				'format' => $format,
+				'url'    => Datasheet::cart_url( $format ),
+				'label'  => Datasheet::label( $format ),
+			);
+		}
+
+		return $formats;
 	}
 
 	/**
@@ -195,8 +219,13 @@ class CheckoutIntegration implements IntegrationInterface {
 			),
 			'location_label'        => array_merge( $string, array( 'description' => __( 'Label for the location selector.', 'woo-organization-accounts-pro' ) ) ),
 			'custom_label'          => array_merge( $string, array( 'description' => __( 'Label for the one-off address option.', 'woo-organization-accounts-pro' ) ) ),
-			'datasheet_url'         => array_merge( $string, array( 'description' => __( 'Link that downloads the product data for the cart.', 'woo-organization-accounts-pro' ) ) ),
-			'datasheet_label'       => array_merge( $string, array( 'description' => __( 'Label for the product data download.', 'woo-organization-accounts-pro' ) ) ),
+			'datasheet_formats'     => array(
+				'description' => __( 'The formats the cart\'s product data can be downloaded in.', 'woo-organization-accounts-pro' ),
+				'type'        => 'array',
+				'readonly'    => true,
+				'context'     => array( 'view', 'edit' ),
+				'items'       => array( 'type' => 'object' ),
+			),
 		);
 	}
 

@@ -11,6 +11,7 @@ use WooOrgAccounts\Checkout\OrderMeta;
 use WooOrgAccounts\Data\Member;
 use WooOrgAccounts\Datasheet\Download;
 use WooOrgAccounts\Datasheet\Sheet;
+use WooOrgAccounts\Datasheet\Workbook;
 
 /**
  * The file's shape, its mapping onto WooCommerce, and who may ask for it.
@@ -426,7 +427,7 @@ class DatasheetTest extends TestCase {
 	}
 
 	/**
-	 * The order screens get exactly one button, from the actions filter.
+	 * The order screens get one button per format, from the actions filter.
 	 *
 	 * WooCommerce's own `order/order-details.php` renders
 	 * `wc_get_account_orders_actions()` in an "Actions:" row of its footer, and that
@@ -436,7 +437,7 @@ class DatasheetTest extends TestCase {
 	 *
 	 * @return void
 	 */
-	public function testAnOrderScreenOffersTheDatasheetOnce() {
+	public function testAnOrderScreenOffersEachFormatOnce() {
 		$download = new Download();
 		$download->register();
 
@@ -466,7 +467,11 @@ class DatasheetTest extends TestCase {
 			}
 		);
 
-		$this->assertCount( 1, $ours, 'The order carries exactly one datasheet action.' );
+		$this->assertCount(
+			count( Download::formats() ),
+			$ours,
+			'The order carries one datasheet action per format and no more.'
+		);
 	}
 
 	/**
@@ -488,6 +493,176 @@ class DatasheetTest extends TestCase {
 			$source,
 			'btn-style-bordered needs .btn, not .button.'
 		);
+	}
+
+	/**
+	 * The workbook is a readable .xlsx holding the same values as the CSV.
+	 *
+	 * Opened as a zip and read back part by part, because the only useful question about
+	 * a hand-written OOXML package is whether the parts a reader looks for are there and
+	 * whether the cells say what the rows said.
+	 *
+	 * @return void
+	 */
+	public function testTheWorkbookIsAReadableXlsx() {
+		if ( ! Workbook::is_available() ) {
+			$this->markTestSkipped( 'ZipArchive is not available.' );
+		}
+
+		$product = $this->make_product(
+			array(
+				'sku'  => 'IK-111010',
+				'gtin' => '8594164760334',
+			)
+		);
+
+		$xlsx = Workbook::render( Sheet::columns(), Sheet::rows( array( $product ) ) );
+
+		$this->assertNotSame( '', $xlsx );
+		$this->assertStringStartsWith( 'PK', $xlsx, 'An .xlsx is a zip.' );
+
+		$path = tempnam( get_temp_dir(), 'woap-test' );
+		file_put_contents( $path, $xlsx ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents -- Writing a fixture the zip reader needs a path for.
+
+		$zip = new \ZipArchive();
+		$this->assertTrue( true === $zip->open( $path ), 'The package opens as a zip.' );
+
+		foreach ( array( '[Content_Types].xml', '_rels/.rels', 'xl/workbook.xml', 'xl/_rels/workbook.xml.rels', 'xl/worksheets/sheet1.xml' ) as $part ) {
+			$this->assertNotFalse( $zip->locateName( $part ), $part . ' is missing from the package.' );
+		}
+
+		$sheet = $zip->getFromName( 'xl/worksheets/sheet1.xml' );
+		$zip->close();
+		wp_delete_file( $path );
+
+		$this->assertNotFalse( simplexml_load_string( $sheet ), 'The worksheet is well-formed XML.' );
+		$this->assertStringContainsString( '<c r="A1" t="inlineStr"><is><t xml:space="preserve">Artnr</t></is></c>', $sheet );
+		$this->assertStringContainsString( '>IK-111010<', $sheet );
+	}
+
+	/**
+	 * Every cell is text, which is the whole point of offering the format.
+	 *
+	 * Excel reads the EAN column of a CSV as a number and shows `8594164760334` as
+	 * `8.59416E+12`; an article number like `007-001-001` loses its leading zeros the
+	 * same way. Typing the cells as text is what a CSV cannot say and this can.
+	 *
+	 * @return void
+	 */
+	public function testEveryCellIsText() {
+		if ( ! Workbook::is_available() ) {
+			$this->markTestSkipped( 'ZipArchive is not available.' );
+		}
+
+		$product = $this->make_product(
+			array(
+				'sku'  => '007-001-001',
+				'gtin' => '8594164760334',
+			)
+		);
+		$xlsx    = Workbook::render( Sheet::columns(), Sheet::rows( array( $product ) ) );
+
+		$path = tempnam( get_temp_dir(), 'woap-test' );
+		file_put_contents( $path, $xlsx ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents -- Writing a fixture the zip reader needs a path for.
+
+		$zip = new \ZipArchive();
+		$zip->open( $path );
+		$sheet = $zip->getFromName( 'xl/worksheets/sheet1.xml' );
+		$zip->close();
+		wp_delete_file( $path );
+
+		$this->assertSame(
+			substr_count( $sheet, '<c ' ),
+			substr_count( $sheet, 't="inlineStr"' ),
+			'A cell that is not an inline string is a cell Excel will reformat.'
+		);
+		$this->assertStringContainsString( '>007-001-001<', $sheet, 'The leading zeros survive.' );
+	}
+
+	/**
+	 * The two formats describe the same products with the same values.
+	 *
+	 * `Sheet::rows()` produces them once and each writer only decides how they are
+	 * spelt, so picking a format can never change what the file says.
+	 *
+	 * @return void
+	 */
+	public function testBothFormatsCarryTheSameValues() {
+		if ( ! Workbook::is_available() ) {
+			$this->markTestSkipped( 'ZipArchive is not available.' );
+		}
+
+		$product = $this->make_product(
+			array(
+				'sku'  => 'IK-1',
+				'msrp' => '19.80',
+			)
+		);
+		$rows    = Sheet::rows( array( $product ) );
+
+		$xlsx = Workbook::render( Sheet::columns(), $rows );
+		$path = tempnam( get_temp_dir(), 'woap-test' );
+		file_put_contents( $path, $xlsx ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents -- Writing a fixture the zip reader needs a path for.
+
+		$zip = new \ZipArchive();
+		$zip->open( $path );
+		$sheet = $zip->getFromName( 'xl/worksheets/sheet1.xml' );
+		$zip->close();
+		wp_delete_file( $path );
+
+		foreach ( $rows[0] as $value ) {
+			if ( '' === $value ) {
+				continue;
+			}
+
+			$this->assertStringContainsString(
+				'>' . htmlspecialchars( $value, ENT_QUOTES | ENT_XML1, 'UTF-8' ) . '<',
+				$sheet,
+				'The workbook is missing a value the CSV carries.'
+			);
+		}
+	}
+
+	/**
+	 * Both formats are offered, and the links say which is which.
+	 *
+	 * @return void
+	 */
+	public function testBothFormatsAreOfferedOnAnOrder() {
+		$organization = $this->make_organization();
+		$member       = $this->make_member( $organization, Member::ROLE_ADMIN );
+
+		$order = wc_create_order( array( 'customer_id' => $member->get_user_id() ) );
+		$order->add_product( $this->make_product(), 1 );
+		$order->update_meta_data( OrderMeta::ORGANIZATION_ID, $organization->get_id() );
+		$order->save();
+
+		$this->act_as( $member );
+
+		$actions = wc_get_account_orders_actions( wc_get_order( $order->get_id() ) );
+
+		foreach ( Download::formats() as $format ) {
+			$matching = array_filter(
+				$actions,
+				static function ( $action ) use ( $format ) {
+					return false !== strpos( $action['url'], 'woap_format=' . $format );
+				}
+			);
+
+			$this->assertCount( 1, $matching, 'Exactly one action offers the ' . $format . ' file.' );
+		}
+	}
+
+	/**
+	 * A link with no format on it is still the CSV.
+	 *
+	 * The 0.13 links carried no format at all, and the nonce deliberately does not cover
+	 * one, so a bookmarked or emailed URL from then still resolves to the file it named.
+	 *
+	 * @return void
+	 */
+	public function testAFormatlessLinkIsStillTheCsv() {
+		$this->assertStringContainsString( 'woap_format=csv', Download::cart_url() );
 	}
 
 	/**

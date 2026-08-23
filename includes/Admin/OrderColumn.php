@@ -211,10 +211,12 @@ class OrderColumn {
 			return;
 		}
 
-		printf(
-			'<p><a href="%1$s" class="button">%2$s</a></p>',
-			esc_url( Datasheet::admin_order_url( $order ) ),
-			esc_html( Datasheet::label() )
-		);
+		foreach ( Datasheet::formats() as $format ) {
+			printf(
+				'<p><a href="%1$s" class="button">%2$s</a></p>',
+				esc_url( Datasheet::admin_order_url( $order, $format ) ),
+				esc_html( Datasheet::label( $format ) )
+			);
+		}
 	}
 }

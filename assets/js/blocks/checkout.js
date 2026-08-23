@@ -200,7 +200,7 @@
 	function DatasheetLink() {
 		var data = organizationData();
 
-		if ( ! data || ! data.datasheet_url ) {
+		if ( ! data || ! data.datasheet_formats || ! data.datasheet_formats.length ) {
 			return null;
 		}
 
@@ -211,14 +211,17 @@
 		return el(
 			'p',
 			{ className: 'woap-blocks-datasheet' },
-			el(
-				'a',
-				{
-					href: data.datasheet_url,
-					className: 'wc-block-components-button wp-element-button outlined'
-				},
-				data.datasheet_label || __( 'Download datasheet', 'woo-organization-accounts-pro' )
-			)
+			data.datasheet_formats.map( function ( entry ) {
+				return el(
+					'a',
+					{
+						key: entry.format,
+						href: entry.url,
+						className: 'wc-block-components-button wp-element-button outlined'
+					},
+					entry.label || __( 'Download datasheet', 'woo-organization-accounts-pro' )
+				);
+			} )
 		);
 	}
 

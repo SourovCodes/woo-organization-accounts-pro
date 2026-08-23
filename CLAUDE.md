@@ -766,12 +766,45 @@ and would have had to be added to `Roles::capabilities()`, `Roles::role_capabili
 test suites to say the same thing. The same check decides whether the *button* renders, so a button
 never appears where the download would refuse.
 
+**Two formats, and the format is named on the button rather than chosen after it.** CSV is the
+feed's own shape, for loading into another system; `.xlsx` is for opening. One click either way, and
+it is the only shape that works identically everywhere — WooCommerce's orders Actions column renders
+a plain anchor from a URL and a name, so it can hold no control of its own.
+
+`Datasheet\Workbook` writes the spreadsheet, and writes it by hand for the same reason
+`Sheet::field()` does not use `fputcsv()`. An `.xlsx` is a zip of a handful of XML parts, and the
+subset needed for one flat sheet is six static documents and a `<row>` per product; the plugin has
+**no runtime dependencies at all**, and a spreadsheet library would have been its first and would
+have multiplied the 366K release artefact several times over to emit that.
+
+- **Every cell is a text cell**, written as an inline string, and that is the reason to offer the
+  format rather than an implementation detail. Excel reads the EAN column of a CSV as a number and
+  shows `8594164760334` as `8.59416E+12`; an article number like `007-001-001` loses its leading
+  zeros the same way. Saying "this is text" is what a CSV cannot do and this can. Prices stay text
+  too, for the reason they are fixed to four decimals in the CSV: the file records what the shop
+  charged, it is not a spreadsheet to calculate in.
+- **`Sheet::rows()` produces the values once** and each writer only decides how they are spelt, so
+  picking a format can never change what the file says. `testBothFormatsCarryTheSameValues` is that.
+- **The worksheet name is untranslated**, like the header row and for the same reason: a consumer
+  opening the workbook by sheet name has to find the same name whatever language the shop runs in.
+- **Where ZipArchive is absent the format is not offered**, rather than being offered and failing —
+  `Workbook::is_available()` decides whether the link renders as well as whether the request is
+  served.
+- **The table buttons say only the format's name**, because *Datasheet CSV* and *Datasheet Excel*
+  beside *View* overflowed the Actions column onto a second line and squeezed the columns next to
+  it. Nothing is lost to a screen reader: both of WooCommerce's order templates take an explicit
+  `aria-label` when the action supplies one, and `Download::accessible_label()` supplies the whole
+  sentence with the order number in it.
+- **The format is not covered by the nonce**, because it is a presentation choice and not a
+  permission. That is also what keeps the 0.13 links working: they carried no format at all, and an
+  unrecognised or missing one falls back to CSV.
+
 **One filter covers all three order screens, and that is not obvious.** WooCommerce's own
 `order/order-details.php` renders `wc_get_account_orders_actions()` in an *Actions:* row of its
 footer, and that template is what the view-order screen and order-received both print — so
 `woocommerce_my_account_my_orders_actions` reaches the orders list *and* the order itself. Adding a
 button on `woocommerce_order_details_after_order_table` as well, which is what this did first, put
-two identical buttons on one page ninety pixels apart. `testAnOrderScreenOffersTheDatasheetOnce`
+two identical buttons on one page ninety pixels apart. `testAnOrderScreenOffersEachFormatOnce`
 asserts the count from the filter rather than the absence of the hook, so the same mistake made a
 third way still fails.
 

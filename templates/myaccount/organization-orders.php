@@ -158,9 +158,11 @@ $woap_cell = static function ( $column ) use ( $woap_columns ) {
 								<?php esc_html_e( 'View', 'woo-organization-accounts-pro' ); ?>
 							</a>
 							<?php if ( Datasheet::may_download_order( $woap_order ) ) : ?>
-								<a href="<?php echo esc_url( Datasheet::order_url( $woap_order ) ); ?>" class="woocommerce-button button">
-									<?php echo esc_html( Datasheet::short_label() ); ?>
-								</a>
+								<?php foreach ( Datasheet::formats() as $woap_format ) : ?>
+									<a href="<?php echo esc_url( Datasheet::order_url( $woap_order, $woap_format ) ); ?>" class="woocommerce-button button" aria-label="<?php echo esc_attr( Datasheet::accessible_label( $woap_order, $woap_format ) ); ?>">
+										<?php echo esc_html( Datasheet::short_label( $woap_format ) ); ?>
+									</a>
+								<?php endforeach; ?>
 							<?php endif; ?>
 						</td>
 					</tr>
