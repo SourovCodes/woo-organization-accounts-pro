@@ -1333,7 +1333,16 @@ create` publishes. A tag containing a hyphen (`v0.2.0-rc.1`) is published as a p
 There is no `CHANGELOG.md`, deliberately: `Updates\Updater` tells every site admin that what changed
 is "recorded with the release it shipped in" and points WordPress's *View details* modal at
 `/releases`, so a second copy in the repository would be a second answer to one question. Write the
-notes into the tag — `git tag -a v0.14.0 -m "$(cat notes.md)"` — and the workflow publishes them.
+notes into the tag and the workflow publishes them:
+
+```bash
+git tag -a v0.14.0 --cleanup=verbatim -F notes.md
+```
+
+**`--cleanup=verbatim` is not optional.** Git strips every line beginning with `#` from a tag
+message as a comment, so markdown headings vanish silently — `-F` a file of release notes without
+it and the headings are simply gone from the published release, with nothing to say so. Check with
+`git tag -l --format='%(contents)' v0.14.0` before pushing.
 
 `--generate-notes` is the fallback and only that. It summarises **merged pull requests**, and work
 here lands as direct commits on `main`, so it has nothing to summarise: v0.13.0 and v0.13.1 both
