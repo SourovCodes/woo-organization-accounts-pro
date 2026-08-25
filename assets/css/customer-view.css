@@ -1,0 +1,82 @@
+/**
+ * Customer view: the retail-price mode a retailer switches on at their counter.
+ *
+ * Two pieces. The switch on the account dashboard, which is the only thing on the site
+ * that says which prices are being shown — there is deliberately no banner, because the
+ * customer being shown the catalogue is not the person the state is being reported to.
+ * And the rules that take the basket off the screen while the mode is on.
+ *
+ * Self-contained rather than borrowing the components in account.css, which loads on the
+ * plugin's own five endpoints only and not on the dashboard.
+ *
+ * Every colour is one of Woodmart's own custom properties, never a literal. The literals
+ * inside the var() fallbacks are the theme's own defaults and apply only if it stops
+ * defining a token.
+ */
+
+/* The switch, on the dashboard --------------------------------------------- */
+
+.woap-customer-view {
+	margin: 0 0 1.5em;
+	padding: 1.5em;
+	border: 1px solid var(--brdcolor-gray-300, rgba(0, 0, 0, 0.105));
+	border-radius: var(--wd-brd-radius, 0);
+}
+
+/*
+ * While it is on, the panel is the one thing on the site saying so, so it is the one
+ * thing that carries a colour. The theme's warning ground rather than its success one:
+ * this is a state to notice and come back out of, not a job well done.
+ */
+.woap-customer-view--on {
+	border-color: transparent;
+	background-color: var(--notices-warning-bg, #f7f6f7);
+}
+
+.woap-customer-view__title {
+	display: block;
+	width: 100%;
+	margin-bottom: 0.6em;
+	color: var(--wd-title-color, #242424);
+	font-size: 1.1em;
+	font-weight: 600;
+}
+
+.woap-customer-view__note {
+	margin-bottom: 1.2em;
+	color: var(--wd-text-color, #767676);
+	font-size: 0.95em;
+}
+
+.woap-customer-view form {
+	margin: 0;
+}
+
+/*
+ * Qualified with the element name on purpose. Woodmart styles every button on the site
+ * through :is(.btn, .button, button, [type="submit"], [type="button"]), which takes the
+ * specificity of a class — so a plain single-class rule of ours ties with it and the tie
+ * is settled by whichever stylesheet loaded last.
+ */
+button.woap-customer-view__button {
+	margin: 0;
+}
+
+/* The basket, while the mode is on ----------------------------------------- */
+
+/*
+ * The basket is where the retailer's own conditions are written down: its line totals
+ * and its subtotal are what *they* pay, not what is on the shelf. The pages themselves
+ * are refused on the server by `CustomerPrices::refuse_pages()` — this only takes away
+ * the openers, so nobody arrives at a refusal by clicking something that was still
+ * there. All three of Woodmart's carts carry `wd-header-cart`: the desktop header, the
+ * mobile header and the bottom toolbar. `cart-widget-side` is the slide-out panel, which
+ * renders its contents inline and so has to go whether or not it is open.
+ *
+ * !important because the theme sets `display` on these itself, and a tie would be
+ * settled by load order.
+ */
+body.woap-customer-view-on .wd-header-cart,
+body.woap-customer-view-on .cart-widget-side {
+	display: none !important;
+}

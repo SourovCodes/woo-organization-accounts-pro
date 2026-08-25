@@ -11,6 +11,7 @@ use Automattic\WooCommerce\Blocks\Integrations\IntegrationInterface;
 use Automattic\WooCommerce\StoreApi\Schemas\V1\CartSchema;
 use Automattic\WooCommerce\StoreApi\Schemas\V1\CheckoutSchema;
 use WooOrgAccounts\Checkout\BillingLock;
+use WooOrgAccounts\Checkout\Gate;
 use WooOrgAccounts\Checkout\ShippingSelector;
 use WooOrgAccounts\Datasheet\Download as Datasheet;
 use WooOrgAccounts\Labels;
@@ -105,7 +106,7 @@ class CheckoutIntegration implements IntegrationInterface {
 			return array(
 				'has_organization'      => false,
 				'can_purchase'          => false,
-				'blocked_reason'        => Context::purchase_blocked_reason(),
+				'blocked_reason'        => Gate::blocked_reason(),
 				'organization_name'     => '',
 				'billing_address'       => array(),
 				'billing_notice'        => '',
@@ -119,8 +120,8 @@ class CheckoutIntegration implements IntegrationInterface {
 
 		return array(
 			'has_organization'      => true,
-			'can_purchase'          => Context::can_purchase(),
-			'blocked_reason'        => Context::purchase_blocked_reason(),
+			'can_purchase'          => Gate::may_purchase(),
+			'blocked_reason'        => Gate::blocked_reason(),
 			'organization_name'     => $organization->get_name(),
 			'billing_address'       => $organization->get_billing_address(),
 			'billing_notice'        => BillingLock::locked_notice(),

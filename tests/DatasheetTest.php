@@ -11,6 +11,7 @@ use WooOrgAccounts\Checkout\OrderMeta;
 use WooOrgAccounts\Data\Member;
 use WooOrgAccounts\Datasheet\Download;
 use WooOrgAccounts\Datasheet\Sheet;
+use WooOrgAccounts\Pricing\Msrp;
 use WooOrgAccounts\Datasheet\Workbook;
 
 /**
@@ -47,7 +48,7 @@ class DatasheetTest extends TestCase {
 		}
 
 		if ( isset( $props['msrp'] ) ) {
-			$product->update_meta_data( Sheet::MSRP_META, $props['msrp'] );
+			$product->update_meta_data( Msrp::META, $props['msrp'] );
 		}
 
 		$product->save();
@@ -276,7 +277,7 @@ class DatasheetTest extends TestCase {
 		$parent->set_name( 'Knete' );
 		$parent->set_sku( 'IK-PARENT' );
 		$parent->set_description( 'Die Beschreibung steht am Elternprodukt.' );
-		$parent->update_meta_data( Sheet::MSRP_META, '19.80' );
+		$parent->update_meta_data( Msrp::META, '19.80' );
 		$parent->save();
 
 		$variation = new \WC_Product_Variation();

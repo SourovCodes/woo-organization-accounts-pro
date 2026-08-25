@@ -30,6 +30,7 @@ use WooOrgAccounts\Frontend\MyAccount;
 use WooOrgAccounts\Frontend\OrderDetails;
 use WooOrgAccounts\Frontend\Registration;
 use WooOrgAccounts\Membership\Members as MemberService;
+use WooOrgAccounts\Pricing\CustomerPrices;
 use WooOrgAccounts\Rest\RestApi;
 
 defined( 'ABSPATH' ) || exit;
@@ -153,6 +154,14 @@ final class Plugin {
 		 * action, which only fires on admin-post.php whoever registered it.
 		 */
 		( new Datasheet() )->register();
+
+		/*
+		 * Outside the is_admin() branch, and before the checkout classes: the mode it
+		 * applies is entered by a visitor who has not signed in as readily as by a member,
+		 * and one of the things it does is stop the theme hiding prices — which the theme
+		 * decides at `init`, long before any of this would run from an admin gate.
+		 */
+		( new CustomerPrices() )->register();
 
 		( new Gate() )->register();
 		( new BillingLock() )->register();

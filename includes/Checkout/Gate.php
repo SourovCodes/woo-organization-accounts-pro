@@ -8,6 +8,7 @@
 namespace WooOrgAccounts\Checkout;
 
 use WooOrgAccounts\Membership\Context;
+use WooOrgAccounts\Pricing\CustomerView;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -25,6 +26,13 @@ defined( 'ABSPATH' ) || exit;
  * classic checkout's validation pass, and the Store API that the Cart and Checkout
  * blocks talk to. Missing one of those is not a cosmetic gap — the Store API route is
  * reachable directly, whatever the site's pages happen to render.
+ *
+ * One condition is added to that rule here rather than in `Context`, and the difference
+ * matters: customer view is a property of the *request*, not of the person making it.
+ * `Context` is asked about a user by ID — by the REST routes a till talks to, among
+ * others — and a cookie in one browser must never be able to answer for a till. So
+ * `may_purchase()` below is the request-level answer and `Context::can_purchase()`
+ * remains the user-level one.
  */
 class Gate {
 
@@ -53,6 +61,36 @@ class Gate {
 		add_action( 'woocommerce_after_checkout_validation', array( $this, 'block_classic_checkout' ), 10, 2 );
 		add_filter( 'woocommerce_store_api_cart_errors', array( $this, 'block_store_api_cart' ), 10, 2 );
 		add_action( 'woocommerce_store_api_checkout_update_order_from_request', array( $this, 'block_store_api_checkout' ), 5 );
+	}
+
+	/**
+	 * Whether this request may end in an order.
+	 *
+	 * `Context::can_purchase()` plus the one thing that is true of the request rather
+	 * than of the person making it. Everything on both checkout surfaces asks this, so
+	 * customer view is refused in exactly the places an inactive membership is.
+	 *
+	 * @return bool True when the request may buy.
+	 */
+	public static function may_purchase() {
+		return ! CustomerView::is_active() && Context::can_purchase();
+	}
+
+	/**
+	 * Why this request may not end in an order.
+	 *
+	 * Customer view answers first, because it is the reason the person on the screen can
+	 * act on: a member of a perfectly good organization is being refused for something
+	 * they switched on themselves and can switch off again.
+	 *
+	 * @return string Translated message, or an empty string when the request may buy.
+	 */
+	public static function blocked_reason() {
+		if ( CustomerView::is_active() ) {
+			return CustomerView::purchase_blocked_reason();
+		}
+
+		return Context::purchase_blocked_reason();
 	}
 
 	/**
@@ -88,11 +126,11 @@ class Gate {
 	 * @return void
 	 */
 	public function block_cart() {
-		if ( Context::can_purchase() ) {
+		if ( self::may_purchase() ) {
 			return;
 		}
 
-		$reason = Context::purchase_blocked_reason();
+		$reason = self::blocked_reason();
 
 		/*
 		 * Both hooks this is on can fire in the same request, and the cart template
@@ -138,11 +176,11 @@ class Gate {
 	 * @return void
 	 */
 	public function block_classic_checkout( $data, $errors ) {
-		if ( Context::can_purchase() ) {
+		if ( self::may_purchase() ) {
 			return;
 		}
 
-		$errors->add( 'woap_not_permitted', Context::purchase_blocked_reason() );
+		$errors->add( 'woap_not_permitted', self::blocked_reason() );
 	}
 
 	/**
@@ -155,11 +193,11 @@ class Gate {
 	public function block_store_api_cart( $errors, $cart ) {
 		unset( $cart );
 
-		if ( Context::can_purchase() ) {
+		if ( self::may_purchase() ) {
 			return $errors;
 		}
 
-		$error = new \WP_Error( 'woap_not_permitted', Context::purchase_blocked_reason() );
+		$error = new \WP_Error( 'woap_not_permitted', self::blocked_reason() );
 
 		if ( is_array( $errors ) ) {
 			$errors[] = $error;
@@ -168,7 +206,7 @@ class Gate {
 		}
 
 		if ( $errors instanceof \WP_Error ) {
-			$errors->add( 'woap_not_permitted', Context::purchase_blocked_reason() );
+			$errors->add( 'woap_not_permitted', self::blocked_reason() );
 
 			return $errors;
 		}
@@ -191,13 +229,13 @@ class Gate {
 	public function block_store_api_checkout( $order ) {
 		unset( $order );
 
-		if ( Context::can_purchase() ) {
+		if ( self::may_purchase() ) {
 			return;
 		}
 
 		throw new \Automattic\WooCommerce\StoreApi\Exceptions\RouteException(
 			'woap_not_permitted',
-			esc_html( Context::purchase_blocked_reason() ),
+			esc_html( self::blocked_reason() ),
 			403
 		);
 	}

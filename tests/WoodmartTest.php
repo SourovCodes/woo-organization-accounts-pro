@@ -69,9 +69,24 @@ class WoodmartTest extends WP_UnitTestCase {
 	 * theme — and a shop on the dark colour scheme gets grey-on-grey. The exception is
 	 * `--woap-danger-color`: Woodmart's Theme Settings define success and warning
 	 * notice colours but no error colour, so the plugin declares that one itself.
+	 *
+	 * Every stylesheet the plugin ships, found rather than listed. A named list is a
+	 * list somebody adds a file beside: `customer-view.css` was written months after
+	 * this test and would have been held to nothing.
 	 */
 	public function testStylesheetsUseThemeTokensForColour() {
-		foreach ( array( 'account.css', 'checkout.css' ) as $file ) {
+		$files = glob( WOAP_PLUGIN_DIR . 'assets/css/*.css' );
+
+		$this->assertNotEmpty( $files, 'The plugin ships no stylesheets at all, which cannot be right.' );
+
+		foreach ( $files as $path ) {
+			$file = basename( $path );
+
+			// wp-admin's own screens are not themed by Woodmart and have no tokens to read.
+			if ( 'admin.css' === $file ) {
+				continue;
+			}
+
 			$css = $this->css( $file );
 
 			$this->assertStringContainsString( 'var(--wd-', $css, $file . ' references no Woodmart token at all.' );

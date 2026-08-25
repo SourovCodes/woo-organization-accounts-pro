@@ -8,6 +8,7 @@
 namespace WooOrgAccounts\Datasheet;
 
 use WooOrgAccounts\Membership\Context;
+use WooOrgAccounts\Pricing\CustomerView;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -36,6 +37,13 @@ defined( 'ABSPATH' ) || exit;
  * `Capabilities::resolve_order_capabilities()` — so an organization admin gets a
  * colleague's order and a member of another organization does not. That is the
  * cross-tenant question, and it is already answered in one place.
+ *
+ * **Customer view refuses both.** The `EK / VK1` column *is* the trade price, so the
+ * file is the one thing on the site that would hand over in full what the mode exists to
+ * keep off the screen. Both `may_download_*()` answer false while it is on, which takes
+ * the buttons away and refuses the URL by the same line — a button never appears where
+ * the download would refuse, which is the rule this class already follows for the
+ * spreadsheet format.
  */
 class Download {
 
@@ -247,7 +255,7 @@ class Download {
 	 * @return bool True when the button belongs on the screen.
 	 */
 	public static function may_download_cart() {
-		if ( ! Context::can_purchase() ) {
+		if ( CustomerView::is_active() || ! Context::can_purchase() ) {
 			return false;
 		}
 
@@ -263,6 +271,10 @@ class Download {
 	 * @return bool True when they may.
 	 */
 	public static function may_download_order( \WC_Order $order ) {
+		if ( CustomerView::is_active() ) {
+			return false;
+		}
+
 		return current_user_can( 'view_order', $order->get_id() );
 	}
 

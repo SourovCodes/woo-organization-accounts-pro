@@ -111,7 +111,7 @@ msgstr "Telefon"
 
 #: includes/Admin/Organizations.php:573
 #: includes/Admin/OrganizationsListTable.php:69
-#: includes/Admin/Settings.php:192
+#: includes/Admin/Settings.php:194
 msgid "VAT / tax ID"
 msgstr "USt-IdNr. / Steuernummer"
 
@@ -231,15 +231,15 @@ msgid "Total"
 msgstr "Summe"
 
 #: includes/Admin/Organizations.php:1214
-#: includes/Admin/Settings.php:765
-#: includes/Admin/Settings.php:934
+#: includes/Admin/Settings.php:835
+#: includes/Admin/Settings.php:1004
 #: includes/Guard.php:68
 msgid "You do not have permission to do that."
 msgstr "Sie haben keine Berechtigung dafür."
 
 #: includes/Admin/Organizations.php:1215
-#: includes/Admin/Settings.php:766
-#: includes/Admin/Settings.php:935
+#: includes/Admin/Settings.php:836
+#: includes/Admin/Settings.php:1005
 #: includes/Guard.php:69
 msgid "Permission denied"
 msgstr "Zugriff verweigert"
@@ -294,147 +294,147 @@ msgstr "Löschen"
 msgid "No %s found."
 msgstr "Keine %s gefunden."
 
-#: includes/Admin/Settings.php:154
+#: includes/Admin/Settings.php:156
 msgid "Organization mode"
 msgstr "Organisationsmodus"
 
-#: includes/Admin/Settings.php:161
+#: includes/Admin/Settings.php:163
 #: includes/Admin/ThemeSettings.php:100
 msgid "Mode"
 msgstr "Modus"
 
-#: includes/Admin/Settings.php:169
+#: includes/Admin/Settings.php:171
 msgid "Registration"
 msgstr "Registrierung"
 
-#: includes/Admin/Settings.php:176
+#: includes/Admin/Settings.php:178
 #: includes/Admin/ThemeSettings.php:101
 msgid "Approval"
 msgstr "Freigabe"
 
-#: includes/Admin/Settings.php:184
+#: includes/Admin/Settings.php:186
 #: includes/Admin/ThemeSettings.php:111
 msgid "Registration page"
 msgstr "Registrierungsseite"
 
-#: includes/Admin/Settings.php:200
+#: includes/Admin/Settings.php:202
 msgid "Invitations expire after"
 msgstr "Einladungen laufen ab nach"
 
-#: includes/Admin/Settings.php:208
+#: includes/Admin/Settings.php:210
 msgid "Purchasing"
 msgstr "Bestellen"
 
-#: includes/Admin/Settings.php:215
+#: includes/Admin/Settings.php:217
 msgid "Custom shipping addresses"
 msgstr "Einmalige Lieferadressen"
 
-#: includes/Admin/Settings.php:223
+#: includes/Admin/Settings.php:233
 msgid "Data"
 msgstr "Daten"
 
-#: includes/Admin/Settings.php:230
+#: includes/Admin/Settings.php:240
 msgid "On uninstall"
 msgstr "Beim Deinstallieren"
 
-#: includes/Admin/Settings.php:632
+#: includes/Admin/Settings.php:702
 #: includes/Admin/ThemeSettings.php:71
 msgid "Organization Accounts"
 msgstr "Organisationskonten"
 
-#: includes/Admin/Settings.php:321
+#: includes/Admin/Settings.php:332
 msgid "The mode applies to the whole site and decides what everything is called. It changes labels only — no data is stored differently, and nothing needs migrating when you change it."
 msgstr "Der Modus gilt für die gesamte Website und bestimmt, wie alles benannt wird. Er ändert nur Bezeichnungen — es werden keine Daten anders gespeichert, und beim Umschalten muss nichts migriert werden."
 
 #. translators: 1: organization noun, 2: admin noun, 3: plural member noun, 4: plural location noun.
-#: includes/Admin/Settings.php:355
+#: includes/Admin/Settings.php:366
 #, php-format
 msgid "Currently: %1$s, %2$s, %3$s, %4$s."
 msgstr "Aktuell: %1$s, %2$s, %3$s, %4$s."
 
-#: includes/Admin/Settings.php:372
+#: includes/Admin/Settings.php:383
 msgid "WooCommerce's own registration form is switched off while this plugin is active: every account belongs to an organization, so accounts are created here or through an invitation."
 msgstr "Das Registrierungsformular von WooCommerce ist ausgeschaltet, solange dieses Plugin aktiv ist: Jedes Konto gehört zu einer Organisation, Konten entstehen also hier oder über eine Einladung."
 
 #. translators: %s: the plural organization noun for the site's mode.
-#: includes/Admin/Settings.php:407
+#: includes/Admin/Settings.php:418
 #, php-format
 msgid "New %s must be approved before they can order"
 msgstr "Neue %s müssen freigegeben werden, bevor sie bestellen können"
 
-#: includes/Admin/Settings.php:415
+#: includes/Admin/Settings.php:426
 msgid "With this off, a new registration is active immediately."
 msgstr "Ist dies ausgeschaltet, ist eine neue Registrierung sofort aktiv."
 
-#: includes/Admin/Settings.php:463
+#: includes/Admin/Settings.php:474
 msgid "— Select —"
 msgstr "— Auswählen —"
 
 #. translators: %s: the registration shortcode.
-#: includes/Admin/Settings.php:478
+#: includes/Admin/Settings.php:489
 #, php-format
 msgid "The page containing the %s shortcode. One was created for you on activation."
 msgstr "Die Seite mit dem Shortcode %s. Bei der Aktivierung wurde eine angelegt."
 
-#: includes/Admin/Settings.php:527
+#: includes/Admin/Settings.php:538
 msgid "days"
 msgstr "Tage"
 
-#: includes/Admin/Settings.php:532
+#: includes/Admin/Settings.php:543
 msgid "Zero means an invitation stays valid until it is used or revoked."
 msgstr "Null bedeutet, dass eine Einladung gültig bleibt, bis sie benutzt oder zurückgezogen wird."
 
-#: includes/Admin/Settings.php:543
+#: includes/Admin/Settings.php:554
 msgid "Guest checkout is switched off and cannot be switched back on while this plugin is active. Only a logged-in member of an active organization can check out."
 msgstr "Der Gast-Checkout ist ausgeschaltet und kann nicht wieder eingeschaltet werden, solange dieses Plugin aktiv ist. Nur ein angemeldetes Mitglied einer aktiven Organisation kann bestellen."
 
 #. translators: %s: the plural organization noun for the site's mode.
-#: includes/Admin/Settings.php:565
+#: includes/Admin/Settings.php:576
 #, php-format
 msgid "New %s may enter a one-off shipping address at checkout"
 msgstr "Neue %s dürfen an der Kasse eine einmalige Lieferadresse eingeben"
 
 #. translators: %s: the plural organization noun for the site's mode.
-#: includes/Admin/Settings.php:576
+#: includes/Admin/Settings.php:587
 #, php-format
 msgid "This is the starting value for a new registration. It can be changed per %s afterwards."
 msgstr "Dies ist der Startwert für eine neue Registrierung. Er lässt sich danach je %s ändern."
 
-#: includes/Admin/Settings.php:590
+#: includes/Admin/Settings.php:660
 msgid "What happens to the plugin's data when it is deleted from the Plugins screen."
 msgstr "Was mit den Daten des Plugins geschieht, wenn es unter Plugins gelöscht wird."
 
 #. translators: %s: the plural organization noun for the site's mode.
-#: includes/Admin/Settings.php:609
+#: includes/Admin/Settings.php:679
 #, php-format
 msgid "Delete every %s, member, location and invitation when the plugin is deleted"
 msgstr "Beim Löschen des Plugins jede %s samt Mitgliedern, Standorten und Einladungen entfernen"
 
-#: includes/Admin/Settings.php:617
+#: includes/Admin/Settings.php:687
 msgid "Off by default. These are customer records, and deleting the plugin should not delete them by accident. Orders and their addresses are never touched either way."
 msgstr "Standardmäßig aus. Das sind Kundendaten, und das Löschen des Plugins sollte sie nicht versehentlich mitnehmen. Bestellungen und ihre Adressen bleiben in jedem Fall unberührt."
 
-#: includes/Admin/Settings.php:885
+#: includes/Admin/Settings.php:955
 msgid "Updates"
 msgstr "Aktualisierungen"
 
 #. translators: 1: available version, 2: installed version.
-#: includes/Admin/Settings.php:893
+#: includes/Admin/Settings.php:963
 #, php-format
 msgid "Version %1$s is available. You are running %2$s."
 msgstr "Version %1$s ist verfügbar. Sie verwenden %2$s."
 
 #. translators: %s: installed version.
-#: includes/Admin/Settings.php:905
+#: includes/Admin/Settings.php:975
 #, php-format
 msgid "You are running the latest version, %s."
 msgstr "Sie verwenden die neueste Version, %s."
 
-#: includes/Admin/Settings.php:913
+#: includes/Admin/Settings.php:983
 msgid "The last update check did not complete. WordPress.org or GitHub may have been unreachable."
 msgstr "Die letzte Update-Prüfung wurde nicht abgeschlossen. WordPress.org oder GitHub waren möglicherweise nicht erreichbar."
 
-#: includes/Admin/Settings.php:920
+#: includes/Admin/Settings.php:990
 msgid "Check for updates"
 msgstr "Nach Updates suchen"
 
@@ -445,58 +445,58 @@ msgid "Orders are billed to your %s. Ask an administrator to change the billing 
 msgstr "Bestellungen werden Ihrer %s in Rechnung gestellt. Wenden Sie sich an eine Administratorin oder einen Administrator, um die Rechnungsadresse zu ändern."
 
 #. translators: %s: the singular location noun for the site's mode, for example "Branch".
-#: includes/Checkout/Blocks/CheckoutIntegration.php:131
+#: includes/Checkout/Blocks/CheckoutIntegration.php:132
 #: templates/checkout/location-selector.php:48
 #, php-format
 msgid "Deliver to which %s?"
 msgstr "An welche %s soll geliefert werden?"
 
-#: includes/Checkout/Blocks/CheckoutIntegration.php:134
+#: includes/Checkout/Blocks/CheckoutIntegration.php:135
 #: templates/checkout/location-selector.php:74
 msgid "A different address (enter it below)"
 msgstr "Eine andere Adresse (unten eingeben)"
 
-#: includes/Checkout/Blocks/CheckoutIntegration.php:186
+#: includes/Checkout/Blocks/CheckoutIntegration.php:187
 msgid "Whether the customer belongs to an organization."
 msgstr "Ob der Kunde zu einer Organisation gehört."
 
-#: includes/Checkout/Blocks/CheckoutIntegration.php:192
+#: includes/Checkout/Blocks/CheckoutIntegration.php:193
 msgid "Whether the customer may check out."
 msgstr "Ob der Kunde bestellen darf."
 
-#: includes/Checkout/Blocks/CheckoutIntegration.php:197
+#: includes/Checkout/Blocks/CheckoutIntegration.php:198
 msgid "Why the customer may not check out."
 msgstr "Warum der Kunde nicht bestellen darf."
 
-#: includes/Checkout/Blocks/CheckoutIntegration.php:198
+#: includes/Checkout/Blocks/CheckoutIntegration.php:199
 msgid "The name of the customer's organization."
 msgstr "Der Name der Organisation des Kunden."
 
-#: includes/Checkout/Blocks/CheckoutIntegration.php:200
+#: includes/Checkout/Blocks/CheckoutIntegration.php:201
 msgid "The organization billing address every order is billed to."
 msgstr "Die Rechnungsadresse der Organisation, an die jede Bestellung fakturiert wird."
 
-#: includes/Checkout/Blocks/CheckoutIntegration.php:206
+#: includes/Checkout/Blocks/CheckoutIntegration.php:207
 msgid "Explanation shown above the locked billing address."
 msgstr "Hinweis, der über der gesperrten Rechnungsadresse erscheint."
 
-#: includes/Checkout/Blocks/CheckoutIntegration.php:208
+#: includes/Checkout/Blocks/CheckoutIntegration.php:209
 msgid "Whether a one-off shipping address is allowed."
 msgstr "Ob eine einmalige Lieferadresse erlaubt ist."
 
-#: includes/Checkout/Blocks/CheckoutIntegration.php:214
+#: includes/Checkout/Blocks/CheckoutIntegration.php:215
 msgid "The locations this member may ship to."
 msgstr "Die Standorte, an die dieses Mitglied liefern lassen darf."
 
-#: includes/Checkout/Blocks/CheckoutIntegration.php:220
+#: includes/Checkout/Blocks/CheckoutIntegration.php:221
 msgid "Label for the location selector."
 msgstr "Beschriftung der Standortauswahl."
 
-#: includes/Checkout/Blocks/CheckoutIntegration.php:221
+#: includes/Checkout/Blocks/CheckoutIntegration.php:222
 msgid "Label for the one-off address option."
 msgstr "Beschriftung der Option für eine einmalige Adresse."
 
-#: includes/Checkout/Blocks/CheckoutIntegration.php:252
+#: includes/Checkout/Blocks/CheckoutIntegration.php:253
 msgid "The organization location this order is being delivered to."
 msgstr "Der Standort der Organisation, an den diese Bestellung geliefert wird."
 
@@ -1685,14 +1685,14 @@ msgid "You can change this, and everything else about them, from the %s screen o
 msgstr "Das und alles andere können Sie nach dem Beitritt auf der Seite %s ändern."
 
 #. translators: %s: the plural organization noun for the site's mode.
-#: includes/Admin/Settings.php:425
+#: includes/Admin/Settings.php:436
 #: includes/Admin/ThemeSettings.php:107
 #, php-format
 msgid "Only members of approved %s may sign in"
 msgstr "Nur Mitglieder freigegebener %s können sich anmelden"
 
 #. translators: %s: the organization noun for the site's mode.
-#: includes/Admin/Settings.php:436
+#: includes/Admin/Settings.php:447
 #, php-format
 msgid "With this on, a new registration is not signed in afterwards: it is told the %s is being reviewed, and can sign in once it has been approved. Shop staff are never locked out."
 msgstr "Ist dies aktiviert, wird nach einer neuen Registrierung niemand angemeldet: Es wird darauf hingewiesen, dass die %s geprüft wird, und die Anmeldung ist möglich, sobald sie freigegeben ist. Shop-Mitarbeitende werden nie ausgesperrt."
@@ -1918,7 +1918,7 @@ msgstr "Die Adresse, formatiert für ihr Land, als Textzeilen."
 msgid "\"%s\" is not a status we recognise."
 msgstr "„%s“ ist kein Status, den wir kennen."
 
-#: includes/Admin/Settings.php:508
+#: includes/Admin/Settings.php:519
 msgid "Applied on registration and on both edit screens. The number is stored and shown as it was typed; no format is checked, because a VAT number, a company registration number and a US EIN look nothing alike."
 msgstr "Gilt bei der Registrierung und auf beiden Bearbeitungsseiten. Die Nummer wird so gespeichert und angezeigt, wie sie eingegeben wurde; das Format wird nicht geprüft, denn eine USt-IdNr., eine Handelsregisternummer und eine US-amerikanische EIN sehen völlig unterschiedlich aus."
 
@@ -1942,7 +1942,7 @@ msgid "The name below is who the parcel is addressed to. If it goes to a person,
 msgstr "Der Name unten ist der Empfänger auf dem Paket. Geht es an eine Person, geben Sie deren Vor- und Nachnamen an. Geht es an ein Lager, eine Abteilung oder eine Laderampe, tragen Sie diesen Namen im Feld Vorname ein und lassen Sie den Nachnamen leer."
 
 #. translators: %s: the plural organization noun for the site's mode.
-#: includes/Admin/Settings.php:500
+#: includes/Admin/Settings.php:511
 #, php-format
 msgid "%s must supply a VAT number, tax ID or registration number"
 msgstr "%s müssen eine USt-IdNr., Steuernummer oder Handelsregisternummer angeben"
@@ -2817,8 +2817,8 @@ msgstr "Es ist nichts offen. Wer hier eingeladen wird, erhält einen einmaligen 
 msgid "Withdraw this invitation? The link already sent stops working."
 msgstr "Diese Einladung zurückziehen? Der bereits versendete Link funktioniert dann nicht mehr."
 
-#: includes/Admin/Settings.php:249
-#: includes/Admin/Settings.php:250
+#: includes/Admin/Settings.php:259
+#: includes/Admin/Settings.php:260
 msgid "Settings"
 msgstr "Einstellungen"
 
@@ -2937,73 +2937,73 @@ msgid "Main %s"
 msgstr "Haupt-%s"
 
 #. translators: 1: the organization noun for the site's mode. 2: the singular location noun.
-#: includes/Admin/Settings.php:679
+#: includes/Admin/Settings.php:749
 #, php-format
 msgid "Every %1$s has at least one %2$s, so every one of them can check out."
 msgstr "Jede %1$s hat mindestens eine %2$s, also können alle bestellen."
 
 #. translators: 1: the organization noun for the site's mode. 2: the singular location noun.
-#: includes/Admin/Settings.php:695
+#: includes/Admin/Settings.php:765
 #, php-format
 msgid "One %1$s has no %2$s, so nobody on it can check out."
 msgstr "Eine %1$s hat keine %2$s, dort kann niemand bestellen."
 
 #. translators: 1: number of organizations. 2: the plural organization noun. 3: the plural location noun.
-#: includes/Admin/Settings.php:701
+#: includes/Admin/Settings.php:771
 #, php-format
 msgid "%1$d %2$s have no %3$s, so nobody on them can check out."
 msgstr "%1$d %2$s haben keine %3$s, dort kann niemand bestellen."
 
 #. translators: %s: the singular location noun for the site's mode, for example "Branch".
-#: includes/Admin/Settings.php:714
+#: includes/Admin/Settings.php:784
 #, php-format
 msgid "Their billing address is the address the shop already invoices them at. This turns it into a %s they can order to, which they can rename or correct afterwards. Nothing is changed for anybody who already has one."
 msgstr "Die Rechnungsadresse ist die Adresse, an die der Shop bereits Rechnungen stellt. Daraus wird eine %s, an die geliefert werden kann; sie lässt sich danach umbenennen oder korrigieren. Wer bereits eine hat, bleibt unverändert."
 
 #. translators: %d: how many organizations one press works through.
-#: includes/Admin/Settings.php:726
+#: includes/Admin/Settings.php:796
 #, php-format
 msgid "Up to %d at a time. Press the button again for the rest."
 msgstr "Höchstens %d auf einmal. Drücken Sie die Schaltfläche erneut für den Rest."
 
 #. translators: %s: the plural location noun for the site's mode, for example "Branches".
-#: includes/Admin/Settings.php:739
+#: includes/Admin/Settings.php:809
 #, php-format
 msgid "Create %s from billing addresses"
 msgstr "%s aus Rechnungsadressen anlegen"
 
 #. translators: 1: the organization noun for the site's mode. 2: the singular location noun.
-#: includes/Admin/Settings.php:810
+#: includes/Admin/Settings.php:880
 #, php-format
 msgid "One %1$s was left out because its billing address is not a complete delivery address; give it a %2$s by hand."
 msgstr "Eine %1$s wurde ausgelassen, weil ihre Rechnungsadresse keine vollständige Lieferadresse ist; legen Sie dort eine %2$s von Hand an."
 
 #. translators: 1: number of organizations. 2: the plural organization noun. 3: the singular location noun.
-#: includes/Admin/Settings.php:816
+#: includes/Admin/Settings.php:886
 #, php-format
 msgid "%1$d %2$s were left out because their billing address is not a complete delivery address; give each a %3$s by hand."
 msgstr "%1$d %2$s wurden ausgelassen, weil ihre Rechnungsadresse keine vollständige Lieferadresse ist; legen Sie dort jeweils eine %3$s von Hand an."
 
 #. translators: %s: the organization noun for the site's mode.
-#: includes/Admin/Settings.php:826
+#: includes/Admin/Settings.php:896
 #, php-format
 msgid "Every %s already has somewhere to deliver to."
 msgstr "Jede %s hat bereits ein Lieferziel."
 
 #. translators: %s: the singular location noun for the site's mode, for example "Branch".
-#: includes/Admin/Settings.php:843
+#: includes/Admin/Settings.php:913
 #, php-format
 msgid "Created one %s from a billing address."
 msgstr "Eine %s wurde aus einer Rechnungsadresse angelegt."
 
 #. translators: 1: number of locations created. 2: the plural location noun.
-#: includes/Admin/Settings.php:848
+#: includes/Admin/Settings.php:918
 #, php-format
 msgid "Created %1$d %2$s from billing addresses."
 msgstr "%1$d %2$s wurden aus Rechnungsadressen angelegt."
 
 #. translators: %d: how many organizations are still without a location.
-#: includes/Admin/Settings.php:860
+#: includes/Admin/Settings.php:930
 #, php-format
 msgid "%d still to go — press the button again to continue."
 msgstr "%d noch offen – drücken Sie die Schaltfläche erneut, um fortzufahren."
@@ -3012,46 +3012,116 @@ msgstr "%d noch offen – drücken Sie die Schaltfläche erneut, um fortzufahren
 msgid "Download datasheet"
 msgstr "Datenblatt herunterladen"
 
-#: includes/Datasheet/Download.php:508
+#: includes/Datasheet/Download.php:520
 msgid "There is no product data to download."
 msgstr "Es gibt keine Produktdaten zum Herunterladen."
 
-#: includes/Datasheet/Download.php:553
+#: includes/Datasheet/Download.php:565
 msgid "You are not allowed to download this product data."
 msgstr "Sie dürfen diese Produktdaten nicht herunterladen."
 
-#: includes/Checkout/Blocks/CheckoutIntegration.php:223
+#: includes/Checkout/Blocks/CheckoutIntegration.php:224
 msgid "The formats the cart's product data can be downloaded in."
 msgstr "Die Formate, in denen die Produktdaten des Warenkorbs heruntergeladen werden können."
 
-#: includes/Datasheet/Download.php:129
+#: includes/Datasheet/Download.php:137
 msgid "Download datasheet (Excel)"
 msgstr "Datenblatt herunterladen (Excel)"
 
-#: includes/Datasheet/Download.php:132
+#: includes/Datasheet/Download.php:140
 msgid "Download datasheet (CSV)"
 msgstr "Datenblatt herunterladen (CSV)"
 
-#: includes/Datasheet/Download.php:526
+#: includes/Datasheet/Download.php:538
 msgid "That file could not be produced."
 msgstr "Diese Datei konnte nicht erstellt werden."
 
-#: includes/Datasheet/Download.php:149
+#: includes/Datasheet/Download.php:157
 msgid "Excel"
 msgstr "Excel"
 
-#: includes/Datasheet/Download.php:152
+#: includes/Datasheet/Download.php:160
 msgid "CSV"
 msgstr "CSV"
 
 #. translators: %s: the order number.
-#: includes/Datasheet/Download.php:165
+#: includes/Datasheet/Download.php:173
 #, php-format
 msgid "Download the product datasheet for order %s as an Excel file"
 msgstr "Produktdatenblatt zur Bestellung %s als Excel-Datei herunterladen"
 
 #. translators: %s: the order number.
-#: includes/Datasheet/Download.php:168
+#: includes/Datasheet/Download.php:176
 #, php-format
 msgid "Download the product datasheet for order %s as a CSV file"
 msgstr "Produktdatenblatt zur Bestellung %s als CSV-Datei herunterladen"
+
+#: includes/Admin/Settings.php:225
+msgid "Customer view"
+msgstr "Kundenansicht"
+
+#: includes/Admin/Settings.php:613
+msgid "Offer a customer view showing recommended retail prices"
+msgstr "Eine Kundenansicht mit unverbindlichen Preisempfehlungen anbieten"
+
+#: includes/Admin/Settings.php:618
+msgid "Adds a control to the login form and to a member's account. In customer view every price is the recommended retail price including VAT, the account screens are not reachable and nothing can be ordered — so a member can go through the catalogue with their own customer without their buying prices on screen."
+msgstr "Fügt dem Anmeldeformular und dem Konto eines Mitglieds ein Bedienelement hinzu. In der Kundenansicht ist jeder Preis die unverbindliche Preisempfehlung inklusive MwSt., die Kontoseiten sind nicht erreichbar und es kann nichts bestellt werden — so kann ein Mitglied den Katalog mit seinen eigenen Kunden durchgehen, ohne dass die eigenen Einkaufspreise auf dem Bildschirm stehen."
+
+#: includes/Admin/Settings.php:633
+msgid "Every published product has a recommended retail price."
+msgstr "Für jedes veröffentlichte Produkt ist eine unverbindliche Preisempfehlung hinterlegt."
+
+#: includes/Admin/Settings.php:643
+msgid "One published product has no recommended retail price and will show no price in customer view."
+msgstr "Für ein veröffentlichtes Produkt ist keine unverbindliche Preisempfehlung hinterlegt; es zeigt in der Kundenansicht keinen Preis."
+
+#. translators: %d: how many products have no recommended retail price.
+#: includes/Admin/Settings.php:646
+#, php-format
+msgid "%d published products have no recommended retail price and will show no price in customer view."
+msgstr "Für %d veröffentlichte Produkte ist keine unverbindliche Preisempfehlung hinterlegt; sie zeigen in der Kundenansicht keinen Preis."
+
+#: includes/Pricing/CustomerPrices.php:164
+msgid "incl. VAT"
+msgstr "inkl. MwSt."
+
+#: includes/Pricing/CustomerView.php:143
+msgid "Nothing can be ordered while you are viewing retail prices. Leave customer view to order."
+msgstr "Es kann nichts bestellt werden, solange Sie Endkundenpreise ansehen. Verlassen Sie die Kundenansicht, um zu bestellen."
+
+#: includes/Pricing/CustomerView.php:194
+msgid "You are now viewing recommended retail prices. Nothing can be ordered until you leave customer view."
+msgstr "Sie sehen jetzt unverbindliche Preisempfehlungen. Es kann nichts bestellt werden, solange Sie die Kundenansicht nicht verlassen."
+
+#: includes/Pricing/CustomerView.php:199
+msgid "You have left customer view."
+msgstr "Sie haben die Kundenansicht verlassen."
+
+#: includes/Pricing/CustomerPrices.php:370
+msgid "That page is not available while customer view is on. Turn it off in your account to see your own prices again."
+msgstr "Diese Seite ist nicht verfügbar, solange die Kundenansicht eingeschaltet ist. Schalten Sie sie in Ihrem Konto aus, um wieder Ihre eigenen Preise zu sehen."
+
+#: includes/Pricing/CustomerPrices.php:487
+msgid "Customer view is on"
+msgstr "Kundenansicht ist eingeschaltet"
+
+#: includes/Pricing/CustomerPrices.php:488
+msgid "Show a customer the retail prices"
+msgstr "Einem Kunden die Endkundenpreise zeigen"
+
+#: includes/Pricing/CustomerPrices.php:490
+msgid "Every price on the shop is the recommended retail price including VAT. Your own prices, your basket and your orders are hidden, and nothing can be ordered until you turn this off."
+msgstr "Jeder Preis im Shop ist die unverbindliche Preisempfehlung inklusive MwSt. Ihre eigenen Preise, Ihr Warenkorb und Ihre Bestellungen sind ausgeblendet, und es kann nichts bestellt werden, solange Sie dies nicht ausschalten."
+
+#: includes/Pricing/CustomerPrices.php:491
+msgid "Turn this on to go through the catalogue with a customer on your screen. Every price then shows the recommended retail price including VAT, and your own prices, your basket and your orders are hidden until you turn it off again."
+msgstr "Schalten Sie dies ein, um den Katalog mit einem Kunden an Ihrem Bildschirm durchzugehen. Jeder Preis zeigt dann die unverbindliche Preisempfehlung inklusive MwSt., und Ihre eigenen Preise, Ihr Warenkorb und Ihre Bestellungen sind ausgeblendet, bis Sie es wieder ausschalten."
+
+#: includes/Pricing/CustomerPrices.php:493
+msgid "Turn off customer view"
+msgstr "Kundenansicht ausschalten"
+
+#: includes/Pricing/CustomerPrices.php:494
+msgid "Turn on customer view"
+msgstr "Kundenansicht einschalten"

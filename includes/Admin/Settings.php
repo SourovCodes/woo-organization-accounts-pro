@@ -11,6 +11,7 @@ use WooOrgAccounts\Data\OrganizationRepository;
 use WooOrgAccounts\Frontend\Registration;
 use WooOrgAccounts\Labels;
 use WooOrgAccounts\Locations\Locations;
+use WooOrgAccounts\Pricing\Msrp;
 use WooOrgAccounts\Updates\Updater;
 
 defined( 'ABSPATH' ) || exit;
@@ -77,6 +78,7 @@ class Settings {
 			'invitation_expiry_days'        => 7,
 			'registration_page_id'          => 0,
 			'default_allow_custom_shipping' => true,
+			'customer_view'                 => false,
 			'remove_data_on_uninstall'      => false,
 		);
 	}
@@ -218,6 +220,14 @@ class Settings {
 			'woap_purchasing'
 		);
 
+		add_settings_field(
+			'customer_view',
+			__( 'Customer view', 'woo-organization-accounts-pro' ),
+			array( $this, 'render_customer_view_field' ),
+			self::PAGE_SLUG,
+			'woap_purchasing'
+		);
+
 		add_settings_section(
 			'woap_data',
 			__( 'Data', 'woo-organization-accounts-pro' ),
@@ -296,6 +306,7 @@ class Settings {
 		$clean['require_approval_to_sign_in']   = ! empty( $input['require_approval_to_sign_in'] );
 		$clean['require_tax_id']                = ! empty( $input['require_tax_id'] );
 		$clean['default_allow_custom_shipping'] = ! empty( $input['default_allow_custom_shipping'] );
+		$clean['customer_view']                 = ! empty( $input['customer_view'] );
 		$clean['remove_data_on_uninstall']      = ! empty( $input['remove_data_on_uninstall'] );
 
 		$clean['invitation_expiry_days'] = isset( $input['invitation_expiry_days'] )
@@ -576,6 +587,65 @@ class Settings {
 					__( 'This is the starting value for a new registration. It can be changed per %s afterwards.', 'woo-organization-accounts-pro' ),
 					Labels::organization()
 				)
+			)
+		);
+	}
+
+	/**
+	 * The customer-view checkbox, and what the catalogue is not ready for.
+	 *
+	 * The count of products with no recommended retail price is reported beside the
+	 * switch rather than anywhere else, because this is the moment it matters: every one
+	 * of them will show no price at all to a walk-in customer, and that is a thing to
+	 * know before switching the mode on rather than after somebody has been shown a blank
+	 * shelf. It is a fact about the product sync, so it is reported and not repaired —
+	 * there is nothing here that could invent a retail price.
+	 *
+	 * @return void
+	 */
+	public function render_customer_view_field() {
+		$settings = self::get_settings();
+
+		printf(
+			'<label><input type="checkbox" name="%1$s[customer_view]" value="1"%2$s> %3$s</label>',
+			esc_attr( self::OPTION_KEY ),
+			checked( $settings['customer_view'], true, false ),
+			esc_html__( 'Offer a customer view showing recommended retail prices', 'woo-organization-accounts-pro' )
+		);
+
+		printf(
+			'<p class="description">%s</p>',
+			esc_html__(
+				'Adds a control to the login form and to a member\'s account. In customer view every price is the recommended retail price including VAT, the account screens are not reachable and nothing can be ordered — so a member can go through the catalogue with their own customer without their buying prices on screen.',
+				'woo-organization-accounts-pro'
+			)
+		);
+
+		if ( ! $settings['customer_view'] ) {
+			return;
+		}
+
+		$missing = Msrp::count_products_without();
+
+		if ( 0 === $missing ) {
+			printf(
+				'<p class="description">%s</p>',
+				esc_html__( 'Every published product has a recommended retail price.', 'woo-organization-accounts-pro' )
+			);
+
+			return;
+		}
+
+		printf(
+			'<p class="description">%s</p>',
+			esc_html(
+				1 === $missing
+					? __( 'One published product has no recommended retail price and will show no price in customer view.', 'woo-organization-accounts-pro' )
+					: sprintf(
+						/* translators: %d: how many products have no recommended retail price. */
+						__( '%d published products have no recommended retail price and will show no price in customer view.', 'woo-organization-accounts-pro' ),
+						$missing
+					)
 			)
 		);
 	}

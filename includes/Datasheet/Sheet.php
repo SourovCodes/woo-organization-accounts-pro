@@ -7,6 +7,8 @@
 
 namespace WooOrgAccounts\Datasheet;
 
+use WooOrgAccounts\Pricing\Msrp;
+
 defined( 'ABSPATH' ) || exit;
 
 /**
@@ -28,14 +30,6 @@ defined( 'ABSPATH' ) || exit;
  * only reason any of this can be asserted in a test.
  */
 final class Sheet {
-
-	/**
-	 * Meta key the shop's product sync writes the recommended retail price to.
-	 *
-	 * Empty when it is not set: the column is a fact about the product, and a shop that
-	 * has never recorded one must not be made to look as though the RRP were zero.
-	 */
-	const MSRP_META = '_wksync_msrp';
 
 	/**
 	 * WooCommerce's own brands taxonomy, native since 9.6.
@@ -116,7 +110,7 @@ final class Sheet {
 			$product->get_name(),
 			self::description( $product, $parent_product ),
 			self::price( $product ),
-			self::msrp( $product, $parent_product ),
+			self::msrp( $product ),
 		);
 
 		$row = array_merge( $row, self::image_urls( $product, $parent_product ) );
@@ -361,22 +355,24 @@ final class Sheet {
 	/**
 	 * The recommended retail price the shop's product sync recorded.
 	 *
-	 * @param \WC_Product      $product The product.
-	 * @param \WC_Product|null $parent_product Its parent, when it has one.
+	 * The value itself comes from `Pricing\Msrp`, which is also what customer view
+	 * prices a shelf from, so the file and the shelf can never disagree about which
+	 * products have an RRP. What is decided here is only how it is spelt: fixed to four
+	 * decimals like every other price in the feed.
+	 *
+	 * A value that is not a number is passed through as it was stored. A file is a
+	 * record of what the shop holds, so it reports it rather than silently blanking it.
+	 *
+	 * @param \WC_Product $product The product.
 	 * @return string The price, or an empty string when none is stored.
 	 */
-	private static function msrp( \WC_Product $product, $parent_product ) {
-		$value = (string) $product->get_meta( self::MSRP_META, true );
-
-		if ( '' === $value && $parent_product instanceof \WC_Product ) {
-			$value = (string) $parent_product->get_meta( self::MSRP_META, true );
-		}
+	private static function msrp( \WC_Product $product ) {
+		$value = Msrp::stored( $product );
 
 		if ( '' === $value ) {
 			return '';
 		}
 
-		// A shop that stores something other than a number keeps whatever it stored.
 		return is_numeric( $value ) ? self::amount( $value ) : $value;
 	}
 
