@@ -153,16 +153,18 @@ $woap_detail_error = static function ( $woap_field ) use ( $woap_errors ) {
 		 * used to be here too, in a second pair of columns that reached no order.
 		 */
 		?>
-		<?php $woap_bad = $woap_detail_error( 'tax_id' ); ?>
-		<p class="woocommerce-form-row form-row-wide<?php echo '' !== $woap_bad ? ' woocommerce-invalid woocommerce-invalid-required-field' : ''; ?><?php echo $woap_tax_id_required ? ' validate-required' : ''; ?>">
-			<label for="woap-tax-id"<?php echo $woap_tax_id_required ? ' class="required_field"' : ''; ?>>
-				<?php esc_html_e( 'VAT number, tax ID or registration number', 'woo-organization-accounts-pro' ); ?>
-			</label>
-			<input type="text" class="woocommerce-Input input-text" id="woap-tax-id" name="woap_tax_id" <?php echo $woap_tax_id_required ? 'required aria-required="true"' : ''; ?> value="<?php echo esc_attr( $woap_details['tax_id'] ); ?>">
-			<?php if ( '' !== $woap_bad ) : ?>
-				<span class="description"><?php echo esc_html( wp_strip_all_tags( $woap_bad ) ); ?></span>
-			<?php endif; ?>
-		</p>
+		<?php if ( Organization::tax_id_collected() ) : ?>
+			<?php $woap_bad = $woap_detail_error( 'tax_id' ); ?>
+			<p class="woocommerce-form-row form-row-wide<?php echo '' !== $woap_bad ? ' woocommerce-invalid woocommerce-invalid-required-field' : ''; ?><?php echo $woap_tax_id_required ? ' validate-required' : ''; ?>">
+				<label for="woap-tax-id"<?php echo $woap_tax_id_required ? ' class="required_field"' : ''; ?>>
+					<?php esc_html_e( 'VAT number, tax ID or registration number', 'woo-organization-accounts-pro' ); ?>
+				</label>
+				<input type="text" class="woocommerce-Input input-text" id="woap-tax-id" name="woap_tax_id" <?php echo $woap_tax_id_required ? 'required aria-required="true"' : ''; ?> value="<?php echo esc_attr( $woap_details['tax_id'] ); ?>">
+				<?php if ( '' !== $woap_bad ) : ?>
+					<span class="description"><?php echo esc_html( wp_strip_all_tags( $woap_bad ) ); ?></span>
+				<?php endif; ?>
+			</p>
+		<?php endif; ?>
 
 		<p class="woocommerce-form-row form-row-wide">
 			<label class="woocommerce-form__label woocommerce-form__label-for-checkbox checkbox">

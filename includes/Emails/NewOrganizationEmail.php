@@ -5,6 +5,7 @@
  * @package WooOrgAccounts
  */
 
+use WooOrgAccounts\Admin\ApprovalLink;
 use WooOrgAccounts\Admin\Organizations;
 use WooOrgAccounts\Data\Member;
 use WooOrgAccounts\Data\Organization;
@@ -147,6 +148,10 @@ class WooOrgAccounts_New_Organization_Email extends Email {
 			'contact_name'      => $user instanceof \WP_User ? $user->display_name : '',
 			'contact_email'     => $user instanceof \WP_User ? $user->user_email : '',
 			'review_url'        => $this->organization instanceof Organization ? Organizations::edit_url( $this->organization->get_id() ) : '',
+			// Only a registration still waiting for a decision can be approved from the email.
+			'approve_url'       => $this->organization instanceof Organization && Organization::STATUS_PENDING === $this->organization->get_status()
+				? ApprovalLink::url( $this->organization )
+				: '',
 		);
 	}
 }

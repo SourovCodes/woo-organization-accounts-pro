@@ -12,6 +12,7 @@
  * @var string    $contact_name       Name of the person who registered.
  * @var string    $contact_email      Their email address.
  * @var string    $review_url         Link to the organization in wp-admin.
+ * @var string    $approve_url        One-click approval link, or empty once decided.
  * @var string    $email_heading      Heading for the email.
  * @var string    $additional_content Extra content from the email settings.
  * @var \WC_Email $email              The email being sent.
@@ -42,10 +43,21 @@ do_action( 'woocommerce_email_header', $email_heading, $email );
 </ul>
 
 <p>
+	<?php if ( ! empty( $approve_url ) ) : ?>
+		<a class="button" href="<?php echo esc_url( $approve_url ); ?>" style="display:inline-block;padding:12px 20px;background:#2e7d32;color:#ffffff;text-decoration:none;border-radius:3px;margin-right:8px;">
+			<?php esc_html_e( 'Approve now', 'woo-organization-accounts-pro' ); ?>
+		</a>
+	<?php endif; ?>
 	<a class="button" href="<?php echo esc_url( $review_url ); ?>" style="display:inline-block;padding:12px 20px;background:#7f54b3;color:#ffffff;text-decoration:none;border-radius:3px;">
 		<?php esc_html_e( 'Review the account', 'woo-organization-accounts-pro' ); ?>
 	</a>
 </p>
+
+<?php if ( ! empty( $approve_url ) ) : ?>
+	<p style="font-size:12px;color:#777777;">
+		<?php esc_html_e( 'Approve now works for a signed-in shop manager and approves this registration only while it is still waiting. The customer is emailed straight away.', 'woo-organization-accounts-pro' ); ?>
+	</p>
+<?php endif; ?>
 
 <?php
 

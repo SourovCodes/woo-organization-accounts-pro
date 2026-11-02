@@ -20,7 +20,7 @@ defined( 'ABSPATH' ) || exit;
  * invitation. Registering the action means WooCommerce re-fires it as
  * `…_notification` with the emails loaded, which is what each class listens for.
  *
- * **The four concrete email classes are declared in the global namespace**, the one
+ * **The five concrete email classes are declared in the global namespace**, the one
  * place in this plugin that departs from PSR-4, and the reason is that a class name is
  * part of this plugin's URL surface whether we like it or not.
  * `Internal\Admin\EmailPreview\EmailPreview` identifies an email by
@@ -81,6 +81,7 @@ class Emails {
 		$emails['WooOrgAccounts_OrganizationApproved'] = new \WooOrgAccounts_Organization_Approved_Email();
 		$emails['WooOrgAccounts_OrganizationRejected'] = new \WooOrgAccounts_Organization_Rejected_Email();
 		$emails['WooOrgAccounts_NewOrganization']      = new \WooOrgAccounts_New_Organization_Email();
+		$emails['WooOrgAccounts_RegistrationReceived'] = new \WooOrgAccounts_Registration_Received_Email();
 
 		return $emails;
 	}

@@ -290,6 +290,27 @@ class RegistrationSurfaceTest extends TestCase {
 	}
 
 	/**
+	 * A tax ID the shop does not ask for is neither required nor taken.
+	 *
+	 * A school has no VAT number, so the EDU shop switches the field off — and with it
+	 * off, a registration must go through without one even on a site whose old checkbox
+	 * still says "required", and whatever a crafted request carries is not stored.
+	 */
+	public function testATaxIdThatIsNotAskedForIsNeitherRequiredNorTaken() {
+		$this->make_registration_page();
+		$this->set_setting( 'require_approval', false );
+		$this->set_setting( 'require_tax_id', true );
+		$this->set_setting( 'tax_id_field', Organization::TAX_ID_OFF );
+
+		$this->assertNotSame( '', $this->register( array( 'woap_tax_id' => 'forged' ) ), 'The registration was refused.' );
+
+		$member       = MemberRepository::find_by_user( get_user_by( 'email', 'ada@acme.test' )->ID );
+		$organization = \WooOrgAccounts\Data\OrganizationRepository::find( $member->get_organization_id() );
+
+		$this->assertSame( '', $organization->get( 'tax_id' ) );
+	}
+
+	/**
 	 * Post the invitation acceptance form and report where it ended up.
 	 *
 	 * @param string $token     Raw token from the link.

@@ -118,8 +118,8 @@ remembered. If the hook reports that phpcbf reformatted a file, re-read it befor
   uses `printf`-style placeholders rather than concatenation.
 - Class files follow PSR-4 (`includes/Data/Organization.php`), not WordPress's `class-*.php`
   convention — the ruleset already excludes `includes/` from `WordPress.Files.FileName`.
-- **The four concrete email classes are the one exception, and they are global.**
-  `WooOrgAccounts_Invitation_Email` and its three siblings carry no namespace, are listed in
+- **The five concrete email classes are the one exception, and they are global.**
+  `WooOrgAccounts_Invitation_Email` and its four siblings carry no namespace, are listed in
   `composer.json` under `autoload.classmap` rather than `autoload.psr-4`, and so need a
   `composer dump-autoload` when one is added. See *Emails are named for a URL* below.
 
@@ -1024,11 +1024,11 @@ Status → Tools entry and no wp-cli command for it.
 
 ### Emails are named for a URL
 
-The plugin sends four messages, each a `WC_Email` subclass so it appears in WooCommerce →
+The plugin sends five messages, each a `WC_Email` subclass so it appears in WooCommerce →
 Settings → Emails with the same switch, subject and heading fields, template overrides and
 branding as every other message the shop sends. `Emails::add_classes()` registers them.
 
-**The four concrete classes live in the global namespace — the only departure from PSR-4 in the
+**The five concrete classes live in the global namespace — the only departure from PSR-4 in the
 plugin — because a class name here is part of the plugin's URL surface.** WooCommerce identifies
 an email to preview by `get_class()`: `EmailPreview::set_email_type()` matches the `type` query
 argument against `array_map( 'get_class', WC()->mailer()->get_emails() )`, with no filter anywhere
@@ -1050,7 +1050,7 @@ stops nobody else. It is still the wrong shape, and this plugin routes around it
 depending on every host getting it right.
 
 - **`$this->id` is what a shop's settings are keyed by** — `woocommerce_{$id}_settings`, so
-  `woap_invitation` and its three siblings. The class name is not in that key, which is why these
+  `woap_invitation` and its four siblings. The class name is not in that key, which is why these
   could be renamed without a single shop losing its configured subjects and headings.
 - **The two abstract bases stay namespaced.** `Emails\Email` and `Emails\StatusEmail` are never
   registered, so `get_class()` never returns either and neither reaches a URL.
@@ -1112,15 +1112,26 @@ on purpose (`AddressFields::delivery_fields()`), so one can accept what the othe
 is left is an organization with no location, which the account screen's empty state already reports
 in the words that say why it matters.
 
-**`require_tax_id` is the one detail a site can make mandatory, and it is one predicate, not three.**
-Insisting on a VAT number is right for a shop selling to companies in the EU and wrong for one
-selling to schools or outside it, so it is a setting — off by default. Registration, the account
-profile and the admin screen all ask `Organization::tax_id_required()`, because a field that
-registration insists on and the profile screen lets you blank again is not a required field. That
-was exactly the state the organization's email address was in before it was removed. **No format is
-checked**: a VAT number, a company registration number and a US EIN look nothing alike, the rules
-change with the country and the year, and a pattern that rejects a valid identifier is worse than
-no pattern — the shop can see what was typed and this plugin cannot see whether it is real.
+**`tax_id_field` is the one detail a site can make mandatory — or leave out — and it is one setting
+with three values, not two switches.** `off` (never asked: the EDU shop sells to schools, which
+have no VAT number), `optional`, or `required`. Three values rather than "collect" plus "require"
+because those two could both be on, and a hidden required field is a registration nobody can
+finish. Registration, the account profile and the admin screen all ask `Organization::tax_id_*()`,
+because a field that registration insists on and the profile screen lets you blank again is not a
+required field. That was exactly the state the organization's email address was in before it was
+removed.
+
+- **Off means not taken as well as not shown.** Registration ignores a posted `woap_tax_id`, and the
+  profile save leaves the stored value alone rather than reading the missing field as "cleared" —
+  wp-admin still shows and edits it, because the shop may record one itself.
+- **It replaced the `require_tax_id` checkbox (0.16.0).** Until a site saves its settings again,
+  an unset `tax_id_field` is answered from a stored `require_tax_id` (required, or else optional),
+  so nobody's form changes on update; the screen no longer writes the old key back.
+
+**No format is checked**: a VAT number, a company registration number and a US EIN look nothing
+alike, the rules change with the country and the year, and a pattern that rejects a valid
+identifier is worse than no pattern — the shop can see what was typed and this plugin cannot see
+whether it is real.
 
 ### Importing a shop that had no organizations
 
@@ -1223,6 +1234,29 @@ is the round trip that keeps the two halves honest.
 
 `tests/fixtures/customers.csv` is synthetic. Every shape in it was found in the real export and none
 of the data is anybody's: **never commit a customer file**, the same rule as a credential.
+
+### One-click approval from the shop's email
+
+The new-registration email to the shop carries an **Approve now** button for a registration that is
+still pending (`Admin\ApprovalLink`). It cannot be `Organizations::status_url()`: that is a nonce
+URL, and a nonce minted while a *visitor* registers belongs to user 0 and lapses within a day, so it
+would fail for everyone who received it. The link carries a key instead — an HMAC of the
+organization ID under `wp_salt( 'auth' )` — and the key is only half of what makes a state change
+from a GET safe:
+
+- **It lands in wp-admin** (`admin.php?page=…approvals`), so it needs a signed-in user holding
+  `Approvals::CAPABILITY`. Mail scanners and link previews that fetch every URL carry no session and
+  reach the login screen; `redirect_to` brings a real reviewer back to finish the click.
+- **It only approves a pending registration.** Once decided — by this link, the Approvals screen or
+  anything else — the same link reports `decided` and changes nothing, so a second click or a
+  forwarded copy cannot overturn a rejection.
+- **Approving is `OrganizationRepository::set_status()`**, the same call as the Approvals screen,
+  so the customer's approved email and every listener behave identically.
+
+`ApprovalLinkTest` asserts each property. The customer side of a registration is
+`WooOrgAccounts_Registration_Received_Email` (`woap_registration_received`), sent on the same
+`…_organization_registered` event: "we are reviewing it" while pending, "you can order" when the
+shop approves nobody.
 
 ### Approval gates two different things, and they are two settings
 

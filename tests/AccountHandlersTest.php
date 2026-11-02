@@ -10,6 +10,7 @@ namespace WooOrgAccounts\Tests;
 use WooOrgAccounts\Data\LocationRepository;
 use WooOrgAccounts\Data\Member;
 use WooOrgAccounts\Data\MemberRepository;
+use WooOrgAccounts\Data\Organization;
 use WooOrgAccounts\Data\OrganizationRepository;
 use WooOrgAccounts\Frontend\AccountHandlers;
 use WooOrgAccounts\Frontend\MyAccount;
@@ -414,6 +415,37 @@ class AccountHandlersTest extends TestCase {
 		);
 
 		$this->assertSame( '', OrganizationRepository::find( $organization->get_id() )->get( 'tax_id' ) );
+
+		wc_clear_notices();
+	}
+
+	/**
+	 * A tax ID the profile does not ask for is kept, not blanked.
+	 *
+	 * With the field switched off the form posts no tax ID at all, and reading that as
+	 * "the customer cleared it" would wipe whatever the shop recorded in wp-admin on the
+	 * next unrelated save — and a crafted post must not set one either.
+	 */
+	public function testAHiddenTaxIdIsLeftAsItWas() {
+		$this->set_setting( 'tax_id_field', Organization::TAX_ID_OFF );
+		$this->set_setting( 'require_tax_id', true );
+
+		$organization = $this->make_organization( array( 'tax_id' => 'CHE-123.456.789' ) );
+		$this->act_as( $this->make_member( $organization, Member::ROLE_ADMIN ) );
+
+		$this->submit(
+			'save_organization',
+			array(
+				'woap_name'   => 'Primarschule Muttenz',
+				'woap_tax_id' => 'forged',
+			),
+			'woap_save_organization'
+		);
+
+		$saved = OrganizationRepository::find( $organization->get_id() );
+
+		$this->assertSame( 'Primarschule Muttenz', $saved->get_name(), 'The save itself did not go through.' );
+		$this->assertSame( 'CHE-123.456.789', $saved->get( 'tax_id' ) );
 
 		wc_clear_notices();
 	}

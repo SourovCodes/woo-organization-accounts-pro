@@ -7,6 +7,7 @@
 
 namespace WooOrgAccounts;
 
+use WooOrgAccounts\Admin\ApprovalLink;
 use WooOrgAccounts\Admin\Approvals;
 use WooOrgAccounts\Admin\Import;
 use WooOrgAccounts\Admin\InvitationScreen;
@@ -194,6 +195,7 @@ final class Plugin {
 			( new Menu() )->register();
 			( new Organizations() )->register();
 			( new Approvals() )->register();
+			( new ApprovalLink() )->register();
 			( new Members() )->register();
 			( new Settings() )->register();
 			( new Import() )->register();

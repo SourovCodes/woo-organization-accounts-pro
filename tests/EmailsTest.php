@@ -7,6 +7,7 @@
 
 namespace WooOrgAccounts\Tests;
 
+use WooOrgAccounts\Admin\ApprovalLink;
 use WooOrgAccounts\Data\Member;
 use WooOrgAccounts\Data\Organization;
 use WooOrgAccounts\Data\OrganizationRepository;
@@ -79,6 +80,7 @@ class EmailsTest extends TestCase {
 		$this->assertArrayHasKey( 'WooOrgAccounts_OrganizationApproved', $emails );
 		$this->assertArrayHasKey( 'WooOrgAccounts_OrganizationRejected', $emails );
 		$this->assertArrayHasKey( 'WooOrgAccounts_NewOrganization', $emails );
+		$this->assertArrayHasKey( 'WooOrgAccounts_RegistrationReceived', $emails );
 
 		foreach ( $emails as $email ) {
 			$this->assertInstanceOf( \WC_Email::class, $email );
@@ -93,7 +95,7 @@ class EmailsTest extends TestCase {
 	 * a class name is URL surface, and a namespaced one puts raw backslashes in a query
 	 * string. The WordPress-hardening `if ($args ~ ...) { return 403; }` snippets many
 	 * hosts run reject those before PHP is reached, which no hook here could answer:
-	 * the request never arrives. Hence the four concrete email classes living in the
+	 * the request never arrives. Hence the five concrete email classes living in the
 	 * global namespace, against this plugin's PSR-4 rule everywhere else.
 	 *
 	 * Asserted over `get_class()` of everything actually registered rather than as a
@@ -235,9 +237,93 @@ class EmailsTest extends TestCase {
 		 */
 		do_action( 'woo_org_accounts_organization_registered', $organization, $member );
 
-		$this->assertCount( 1, $this->sent );
-		$this->assertStringContainsString( 'Acme GmbH', $this->sent[0]['subject'] );
-		$this->assertStringContainsString( 'organization_id=' . $organization->get_id(), $this->sent[0]['message'] );
+		$to_shop = $this->sent_to( get_option( 'admin_email' ) );
+
+		$this->assertCount( 1, $to_shop );
+		$this->assertStringContainsString( 'Acme GmbH', $to_shop[0]['subject'] );
+		$this->assertStringContainsString( 'organization_id=' . $organization->get_id(), $to_shop[0]['message'] );
+	}
+
+	/**
+	 * The shop's email can approve a waiting registration in one click.
+	 *
+	 * The link carries the organization and its key, so following it needs nothing
+	 * else from the email — and only a pending registration is offered one, because
+	 * there is nothing left to approve once the shop has decided.
+	 */
+	public function testThePendingRegistrationEmailOffersOneClickApproval() {
+		$organization = $this->make_organization( array( 'status' => Organization::STATUS_PENDING ) );
+		$member       = $this->make_member( $organization, Member::ROLE_ADMIN );
+
+		$this->sent = array();
+
+		/** This action is documented in tests/EmailsTest.php */
+		do_action( 'woo_org_accounts_organization_registered', $organization, $member );
+
+		$message = $this->sent_to( get_option( 'admin_email' ) )[0]['message'];
+
+		$this->assertStringContainsString( ApprovalLink::ID_ARG . '=' . $organization->get_id(), $message );
+		$this->assertStringContainsString( ApprovalLink::KEY_ARG . '=' . ApprovalLink::key( $organization->get_id() ), $message );
+
+		$active = $this->make_organization( array( 'name' => 'Beta AG' ) );
+		$admin  = $this->make_member( $active, Member::ROLE_ADMIN );
+
+		$this->sent = array();
+
+		/** This action is documented in tests/EmailsTest.php */
+		do_action( 'woo_org_accounts_organization_registered', $active, $admin );
+
+		$this->assertStringNotContainsString( ApprovalLink::KEY_ARG . '=', $this->sent_to( get_option( 'admin_email' ) )[0]['message'], 'An approved account was offered an approve button.' );
+	}
+
+	/**
+	 * The person who registered is told the registration arrived.
+	 *
+	 * What they are told depends on whether it is waiting for the shop: a pending
+	 * account hears that it is being reviewed, one the shop approves automatically
+	 * hears that it can order.
+	 */
+	public function testTheCustomerIsToldTheRegistrationArrived() {
+		$organization = $this->make_organization( array( 'status' => Organization::STATUS_PENDING ) );
+		$member       = $this->make_member( $organization, Member::ROLE_ADMIN );
+		$email        = get_user_by( 'id', $member->get_user_id() )->user_email;
+
+		$this->sent = array();
+
+		/** This action is documented in tests/EmailsTest.php */
+		do_action( 'woo_org_accounts_organization_registered', $organization, $member );
+
+		$to_customer = $this->sent_to( $email );
+
+		$this->assertCount( 1, $to_customer );
+		$this->assertStringContainsString( 'Acme GmbH', $to_customer[0]['subject'] );
+		$this->assertStringContainsString( 'reviewed before they can be used', $to_customer[0]['message'] );
+
+		$organization->set( 'status', Organization::STATUS_ACTIVE );
+
+		$this->sent = array();
+
+		/** This action is documented in tests/EmailsTest.php */
+		do_action( 'woo_org_accounts_organization_registered', $organization, $member );
+
+		$this->assertStringContainsString( 'can now place orders', $this->sent_to( $email )[0]['message'] );
+	}
+
+	/**
+	 * The messages sent to one address.
+	 *
+	 * @param string $address Recipient.
+	 * @return array Captured wp_mail() arguments, in order.
+	 */
+	private function sent_to( $address ) {
+		return array_values(
+			array_filter(
+				$this->sent,
+				static function ( $args ) use ( $address ) {
+					return in_array( $address, array_map( 'trim', explode( ',', implode( ',', (array) $args['to'] ) ) ), true );
+				}
+			)
+		);
 	}
 
 	/**

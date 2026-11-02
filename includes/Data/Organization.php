@@ -41,6 +41,21 @@ class Organization extends Entity {
 	const STATUS_REJECTED = 'rejected';
 
 	/**
+	 * The customer is never asked for a tax ID. Only the shop can record one.
+	 */
+	const TAX_ID_OFF = 'off';
+
+	/**
+	 * The customer is asked for a tax ID and may leave it blank.
+	 */
+	const TAX_ID_OPTIONAL = 'optional';
+
+	/**
+	 * The customer is asked for a tax ID and has to supply one.
+	 */
+	const TAX_ID_REQUIRED = 'required';
+
+	/**
 	 * The billing columns, without their `billing_` prefix.
 	 *
 	 * The order matches WooCommerce's own billing fields so an address can be handed
@@ -224,7 +239,41 @@ class Organization extends Entity {
 	 * @return bool True when the site requires one.
 	 */
 	public static function tax_id_required() {
-		return (bool) \WooOrgAccounts\Admin\Settings::get( 'require_tax_id', false );
+		return self::TAX_ID_REQUIRED === self::tax_id_field();
+	}
+
+	/**
+	 * Whether the customer is asked for a tax ID at all.
+	 *
+	 * A shop selling to schools has no use for a VAT number, and a field nobody needs
+	 * is one more reason not to finish a registration. Switched off, registration and
+	 * the account profile leave it out, and the profile keeps whatever was stored
+	 * rather than blanking it: wp-admin still shows and edits it, because the shop may
+	 * record one itself.
+	 *
+	 * @return bool True when registration and the account profile show the field.
+	 */
+	public static function tax_id_collected() {
+		return self::TAX_ID_OFF !== self::tax_id_field();
+	}
+
+	/**
+	 * How the customer is asked for a tax ID: not at all, optionally, or as a must.
+	 *
+	 * One setting with three values rather than two switches, so "required" and "not
+	 * asked" can never both be on. A site saved before the setting existed answers
+	 * from its old "required" checkbox, so nobody's form changes on update.
+	 *
+	 * @return string One of the TAX_ID_* constants.
+	 */
+	public static function tax_id_field() {
+		$field = (string) \WooOrgAccounts\Admin\Settings::get( 'tax_id_field', '' );
+
+		if ( in_array( $field, array( self::TAX_ID_OFF, self::TAX_ID_OPTIONAL, self::TAX_ID_REQUIRED ), true ) ) {
+			return $field;
+		}
+
+		return \WooOrgAccounts\Admin\Settings::get( 'require_tax_id', false ) ? self::TAX_ID_REQUIRED : self::TAX_ID_OPTIONAL;
 	}
 
 	/**

@@ -7,6 +7,7 @@
 
 namespace WooOrgAccounts\Admin;
 
+use WooOrgAccounts\Data\Organization;
 use WooOrgAccounts\Data\OrganizationRepository;
 use WooOrgAccounts\Frontend\Registration;
 use WooOrgAccounts\Labels;
@@ -74,7 +75,7 @@ class Settings {
 			'organization_mode'             => Labels::MODE_BUSINESS,
 			'require_approval'              => true,
 			'require_approval_to_sign_in'   => false,
-			'require_tax_id'                => false,
+			'tax_id_field'                  => '',
 			'invitation_expiry_days'        => 7,
 			'registration_page_id'          => 0,
 			'default_allow_custom_shipping' => true,
@@ -190,9 +191,9 @@ class Settings {
 		);
 
 		add_settings_field(
-			'require_tax_id',
+			'tax_id_field',
 			__( 'VAT / tax ID', 'woo-organization-accounts-pro' ),
-			array( $this, 'render_require_tax_id_field' ),
+			array( $this, 'render_tax_id_field' ),
 			self::PAGE_SLUG,
 			'woap_registration'
 		);
@@ -302,9 +303,18 @@ class Settings {
 		$mode                       = isset( $input['organization_mode'] ) ? sanitize_key( $input['organization_mode'] ) : '';
 		$clean['organization_mode'] = array_key_exists( $mode, Labels::modes() ) ? $mode : $defaults['organization_mode'];
 
-		$clean['require_approval']              = ! empty( $input['require_approval'] );
-		$clean['require_approval_to_sign_in']   = ! empty( $input['require_approval_to_sign_in'] );
-		$clean['require_tax_id']                = ! empty( $input['require_tax_id'] );
+		$clean['require_approval']            = ! empty( $input['require_approval'] );
+		$clean['require_approval_to_sign_in'] = ! empty( $input['require_approval_to_sign_in'] );
+		$tax_id_field                         = isset( $input['tax_id_field'] ) ? sanitize_key( $input['tax_id_field'] ) : '';
+		$clean['tax_id_field']                = in_array( $tax_id_field, array( Organization::TAX_ID_OFF, Organization::TAX_ID_OPTIONAL, Organization::TAX_ID_REQUIRED ), true )
+			? $tax_id_field
+			: Organization::tax_id_field();
+
+		/*
+		 * The old `require_tax_id` checkbox is not written back: `tax_id_field` now holds
+		 * the whole answer, and a stored copy of the old key is only read until the first
+		 * save after the update — see `Organization::tax_id_field()`.
+		 */
 		$clean['default_allow_custom_shipping'] = ! empty( $input['default_allow_custom_shipping'] );
 		$clean['customer_view']                 = ! empty( $input['customer_view'] );
 		$clean['remove_data_on_uninstall']      = ! empty( $input['remove_data_on_uninstall'] );
@@ -494,30 +504,39 @@ class Settings {
 	}
 
 	/**
-	 * The tax ID requirement checkbox.
+	 * How customers are asked for a tax ID.
 	 *
 	 * @return void
 	 */
-	public function render_require_tax_id_field() {
-		$settings = self::get_settings();
-
-		printf(
-			'<label><input type="checkbox" name="%1$s[require_tax_id]" value="1"%2$s> %3$s</label>',
-			esc_attr( self::OPTION_KEY ),
-			checked( $settings['require_tax_id'], true, false ),
-			esc_html(
-				sprintf(
-					/* translators: %s: the plural organization noun for the site's mode. */
-					__( '%s must supply a VAT number, tax ID or registration number', 'woo-organization-accounts-pro' ),
-					Labels::organizations()
-				)
-			)
+	public function render_tax_id_field() {
+		$current = Organization::tax_id_field();
+		$options = array(
+			Organization::TAX_ID_OFF      => __( 'Not asked — hidden on registration and on the account profile', 'woo-organization-accounts-pro' ),
+			Organization::TAX_ID_OPTIONAL => __( 'Optional', 'woo-organization-accounts-pro' ),
+			Organization::TAX_ID_REQUIRED => sprintf(
+				/* translators: %s: the plural organization noun for the site's mode. */
+				__( 'Required — %s must supply a VAT number, tax ID or registration number', 'woo-organization-accounts-pro' ),
+				Labels::organizations()
+			),
 		);
+
+		printf( '<select name="%s[tax_id_field]">', esc_attr( self::OPTION_KEY ) );
+
+		foreach ( $options as $value => $label ) {
+			printf(
+				'<option value="%1$s"%2$s>%3$s</option>',
+				esc_attr( $value ),
+				selected( $current, $value, false ),
+				esc_html( $label )
+			);
+		}
+
+		echo '</select>';
 
 		printf(
 			'<p class="description">%s</p>',
 			esc_html__(
-				'Applied on registration and on both edit screens. The number is stored and shown as it was typed; no format is checked, because a VAT number, a company registration number and a US EIN look nothing alike.',
+				'Applied on registration and on the account profile; the shop can always record one in wp-admin. The number is stored and shown as it was typed; no format is checked, because a VAT number, a company registration number and a US EIN look nothing alike.',
 				'woo-organization-accounts-pro'
 			)
 		);

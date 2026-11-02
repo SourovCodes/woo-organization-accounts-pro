@@ -210,9 +210,13 @@ class AccountHandlers {
 		$organization = Guard::check_request( 'woap_save_organization', Roles::MANAGE_ORGANIZATION );
 
 		$details = array(
-			'name'   => self::posted( 'woap_name' ),
-			'tax_id' => self::posted( 'woap_tax_id' ),
+			'name' => self::posted( 'woap_name' ),
 		);
+
+		// A form that does not show the field must not blank what the shop recorded.
+		if ( Organization::tax_id_collected() ) {
+			$details['tax_id'] = self::posted( 'woap_tax_id' );
+		}
 
 		$errors = new \WP_Error();
 

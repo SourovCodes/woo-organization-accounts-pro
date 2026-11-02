@@ -8,6 +8,7 @@
 namespace WooOrgAccounts\Tests;
 
 use WooOrgAccounts\Admin\Settings;
+use WooOrgAccounts\Data\Organization;
 use WooOrgAccounts\Labels;
 
 /**
@@ -24,7 +25,8 @@ class SettingsTest extends TestCase {
 		$this->assertSame( Labels::MODE_BUSINESS, $defaults['organization_mode'] );
 		$this->assertTrue( $defaults['require_approval'] );
 		$this->assertFalse( $defaults['require_approval_to_sign_in'] );
-		$this->assertFalse( $defaults['require_tax_id'], 'Insisting on a VAT number is right for one shop and wrong for the next.' );
+		$this->assertSame( '', $defaults['tax_id_field'], 'Unset, so a site keeps the form its old checkbox gave it.' );
+		$this->assertSame( Organization::TAX_ID_OPTIONAL, Organization::tax_id_field(), 'Insisting on a VAT number is right for one shop and wrong for the next.' );
 		$this->assertSame( 7, $defaults['invitation_expiry_days'] );
 		$this->assertTrue( $defaults['default_allow_custom_shipping'] );
 		$this->assertFalse( $defaults['remove_data_on_uninstall'] );
@@ -59,7 +61,6 @@ class SettingsTest extends TestCase {
 
 		$this->assertFalse( $clean['require_approval'] );
 		$this->assertFalse( $clean['require_approval_to_sign_in'] );
-		$this->assertFalse( $clean['require_tax_id'] );
 		$this->assertFalse( $clean['default_allow_custom_shipping'] );
 		$this->assertFalse( $clean['remove_data_on_uninstall'] );
 
@@ -152,5 +153,66 @@ class SettingsTest extends TestCase {
 	public function testNoGuestCheckoutSetting() {
 		$this->assertArrayNotHasKey( 'enable_guest_checkout', Settings::default_settings() );
 		$this->assertArrayNotHasKey( 'guest_checkout', Settings::default_settings() );
+	}
+
+	/**
+	 * A site saved before the three-way setting existed keeps the form it had.
+	 *
+	 * The old checkbox only knew "required" and "not required", and both of those meant
+	 * the field was shown — so an update must not hide it on anybody's shop.
+	 */
+	public function testTheTaxIdFieldFollowsTheOldCheckboxUntilItIsSet() {
+		$this->set_setting( 'tax_id_field', '' );
+		$this->set_setting( 'require_tax_id', false );
+
+		$this->assertSame( Organization::TAX_ID_OPTIONAL, Organization::tax_id_field() );
+		$this->assertTrue( Organization::tax_id_collected() );
+		$this->assertFalse( Organization::tax_id_required() );
+
+		$this->set_setting( 'require_tax_id', true );
+
+		$this->assertSame( Organization::TAX_ID_REQUIRED, Organization::tax_id_field() );
+		$this->assertTrue( Organization::tax_id_required() );
+	}
+
+	/**
+	 * "Not asked" wins over the old checkbox, so a hidden field is never also required.
+	 */
+	public function testATaxIdThatIsNotAskedForIsNotRequired() {
+		$this->set_setting( 'require_tax_id', true );
+		$this->set_setting( 'tax_id_field', Organization::TAX_ID_OFF );
+
+		$this->assertFalse( Organization::tax_id_collected() );
+		$this->assertFalse( Organization::tax_id_required() );
+	}
+
+	/**
+	 * The screen stores one of three values, and retires the old checkbox.
+	 */
+	public function testTheTaxIdFieldIsSanitisedToOneOfThreeValues() {
+		$settings = new Settings();
+
+		foreach ( array( Organization::TAX_ID_OFF, Organization::TAX_ID_OPTIONAL, Organization::TAX_ID_REQUIRED ) as $value ) {
+			$clean = $settings->sanitize(
+				array(
+					'organization_mode' => Labels::MODE_EDUCATION,
+					'tax_id_field'      => $value,
+				)
+			);
+
+			$this->assertSame( $value, $clean['tax_id_field'] );
+			$this->assertArrayNotHasKey( 'require_tax_id', $clean, 'The retired checkbox was written back.' );
+		}
+
+		$this->set_setting( 'tax_id_field', Organization::TAX_ID_OFF );
+
+		$clean = $settings->sanitize(
+			array(
+				'organization_mode' => Labels::MODE_EDUCATION,
+				'tax_id_field'      => 'sometimes',
+			)
+		);
+
+		$this->assertSame( Organization::TAX_ID_OFF, $clean['tax_id_field'], 'An unknown value replaced the stored one.' );
 	}
 }

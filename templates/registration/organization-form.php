@@ -140,15 +140,17 @@ $woap_tax_id_required = Organization::tax_id_required();
 				 * and three phone fields on one form and used one of each.
 				 */
 				?>
-				<p class="woocommerce-form-row form-row-wide">
-					<label for="woap-tax-id">
-						<?php esc_html_e( 'VAT number, tax ID or registration number', 'woo-organization-accounts-pro' ); ?>
-						<?php if ( $woap_tax_id_required ) : ?>
-							<span class="required">*</span>
-						<?php endif; ?>
-					</label>
-					<input type="text" class="woocommerce-Input input-text" id="woap-tax-id" name="woap_tax_id" <?php echo $woap_tax_id_required ? 'required' : ''; ?> value="<?php echo esc_attr( $woap_value( 'woap_tax_id' ) ); ?>">
-				</p>
+				<?php if ( Organization::tax_id_collected() ) : ?>
+					<p class="woocommerce-form-row form-row-wide">
+						<label for="woap-tax-id">
+							<?php esc_html_e( 'VAT number, tax ID or registration number', 'woo-organization-accounts-pro' ); ?>
+							<?php if ( $woap_tax_id_required ) : ?>
+								<span class="required">*</span>
+							<?php endif; ?>
+						</label>
+						<input type="text" class="woocommerce-Input input-text" id="woap-tax-id" name="woap_tax_id" <?php echo $woap_tax_id_required ? 'required' : ''; ?> value="<?php echo esc_attr( $woap_value( 'woap_tax_id' ) ); ?>">
+					</p>
+				<?php endif; ?>
 
 			</div>
 		</section>

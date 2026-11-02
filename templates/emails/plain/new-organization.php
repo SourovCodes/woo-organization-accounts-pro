@@ -12,6 +12,7 @@
  * @var string $contact_name       Name of the person who registered.
  * @var string $contact_email      Their email address.
  * @var string $review_url         Link to the organization in wp-admin.
+ * @var string $approve_url        One-click approval link, or empty once decided.
  * @var string $email_heading      Heading for the email.
  * @var string $additional_content Extra content from the email settings.
  */
@@ -32,6 +33,10 @@ echo esc_html(
 echo esc_html__( 'Status:', 'woo-organization-accounts-pro' ) . ' ' . esc_html( $status_label ) . "\n";
 echo esc_html__( 'Registered by:', 'woo-organization-accounts-pro' ) . ' ' . esc_html( $contact_name ) . "\n";
 echo esc_html__( 'Email address:', 'woo-organization-accounts-pro' ) . ' ' . esc_html( $contact_email ) . "\n\n";
+
+if ( ! empty( $approve_url ) ) {
+	echo esc_html__( 'Approve now:', 'woo-organization-accounts-pro' ) . ' ' . esc_url_raw( $approve_url ) . "\n";
+}
 
 echo esc_html__( 'Review the account:', 'woo-organization-accounts-pro' ) . ' ' . esc_url_raw( $review_url ) . "\n\n";
 

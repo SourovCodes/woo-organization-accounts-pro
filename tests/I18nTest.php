@@ -299,7 +299,13 @@ class I18nTest extends WP_UnitTestCase {
 				$locale,
 				function () use ( $locale ) {
 					$this->assertSame( 'Firma', __( 'Company', 'woo-organization-accounts-pro' ), $locale );
-					$this->assertSame( 'Institut', __( 'Institute', 'woo-organization-accounts-pro' ), $locale );
+
+					/*
+					 * Feminine on purpose, like "Firma": the German sentences these nouns are
+					 * dropped into ("Angaben zur %s", "Name der %s") are written for one gender.
+					 * "Institut" is neuter and read as "Angaben zur Institut".
+					 */
+					$this->assertSame( 'Institution', __( 'Institute', 'woo-organization-accounts-pro' ), $locale );
 					$this->assertSame( 'Mitarbeitende', __( 'Employees', 'woo-organization-accounts-pro' ), $locale );
 					$this->assertSame( 'Personal', __( 'Staff', 'woo-organization-accounts-pro' ), $locale );
 					$this->assertSame( 'Filialen', __( 'Branches', 'woo-organization-accounts-pro' ), $locale );

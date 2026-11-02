@@ -20,7 +20,8 @@
 			"includes/Emails/InvitationEmail.php",
 			"includes/Emails/NewOrganizationEmail.php",
 			"includes/Emails/OrganizationApprovedEmail.php",
-			"includes/Emails/OrganizationRejectedEmail.php"
+			"includes/Emails/OrganizationRejectedEmail.php",
+			"includes/Emails/RegistrationReceivedEmail.php"
 		]
 	},
 	"autoload-dev": {

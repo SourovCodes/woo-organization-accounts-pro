@@ -674,7 +674,8 @@ class Registration {
 		 */
 		$fields = array(
 			'woap_organization_name' => $text( 'woap_organization_name' ),
-			'woap_tax_id'            => $text( 'woap_tax_id' ),
+			// Not asked for means not taken, whatever the request carries.
+			'woap_tax_id'            => Organization::tax_id_collected() ? $text( 'woap_tax_id' ) : '',
 			'woap_admin_first_name'  => $text( 'woap_admin_first_name' ),
 			'woap_admin_last_name'   => $text( 'woap_admin_last_name' ),
 			'woap_admin_email'       => isset( $_POST['woap_admin_email'] ) ? sanitize_email( wp_unslash( $_POST['woap_admin_email'] ) ) : '',
