@@ -683,6 +683,7 @@ class Registration {
 			'woap_password'          => isset( $_POST['woap_password'] ) ? (string) wp_unslash( $_POST['woap_password'] ) : '',
 			// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- As above.
 			'woap_password_confirm'  => isset( $_POST['woap_password_confirm'] ) ? (string) wp_unslash( $_POST['woap_password_confirm'] ) : '',
+			Newsletter::FIELD        => Newsletter::is_enabled() && ! empty( $_POST[ Newsletter::FIELD ] ) ? '1' : '',
 		);
 		// phpcs:enable WordPress.Security.NonceVerification.Missing
 
@@ -952,6 +953,9 @@ class Registration {
 		 * the settings screen's backfill can fix in bulk afterwards.
 		 */
 		Locations::from_billing_address( $organization );
+
+		// Consent is recorded only now, once there is an account it belongs to.
+		Newsletter::record( $user_id, $organization, ! empty( $fields[ Newsletter::FIELD ] ) );
 
 		/**
 		 * Fires after an organization and its first admin have been created.

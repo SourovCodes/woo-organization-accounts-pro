@@ -28,6 +28,7 @@ use WooOrgAccounts\Emails\Emails;
 use WooOrgAccounts\Frontend\AccountHandlers;
 use WooOrgAccounts\Frontend\AddressFields;
 use WooOrgAccounts\Frontend\MyAccount;
+use WooOrgAccounts\Frontend\Newsletter;
 use WooOrgAccounts\Frontend\OrderDetails;
 use WooOrgAccounts\Frontend\Registration;
 use WooOrgAccounts\Membership\Members as MemberService;
@@ -144,6 +145,7 @@ final class Plugin {
 		MemberService::register();
 
 		( new Registration() )->register();
+		( new Newsletter() )->register();
 		( new MyAccount() )->register();
 		( new AccountHandlers() )->register();
 		( new OrderDetails() )->register();

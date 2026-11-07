@@ -9,6 +9,7 @@ namespace WooOrgAccounts\Admin;
 
 use WooOrgAccounts\Data\Organization;
 use WooOrgAccounts\Data\OrganizationRepository;
+use WooOrgAccounts\Frontend\Newsletter;
 use WooOrgAccounts\Frontend\Registration;
 use WooOrgAccounts\Labels;
 use WooOrgAccounts\Locations\Locations;
@@ -76,6 +77,8 @@ class Settings {
 			'require_approval'              => true,
 			'require_approval_to_sign_in'   => false,
 			'tax_id_field'                  => '',
+			'newsletter_opt_in'             => false,
+			'newsletter_opt_in_label'       => '',
 			'invitation_expiry_days'        => 7,
 			'registration_page_id'          => 0,
 			'default_allow_custom_shipping' => true,
@@ -199,6 +202,14 @@ class Settings {
 		);
 
 		add_settings_field(
+			'newsletter_opt_in',
+			__( 'Newsletter', 'woo-organization-accounts-pro' ),
+			array( $this, 'render_newsletter_field' ),
+			self::PAGE_SLUG,
+			'woap_registration'
+		);
+
+		add_settings_field(
 			'invitation_expiry_days',
 			__( 'Invitations expire after', 'woo-organization-accounts-pro' ),
 			array( $this, 'render_invitation_expiry_field' ),
@@ -315,6 +326,9 @@ class Settings {
 		 * the whole answer, and a stored copy of the old key is only read until the first
 		 * save after the update — see `Organization::tax_id_field()`.
 		 */
+		$clean['newsletter_opt_in']       = ! empty( $input['newsletter_opt_in'] );
+		$clean['newsletter_opt_in_label'] = isset( $input['newsletter_opt_in_label'] ) ? sanitize_text_field( wp_unslash( $input['newsletter_opt_in_label'] ) ) : '';
+
 		$clean['default_allow_custom_shipping'] = ! empty( $input['default_allow_custom_shipping'] );
 		$clean['customer_view']                 = ! empty( $input['customer_view'] );
 		$clean['remove_data_on_uninstall']      = ! empty( $input['remove_data_on_uninstall'] );
@@ -500,6 +514,34 @@ class Settings {
 					'[' . Registration::SHORTCODE . ']'
 				)
 			)
+		);
+	}
+
+	/**
+	 * The newsletter opt-in on the registration form, and its wording.
+	 *
+	 * @return void
+	 */
+	public function render_newsletter_field() {
+		$settings = self::get_settings();
+
+		printf(
+			'<label><input type="checkbox" name="%1$s[newsletter_opt_in]" value="1"%2$s> %3$s</label>',
+			esc_attr( self::OPTION_KEY ),
+			checked( $settings['newsletter_opt_in'], true, false ),
+			esc_html__( 'Offer a newsletter opt-in on the registration form', 'woo-organization-accounts-pro' )
+		);
+
+		printf(
+			'<p><input type="text" class="large-text" name="%1$s[newsletter_opt_in_label]" value="%2$s" placeholder="%3$s"></p>',
+			esc_attr( self::OPTION_KEY ),
+			esc_attr( $settings['newsletter_opt_in_label'] ),
+			esc_attr( Newsletter::default_label() )
+		);
+
+		printf(
+			'<p class="description">%s</p>',
+			esc_html__( 'The checkbox text; leave empty for the default. The box is never ticked in advance. A tick is stored on the account and, when Noptin is active, subscribes the person there.', 'woo-organization-accounts-pro' )
 		);
 	}
 

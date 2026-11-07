@@ -1258,6 +1258,16 @@ from a GET safe:
 `…_organization_registered` event: "we are reviewing it" while pending, "you can order" when the
 shop approves nobody.
 
+### Newsletter opt-in at registration
+
+`Frontend\Newsletter` adds an optional "keep me informed" checkbox to the registration form
+(settings: `newsletter_opt_in`, `newsletter_opt_in_label`; off by default, because a shop needs a
+newsletter before it asks for consent to one). The box is never pre-ticked. A tick is recorded only
+once the account exists — as `woap_newsletter_opt_in` user meta (UTC time of consent) and as the
+`woo_org_accounts_newsletter_opt_in` action — and Noptin, when active, is subscribed through
+`add_noptin_subscriber()` with its own double-opt-in settings deciding what follows. A posted tick
+is ignored while the setting is off. Invitations do not ask: the newsletter tool can.
+
 ### Approval gates two different things, and they are two settings
 
 `require_approval` decides whether a new registration may **order**; `require_approval_to_sign_in`

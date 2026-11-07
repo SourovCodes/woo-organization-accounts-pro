@@ -14,6 +14,7 @@ use WooOrgAccounts\Data\Member;
 use WooOrgAccounts\Data\MemberRepository;
 use WooOrgAccounts\Data\Organization;
 use WooOrgAccounts\Emails\Emails;
+use WooOrgAccounts\Frontend\Newsletter;
 use WooOrgAccounts\Frontend\Registration;
 use WooOrgAccounts\Labels;
 use WooOrgAccounts\LoginGate;
@@ -308,6 +309,67 @@ class RegistrationSurfaceTest extends TestCase {
 		$organization = \WooOrgAccounts\Data\OrganizationRepository::find( $member->get_organization_id() );
 
 		$this->assertSame( '', $organization->get( 'tax_id' ) );
+	}
+
+	/**
+	 * The newsletter box appears only when the shop offers one, unticked, in its words.
+	 */
+	public function testTheNewsletterOptInIsOfferedOnlyWhenSwitchedOn() {
+		ob_start();
+		( new Newsletter() )->render_field();
+		$this->assertSame( '', (string) ob_get_clean(), 'The box appeared with the setting off.' );
+
+		$this->set_setting( 'newsletter_opt_in', true );
+		$this->set_setting( 'newsletter_opt_in_label', 'Ich möchte informiert werden.' );
+
+		ob_start();
+		( new Newsletter() )->render_field();
+		$markup = (string) ob_get_clean();
+
+		$this->assertStringContainsString( 'name="' . Newsletter::FIELD . '"', $markup );
+		$this->assertStringContainsString( 'Ich möchte informiert werden.', $markup );
+		$this->assertStringNotContainsString( 'checked', $markup, 'Consent must not be ticked in advance.' );
+	}
+
+	/**
+	 * A tick is stored on the new account and announced; no tick, nothing.
+	 */
+	public function testATickedNewsletterBoxIsRecordedOnTheAccount() {
+		$this->make_registration_page();
+		$this->set_setting( 'require_approval', false );
+		$this->set_setting( 'newsletter_opt_in', true );
+
+		$announced = array();
+		add_action(
+			'woo_org_accounts_newsletter_opt_in',
+			static function ( $user_id ) use ( &$announced ) {
+				$announced[] = $user_id;
+			}
+		);
+
+		$this->assertNotSame( '', $this->register( array( Newsletter::FIELD => '1' ) ) );
+		$ada = get_user_by( 'email', 'ada@acme.test' );
+
+		$this->assertNotSame( '', get_user_meta( $ada->ID, Newsletter::META, true ) );
+		$this->assertSame( array( $ada->ID ), $announced );
+
+		$this->assertNotSame( '', $this->register( array( 'woap_admin_email' => 'grace@acme.test' ) ) );
+		$grace = get_user_by( 'email', 'grace@acme.test' );
+
+		$this->assertSame( '', get_user_meta( $grace->ID, Newsletter::META, true ), 'An unticked box recorded consent.' );
+		$this->assertCount( 1, $announced );
+	}
+
+	/**
+	 * A crafted tick counts for nothing while the shop does not offer a newsletter.
+	 */
+	public function testANewsletterTickIsIgnoredWhileSwitchedOff() {
+		$this->make_registration_page();
+		$this->set_setting( 'require_approval', false );
+
+		$this->assertNotSame( '', $this->register( array( Newsletter::FIELD => '1' ) ) );
+
+		$this->assertSame( '', get_user_meta( get_user_by( 'email', 'ada@acme.test' )->ID, Newsletter::META, true ) );
 	}
 
 	/**
