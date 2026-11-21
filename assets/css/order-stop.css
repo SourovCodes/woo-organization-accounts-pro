@@ -1,0 +1,47 @@
+/**
+ * Order stop: the label shown instead of the basket button for a stopped brand.
+ *
+ * Every colour is one of Woodmart's own custom properties, never a literal. The literals
+ * inside the var() fallbacks are the theme's own defaults and apply only if it stops
+ * defining a token.
+ */
+
+.woap-order-stop {
+	display: flex;
+	flex-direction: column;
+	gap: 0.25em;
+}
+
+.woap-order-stop__label {
+	display: inline-block;
+	align-self: flex-start;
+	padding: 0.5em 1em;
+	border: 1px solid var(--brdcolor-gray-300, rgba(0, 0, 0, 0.105));
+	border-radius: var(--btn-accented-brd-radius, 0);
+	background-color: var(--notices-warning-bg, #f7f6f7);
+	color: var(--wd-title-color, #242424);
+	font-size: 0.85em;
+	font-weight: 600;
+	line-height: 1.4;
+	text-transform: uppercase;
+	cursor: not-allowed;
+}
+
+.woap-order-stop__note {
+	color: var(--wd-text-color, #767676);
+	font-size: 0.85em;
+	line-height: 1.4;
+}
+
+.woap-order-stop--single {
+	margin: 0 0 1.5em;
+}
+
+.woap-order-stop--loop {
+	align-items: center;
+	text-align: center;
+}
+
+.woap-order-stop--loop .woap-order-stop__label {
+	align-self: center;
+}

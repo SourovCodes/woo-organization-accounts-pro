@@ -1268,6 +1268,20 @@ once the account exists — as `woap_newsletter_opt_in` user meta (UTC time of c
 `add_noptin_subscriber()` with its own double-opt-in settings deciding what follows. A posted tick
 is ignored while the setting is off. Invitations do not ask: the newsletter tool can.
 
+### Order stop per brand
+
+`Catalog\OrderStop` lets the shop stop orders for a whole brand (Products → Brands → edit:
+"Order stop" checkbox plus an optional note; term meta `woap_order_stop` = '1' and
+`woap_order_stop_note`). The products stay visible with their prices; the basket button in grids
+becomes an "Order stop" label with the note, and the product page shows the same label instead of
+the add-to-cart form. This is the one feature that does use `woocommerce_is_purchasable` (and the
+variation filter; a variation follows its parent's brand): a stopped product must not be ordered at
+all, so WooCommerce removing it from existing baskets is wanted — unlike customer view. Orders the
+shop enters in wp-admin are not affected. The save handler only acts when the form's own nonce is
+posted, because the Kontor sync updates brands through the same `edited_product_brand` hook and must
+not lift a stop. `woo_org_accounts_order_stopped` ( $stopped, $product, $brand_id ) is the hook for
+exceptions (e.g. invited customers allowed a fixed quantity).
+
 ### Approval gates two different things, and they are two settings
 
 `require_approval` decides whether a new registration may **order**; `require_approval_to_sign_in`

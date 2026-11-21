@@ -19,6 +19,7 @@ use WooOrgAccounts\Admin\OrderColumn;
 use WooOrgAccounts\Admin\Settings;
 use WooOrgAccounts\Admin\ThemeSettings;
 use WooOrgAccounts\Admin\UserColumn;
+use WooOrgAccounts\Catalog\OrderStop;
 use WooOrgAccounts\Checkout\BillingLock;
 use WooOrgAccounts\Checkout\Blocks\CheckoutIntegration;
 use WooOrgAccounts\Checkout\Gate;
@@ -165,6 +166,7 @@ final class Plugin {
 		 * decides at `init`, long before any of this would run from an admin gate.
 		 */
 		( new CustomerPrices() )->register();
+		( new OrderStop() )->register();
 
 		( new Gate() )->register();
 		( new BillingLock() )->register();

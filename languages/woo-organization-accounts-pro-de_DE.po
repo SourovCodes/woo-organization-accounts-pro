@@ -3221,3 +3221,28 @@ msgstr "Text der Checkbox; leer lassen für den Standardtext. Die Checkbox ist n
 #: includes/Frontend/Newsletter.php:80
 msgid "Keep me informed about new products and offers."
 msgstr "Ich möchte über Neuheiten und Aktionen informiert werden."
+
+#: includes/Catalog/OrderStop.php:245
+#: includes/Catalog/OrderStop.php:272
+#: includes/Catalog/OrderStop.php:294
+msgid "Order stop"
+msgstr "Bestellstopp"
+
+#: includes/Catalog/OrderStop.php:273
+#: includes/Catalog/OrderStop.php:298
+msgid "Products of this brand stay visible with their prices, but cannot be ordered."
+msgstr "Die Produkte dieser Marke bleiben mit ihren Preisen sichtbar, können aber nicht bestellt werden."
+
+#: includes/Catalog/OrderStop.php:276
+#: includes/Catalog/OrderStop.php:302
+msgid "Order stop note"
+msgstr "Hinweis zum Bestellstopp"
+
+#: includes/Catalog/OrderStop.php:278
+#: includes/Catalog/OrderStop.php:305
+msgid "Optional. Shown under the label, for example when the brand is expected back."
+msgstr "Optional. Wird unter dem Bestellstopp angezeigt, zum Beispiel ab wann die Marke wieder lieferbar ist."
+
+#: includes/Catalog/OrderStop.php:297
+msgid "Stop orders for this brand"
+msgstr "Bestellungen für diese Marke stoppen"
